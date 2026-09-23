@@ -67,6 +67,7 @@ enum : int
     ChainOut, SafetyClip,
     // Sequencer (phase 3)
     SeqPattern, SeqRun, SeqPlay, SeqTempo, SeqSwing, SeqQuantise, SeqLatch,
+    SeqSync,
     Count
 };
 }

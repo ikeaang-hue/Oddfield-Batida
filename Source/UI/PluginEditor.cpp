@@ -32,7 +32,7 @@ void BatidaEditor::VoiceButton::mouseUp (const juce::MouseEvent& e)
 
 BatidaEditor::BatidaEditor (BatidaProcessor& p)
     : AudioProcessorEditor (&p), proc (p), midiMode (p.getState()), keysVoice (p.getState()), master (p.getState()),
-      kitPage (p)
+      kitPage (p), seqPage (p)
 {
     title.setText ("BATIDA", juce::dontSendNotification);
     title.setFont (juce::FontOptions (26.0f, juce::Font::bold));
@@ -78,20 +78,23 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
 
     kitPage.setComponentID ("kitPage");
     addAndMakeVisible (kitPage);
+    seqPage.setComponentID ("seqPage");
+    addChildComponent (seqPage);
 
-    for (auto* b : { &kitViewButton, &voiceViewButton })
+    for (auto* b : { &kitViewButton, &seqViewButton, &voiceViewButton })
     {
         b->setClickingTogglesState (false);
         b->setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffc0632a));
         addAndMakeVisible (*b);
     }
-    kitViewButton.onClick = [this] { showView (true); };
-    voiceViewButton.onClick = [this] { showView (false); };
-    showView (true); // the kit panel is the opening page
+    kitViewButton.onClick = [this] { showView (View::Kit); };
+    seqViewButton.onClick = [this] { showView (View::Seq); };
+    voiceViewButton.onClick = [this] { showView (View::Voice); };
+    showView (View::Kit); // the kit panel is the opening page
 
     selectVoice (juce::jlimit (0, kNumVoices - 1, proc.selectedVoice.load()));
 
-    setSize (1100, 820);
+    setSize (980, 640);
     startTimerHz (4);
 }
 
@@ -100,12 +103,14 @@ BatidaEditor::~BatidaEditor()
     stopTimer();
 }
 
-void BatidaEditor::showView (bool kit)
+void BatidaEditor::showView (View view)
 {
-    kitPage.setVisible (kit);
-    tabs.setVisible (! kit);
-    kitViewButton.setToggleState (kit, juce::dontSendNotification);
-    voiceViewButton.setToggleState (! kit, juce::dontSendNotification);
+    kitPage.setVisible (view == View::Kit);
+    seqPage.setVisible (view == View::Seq);
+    tabs.setVisible (view == View::Voice);
+    kitViewButton.setToggleState (view == View::Kit, juce::dontSendNotification);
+    seqViewButton.setToggleState (view == View::Seq, juce::dontSendNotification);
+    voiceViewButton.setToggleState (view == View::Voice, juce::dontSendNotification);
 }
 
 void BatidaEditor::selectVoice (int voice)
@@ -190,11 +195,13 @@ void BatidaEditor::resized()
     auto r = getLocalBounds().reduced (10);
     auto header = r.removeFromTop (ParamControl::kHeight);
 
-    auto titleArea = header.removeFromLeft (150);
+    auto titleArea = header.removeFromLeft (170);
     title.setBounds (titleArea.removeFromTop (30));
-    auto views = titleArea.removeFromBottom (28).withTrimmedRight (10);
-    kitViewButton.setBounds (views.removeFromLeft (views.getWidth() / 2).withTrimmedRight (3));
-    voiceViewButton.setBounds (views.withTrimmedLeft (3));
+    auto views = titleArea.removeFromBottom (28).withTrimmedRight (6);
+    const auto bw = views.getWidth() / 3;
+    kitViewButton.setBounds (views.removeFromLeft (bw).withTrimmedRight (2));
+    seqViewButton.setBounds (views.removeFromLeft (bw).withTrimmedRight (2));
+    voiceViewButton.setBounds (views.withTrimmedLeft (0));
     master.setBounds (header.removeFromRight (ParamControl::kWidth));
     keysVoice.setBounds (header.removeFromRight (80));
     midiMode.setBounds (header.removeFromRight (110));
@@ -209,6 +216,7 @@ void BatidaEditor::resized()
     r.removeFromTop (6);
     tabs.setBounds (r);
     kitPage.setBounds (r);
+    seqPage.setBounds (r);
 }
 
 int BatidaEditor::voiceAt (int x, int y) const
@@ -265,7 +273,7 @@ void BatidaEditor::filesDropped (const juce::StringArray& files, int x, int y)
         selectVoice (voice);
         sourcePage->bindVoice (voice);
         tabs.setCurrentTabIndex (0);
-        showView (false);
+        showView (View::Voice);
         break;
     }
 }

@@ -43,7 +43,7 @@ state, including sample paths and missing files. Host values: knobs are normalis
 ## Playing it in Logic
 
 Insert it as an instrument: *AU Instruments → Negative Space → Batida*. It opens on the **KIT**
-page; **VOICE** edits the selected sound.
+page (pad and chain); **SEQ** is the sequencer; **VOICE** edits the selected sound.
 
 - **XY pad:** X = character (warm → aggressive → digital), Y = heat (clean → destroyed). It moves
   the whole chain; orange dots show where each stage knob has been pushed. Double-click resets.
@@ -74,12 +74,19 @@ page; **VOICE** edits the selected sound.
   pressed again). *Transport* plays whenever Logic plays, using the **Pattern** parameter.
 - **Start on** Step / Beat / Bar: when a pressed key starts (with Logic playing). With Logic
   stopped, patterns start at once on Batida's **Tempo**.
-- **Grid** (Kit page): pick a lane (Gate, Velocity, Pitch, Slice, Ratchet, Prob) and click or
-  drag. Option-click sets a track's length (polymeter); right-click a track name for copy, paste,
-  clear and fill. The small orange bar in each track header is its Chain amount.
-- **XY row:** click a step to lock it to the pad's current position (right-click clears). The
-  lock lasts that step, then the pad snaps back. **XY Rec** records pad moves into the steps
-  while a pattern plays.
+- **Sync** on: follow the project's tempo and position while Logic plays. Off: always run on
+  Batida's own Tempo. **Tempo** drags from its value: the whole number and the decimals drag
+  separately; double-click to type.
+- **Grid** (SEQ page), one bar per page; the map beside the lane buttons shows all 64 steps,
+  click a bar to show it.
+  - **Steps:** tap = on/off; drag up/down = velocity from where it was; drag to the bottom = off;
+    shift-drag = paint steps on.
+  - **Pitch, Slice, Ratchet, Prob:** drag up/down from the current value (Ratchet: tap cycles).
+  - Option-click a step = that track's length (polymeter); right-click a track name for copy,
+    paste, clear and fill.
+- **XY lock row:** tap a step to lock it to the pad's current position (tap again clears); drag
+  to move the lock (up/down = heat, left/right = character). It lasts that step, then the pad
+  snaps back. **XY Rec** (Kit page, by the pad) records pad moves into the playing steps.
 - **Slices:** on a sample voice, set Slice Mode to Grid or Transients (Source tab); the Slice
   lane picks which slice each step plays.
 - Pattern 1 holds a breakbeat demo during development; the release build ships with every

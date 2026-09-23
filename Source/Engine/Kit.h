@@ -43,6 +43,10 @@ public:
     bool isXyLocked() const { return uiXyLocked.load(); }
     float getLockX() const { return uiLockX.load(); }
     float getLockY() const { return uiLockY.load(); }
+
+    // The host's tempo, when it's playing and Sync is on (for the tempo display).
+    bool isFollowingHost() const { return uiFollowingHost.load(); }
+    double getHostBpm() const { return uiHostBpm.load(); }
     const Voice& getVoice (int voice) const { return voices[(size_t) voice]; }
 
 private:
@@ -67,6 +71,8 @@ private:
     float lockX = 0.5f, lockY = 0.0f;
     std::atomic<bool> uiXyLocked { false };
     std::atomic<float> uiLockX { 0.5f }, uiLockY { 0.0f };
+    std::atomic<bool> uiFollowingHost { false };
+    std::atomic<double> uiHostBpm { 120.0 };
 
     MidiMode midiMode = MidiMode::DrumMap;
     int keysVoice = 0;

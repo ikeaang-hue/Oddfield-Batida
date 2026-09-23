@@ -5,20 +5,21 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 // The step grid for the pattern shown (the one playing, or the Pattern
-// parameter): 8 tracks and the XY lock row, 32 steps per page.
+// parameter): 8 tracks and the XY lock row, one bar (16 steps) per page.
 //
-//   Gate lane:  click toggles, drag paints.
-//   Value lanes (velocity, pitch, slice, probability): click or drag sets the
-//               value from the height inside the cell.
-//   Ratchet:    click cycles 1-4.
-//   Option-click a cell: that track's length ends at this step.
-//   XY row:     click locks the step to the pad's current position;
-//               right-click clears it.
+//   Steps lane:  tap toggles a step; press and drag up/down sets its velocity
+//                from where it was; dragging to the bottom turns it off.
+//                Shift-drag paints steps on across the row.
+//   Other lanes: drag up/down changes the value from where it was
+//                (Ratchet: tap cycles 1-4).
+//   XY row:      tap locks the step to the pad's position (tap again clears);
+//                drag moves the lock: up/down = heat, left/right = character.
+//   Option-click a step: that track's length ends there (polymeter).
 //   Right-click a track name: copy, paste, clear, fill.
 class PatternGrid final : public juce::Component, private juce::Timer
 {
 public:
-    enum class Lane { Gate, Velocity, Pitch, Slice, Ratchet, Probability };
+    enum class Lane { Steps, Pitch, Slice, Ratchet, Probability };
 
     explicit PatternGrid (BatidaProcessor& p);
     ~PatternGrid() override;
@@ -26,34 +27,55 @@ public:
     void setLane (Lane l);
     void setPage (int p);
     int getPage() const { return page; }
+    std::function<void()> onPageChanged;
 
     void paint (juce::Graphics& g) override;
-    void resized() override;
     void mouseDown (const juce::MouseEvent& e) override;
     void mouseDrag (const juce::MouseEvent& e) override;
+    void mouseUp (const juce::MouseEvent& e) override;
 
-    static constexpr int kStepsPerPage = 32;
-    static constexpr int kHeaderWidth = 170;
-    static constexpr int kRowHeight = 26;
-    static int preferredHeight() { return (batida::kNumTracks + 1) * kRowHeight + 2; }
+    static constexpr int kStepsPerPage = 16;
+    static constexpr int kPages = batida::kMaxSteps / kStepsPerPage;
+    static constexpr int kHeaderWidth = 130;
 
 private:
     void timerCallback() override;
 
+    int rowHeight() const { return getHeight() / (batida::kNumTracks + 1); }
     juce::Rectangle<int> cellBounds (int row, int step) const; // step within the page
     bool hitCell (juce::Point<int> p, int& row, int& step) const;
-    void editCell (int row, int step, juce::Point<int> p, bool first);
+    int patternIndex() const;
     void trackMenu (int track);
 
     BatidaProcessor& proc;
-    Lane lane = Lane::Gate;
+    Lane lane = Lane::Steps;
     int page = 0;
-    bool paintGate = true; // value painted by a gate-lane drag
-    int lastEditedRow = -1, lastEditedStep = -1;
 
-    std::array<juce::Slider, batida::kNumTracks> chainAmount;
-    std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>, batida::kNumTracks> chainAttachments;
+    // The press being handled
+    int pressRow = -1, pressStep = -1;   // absolute step
+    bool moved = false, painting = false;
+    batida::Step startStep;
+    batida::XyLock startLock;
+    int lastPaintStep = -1;
 
     int shownVersion = -1, shownPattern = -1;
     std::array<int, batida::kNumTracks + 1> shownSteps {};
+};
+
+// Overview of all 64 steps: every track's hits as dots, the bar on screen
+// outlined, the playhead, and steps beyond the pattern dimmed. Click a bar to
+// show it.
+class PageMap final : public juce::Component, public juce::SettableTooltipClient, private juce::Timer
+{
+public:
+    PageMap (BatidaProcessor& p, PatternGrid& grid);
+
+    void paint (juce::Graphics& g) override;
+    void mouseDown (const juce::MouseEvent& e) override;
+
+private:
+    void timerCallback() override { repaint(); }
+
+    BatidaProcessor& proc;
+    PatternGrid& grid;
 };

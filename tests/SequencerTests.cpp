@@ -222,6 +222,16 @@ public:
             expect (hits == std::vector<long long> { 1000, 25000, 49000 });
         }
 
+        beginTest ("Sync off: the host's tempo and position are ignored");
+        {
+            SeqSettings s;
+            s.sync = false;
+            s.tempo = 60.0; // a 16th = 12000 samples
+            // Host plays at 120 bpm, but the key starts at once on our 60 bpm.
+            const auto hits = onsets (runSequencer (fourOnTheFloor(), s, true, 120.0, 120000, 512, { { 3600, true, 0 } }));
+            expect (hits == std::vector<long long> { 3600, 51600, 99600 });
+        }
+
         beginTest ("Holding another key switches pattern at the next bar");
         {
             auto bank = fourOnTheFloor();

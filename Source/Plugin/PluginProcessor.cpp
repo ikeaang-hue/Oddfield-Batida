@@ -40,7 +40,7 @@ juce::String formatValue (const ParamSpec& spec, float v)
     if (u == "n")
         return juce::String (juce::roundToInt (v));
     if (u == "bpm")
-        return juce::String (v, 1) + " bpm";
+        return juce::String (v, 2) + " bpm";
     if (u == "dist")
     {
         static const char* names[] = { "Tape", "Tube", "Clip", "Fold", "Crush" };

@@ -2,11 +2,13 @@
 
 #include "FmPage.h"
 #include "KitPage.h"
+#include "SeqPage.h"
 #include "VoicePages.h"
 
-// Minimal demo UI (stock JUCE controls). Two views: KIT, the main panel for
-// the whole kit (XY pad, chain, Chain amounts), which opens first; and VOICE,
-// the selected sound's Source / FM / Voice FX / Envelope pages. The voice
+// Minimal demo UI (stock JUCE controls). Three views: KIT, the main panel for
+// the whole kit (XY pad, chain, Chain amounts), which opens first; SEQ, the
+// sequencer; and VOICE, the selected sound's Source / FM / Voice FX / Envelope
+// pages. The voice
 // buttons (select + audition) sit above both. Kept apart from the engine so a
 // proper visual design can replace it later.
 class BatidaEditor final : public juce::AudioProcessorEditor,
@@ -36,7 +38,8 @@ private:
     };
 
     void selectVoice (int voice);
-    void showView (bool kit);
+    enum class View { Kit, Seq, Voice };
+    void showView (View view);
     int voiceAt (int x, int y) const;
     void timerCallback() override;
     void updateInfo();
@@ -46,8 +49,9 @@ private:
     juce::Label title, info;
     ParamControl midiMode, keysVoice, master;
     std::array<VoiceButton, batida::kNumVoices> voiceButtons;
-    juce::TextButton kitViewButton { "KIT" }, voiceViewButton { "VOICE" };
+    juce::TextButton kitViewButton { "KIT" }, seqViewButton { "SEQ" }, voiceViewButton { "VOICE" };
     KitPage kitPage;
+    SeqPage seqPage;
     juce::TabbedComponent tabs { juce::TabbedButtonBar::TabsAtTop };
 
     SourcePage* sourcePage = nullptr;

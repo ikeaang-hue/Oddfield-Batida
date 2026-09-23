@@ -58,6 +58,7 @@ void Kit::setParameters (const KitParams& params)
     seqSettings.swing = g[gp::SeqSwing];
     seqSettings.quantise = (Quantise) std::clamp ((int) (g[gp::SeqQuantise] + 0.5f), 0, 2);
     seqSettings.latch = g[gp::SeqLatch] > 0.5f;
+    seqSettings.sync = g[gp::SeqSync] > 0.5f;
 }
 
 void Kit::applyChainSettings()
@@ -209,6 +210,8 @@ void Kit::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& mid
 
     seqEvents.clear();
     sequencer.generate (total, transport, seqSettings, patterns.acquire(), seqEvents);
+    uiFollowingHost = transport.hostPlaying && seqSettings.sync;
+    uiHostBpm = transport.bpm;
 
     // Merge live MIDI and sequencer events in time order.
     int cursor = 0;

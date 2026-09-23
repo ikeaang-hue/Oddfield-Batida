@@ -305,7 +305,7 @@ void Sequencer::generate (int numSamples, const Transport& transport, const SeqS
     settings = s;
     blockSamples = numSamples;
     beatsPerBar = transport.beatsPerBar > 0.0 ? transport.beatsPerBar : 4.0;
-    synced = transport.hostPlaying;
+    synced = transport.hostPlaying && settings.sync;
 
     const auto bpm = synced ? transport.bpm : settings.tempo;
     ppqPerSample = std::max (1.0, bpm) / 60.0 / sampleRate;

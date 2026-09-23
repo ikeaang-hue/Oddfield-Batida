@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Batida VERSION 0.3.0)
+project(Batida VERSION 0.3.1)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -72,7 +72,9 @@ target_sources(Batida
         Source/UI/VoicePages.cpp
         Source/UI/FmPage.cpp
         Source/UI/KitPage.cpp
-        Source/UI/PatternGrid.cpp)
+        Source/UI/PatternGrid.cpp
+        Source/UI/SeqPage.cpp
+        Source/UI/DraggableNumber.cpp)
 
 target_compile_definitions(Batida PUBLIC ${BATIDA_DEFINITIONS})
 
@@ -121,7 +123,9 @@ target_sources(BatidaSnapshot
         Source/UI/VoicePages.cpp
         Source/UI/FmPage.cpp
         Source/UI/KitPage.cpp
-        Source/UI/PatternGrid.cpp)
+        Source/UI/PatternGrid.cpp
+        Source/UI/SeqPage.cpp
+        Source/UI/DraggableNumber.cpp)
 
 target_compile_definitions(BatidaSnapshot PRIVATE ${BATIDA_DEFINITIONS} JucePlugin_Name="Batida")
 

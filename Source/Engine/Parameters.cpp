@@ -159,10 +159,11 @@ std::vector<ParamSpec> buildGlobalSpecs()
                                                              "9", "10", "11", "12", "13", "14", "15", "16" });
     s[gp::SeqRun]      = choice ("seq_run", "Run Mode", { "Keys", "Transport" });
     s[gp::SeqPlay]     = toggle ("seq_play", "Play");
-    s[gp::SeqTempo]    = flt ("seq_tempo", "Tempo", 40.0f, 240.0f, 120.0f, "bpm", 0.0f, 0.1f);
+    s[gp::SeqTempo]    = flt ("seq_tempo", "Tempo", 40.0f, 240.0f, 120.0f, "bpm", 0.0f, 0.01f);
     s[gp::SeqSwing]    = flt ("seq_swing", "Swing", 0.5f, 0.75f, 0.5f, "%");
     s[gp::SeqQuantise] = choice ("seq_quantise", "Quantise", { "Step", "Beat", "Bar" }, 1);
     s[gp::SeqLatch]    = toggle ("seq_latch", "Latch");
+    s[gp::SeqSync]     = toggle ("seq_sync", "Sync", true); // follow the host's tempo and position
     return s;
 }
 } // namespace

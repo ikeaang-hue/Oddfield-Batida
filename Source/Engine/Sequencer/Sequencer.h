@@ -33,6 +33,7 @@ struct SeqSettings
     float swing = 0.5f;        // 0.5 straight .. 0.75
     Quantise quantise = Quantise::Beat;
     bool latch = false;
+    bool sync = true;          // off: ignore the host, always run on `tempo`
 };
 
 struct SeqEvent
