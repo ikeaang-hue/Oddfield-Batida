@@ -1,6 +1,6 @@
 # Negative Space Batida: Design Spec
 
-*Version 1.3, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM)*
+*Version 1.4, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-voice Chain amount, sidechain input, chain before sequencer)*
 
 ## 1. Identity
 
@@ -9,6 +9,8 @@
 - **What it is:** a sound-design drum instrument. It works for general use, but is strongest on
   synthetic and heavy genres such as techno, breakbeat and glitch.
 - **Core idea:** sound design first; the sequencer serves the sound.
+- **The spirit is the chain:** the kit chain, and how it is operated, is what makes Batida
+  Batida. It is played as a whole from the XY pad, with precise control underneath (§4, §5).
 - **Two roles:**
   - **Scratch builder:** deep editing of every sound.
   - **Inspirer:** the XY pad and guided variations.
@@ -18,11 +20,13 @@
 ## 2. Signal flow
 
 ```
-8 voices:  Source (Sample | FM | Layer) → [Body: deferred] → Punch → Drive → Filter → [Clean toggle]
-                                   ↓
-Kit:       Dynamics → Distortion (+ exciter, clean low end) → Filter/EQ → Level → out
-                          ↑
-                   XY pad (X = character, Y = heat)      2 drawn modulators → any parameter
+voice → [Body: deferred] → punch → drive → filter → level/pan ─┬─ dry (1 − Chain amount) ───────┐
+                                                               └─ wet (Chain amount) ─┐          │
+                                                                                      ↓          │
+Kit chain (wet sum of all voices):                                                               │
+   Dynamics → Distortion (+ exciter, clean low end) → Filter/EQ → Output ────────────── + ←──────┘ → master
+      ↑ sidechain input (optional)       ↑
+                             XY pad (X = character, Y = heat), per-step XY, 2 modulators
 ```
 
 ## 3. Voices (×8)
@@ -65,8 +69,9 @@ The eight voices are identical, general-purpose slots. Any slot can hold any sou
 - **Punch:** one transient/compression control.
 - **Drive:** amount, plus type (soft, hard, fold, crush).
 - **Filter:** low-pass, high-pass or band-pass, with cutoff and resonance.
-- **Clean toggle:** voices go through the kit chain by default; this toggle bypasses it for
-  that voice.
+- **Chain amount** (replaces the Clean toggle): a per-voice dry/wet crossfade into the kit
+  chain. 100% (default) = fully through the chain; 0% = dry, bypassing it; in between, both are
+  heard. Taken after the voice's level and pan. Automatable, so a voice can move in and out.
 
 ### Envelopes and play
 - **Envelopes:** amp and pitch. FM operators have their own envelopes as well.
@@ -81,24 +86,43 @@ The eight voices are identical, general-purpose slots. Any slot can hold any sou
 
 ## 4. Kit chain
 
+One shared chain, fed by the wet part of every voice (see Chain amount, §3). The dry parts are
+added back after it. The order is fixed.
+
 1. **Dynamics:** compressor with amount, attack, release and **mix** (for parallel compression).
+   - **Sidechain:** the detector listens either to the chain's own signal (default) or to the
+     plugin's **sidechain input** from the DAW (in Logic, the Side Chain menu). Ducking and
+     pumping are done in the DAW; there is no internal voice-keyed ducking.
 2. **Distortion / saturation:**
    - Character types from warm (tape/tube), through aggressive (clip/fold), to digital
-     (crush/decimate).
+     (crush/decimate), blended continuously.
    - **Clean low end:** a crossover that keeps the sub intact.
    - **Exciter:** a high-band control inside this stage, sharing the distortion engine.
 3. **Filter/EQ:** high-pass and low-pass, plus broad low/mid/high bands.
 4. **Output level.**
 
+**Precise control:** every stage has its own knobs on the Chain page (compressor amount,
+attack, release, mix, sidechain source; distortion drive, type blend, exciter amount and tone,
+low-end crossover; HP, LP and low/mid/high EQ; output level). Each stage has a **Follow XY**
+toggle (on by default); off, the stage stays exactly where its knobs are.
+
 Reverb, delay and stereo/spatial effects are left to the DAW.
 
 ## 5. XY pad
 
-- Acts on the **whole kit's** distortion character.
-- **X = character:** warm → aggressive → digital.
-- **Y = heat:** clean → destroyed.
-- The exciter and the clean-low-end crossover follow along, so extreme settings stay usable.
-- Positions can be stored per sequencer step (see §8).
+The main way the chain is operated: one gesture moves the whole chain.
+
+- **Y = heat** (clean → destroyed): raises drive, compression and exciter together.
+  **Automatic gain compensation** keeps loudness roughly steady, so heat changes character, not
+  volume. The clean-low-end crossover rises with heat, so the sub stays solid.
+- **X = character** (warm → aggressive → digital): blends the distortion types continuously;
+  the exciter's tone follows.
+- **Offsets, like the FM macros:** the stage knobs set a base; the XY pushes the stages around
+  it. It never overwrites the knobs, and each affected knob shows an orange marker at its
+  effective value. X and Y are automatable host parameters.
+- Positions can be stored per sequencer step (see §8) and moved by the modulators (§6).
+- **Chain scenes** (storing and morphing whole chain states) are deferred to phase 4, with the
+  modulators and variations.
 
 ## 6. Modulators (×2, kit level)
 
@@ -197,14 +221,17 @@ A **MIDI mode** switch chooses between:
 Each phase ends with something loadable and audible as an AU.
 
 1. **Voice engine:** FM and sample sources, voice chain, envelopes, glide, MIDI, minimal UI.
-2. **Sequencer:**
+2. **Kit chain and XY pad** (moved ahead of the sequencer, since the chain is the core):
+   dynamics with sidechain input, distortion with exciter and clean low end, filter/EQ, output;
+   XY pad with gain compensation and effective-value markers; Follow XY per stage; per-voice
+   Chain amount.
+3. **Sequencer**, built to play the chain as well as the voices:
    - patterns and 8–64 steps;
    - velocity, pitch, slice, ratchet and probability lanes;
+   - the per-step XY lane;
    - swing;
    - host sync.
-3. **Kit chain and XY pad:** dynamics, distortion with exciter, filter/EQ, Clean toggles,
-   per-step XY.
-4. **Movement and inspiration:** the two drawn modulators and guided variations.
+4. **Movement and inspiration:** the two drawn modulators, guided variations, and chain scenes.
 5. **Library:** sound/kit/pattern files, the browser, tags, sample relinking and collecting.
 6. **Preset factory:** factory content and the user's listening pass.
 7. **VST3 build** and cross-host checks on macOS.
