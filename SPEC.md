@@ -1,6 +1,6 @@
 # Negative Space Batida: Design Spec
 
-*Version 1.5, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-voice Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2)*
+*Version 1.6, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-voice Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys)*
 
 ## 1. Identity
 
@@ -156,11 +156,19 @@ The main way the chain is operated: one gesture moves the whole chain.
 - **Swing.**
 - **Host sync:** follows the DAW's tempo and position. There's an internal play button for when
   the DAW is stopped. Pattern selection is automatable.
+- **Pattern keys:** MIDI notes C3–D#4 (60–75) play patterns 1–16 **while held**; releasing stops
+  the pattern, and pressing another pattern key switches. A **Latch** switch keeps it running
+  after release. Starts are quantised to the next step, beat or bar (a setting), and follow the
+  host tempo (internal tempo when the host is stopped). The key's velocity scales the pattern's
+  dynamics. One-shot hits on C1–G1 still play on top of a running pattern.
 - **Excluded:** song mode and arrangement (the DAW does these).
 
 ## 9. MIDI
 
-A **MIDI mode** switch chooses between:
+A **MIDI mode** switch chooses between the two modes below. In both, **pattern keys** (C3–D#4,
+§8) play patterns: on any channel in Drum map mode, and on channel 10 only in Chromatic mode, so
+the other channels stay fully chromatic for the Keys Voice.
+
 - **Drum map, any channel** (default): GM notes 36–43 trigger voices 1–8 on every channel.
 - **Chromatic:** every channel except 10 plays one chosen voice, the **Keys Voice**, like a mono
   synth. Channel 10 still uses the drum map. Keys Voice is an automatable parameter that also
