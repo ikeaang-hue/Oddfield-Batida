@@ -2,6 +2,8 @@
 
 #include "Chain/KitChain.h"
 #include "MidiRouter.h"
+#include "Movement/Modulators.h"
+#include "SnapshotStore.h"
 #include "Sequencer/PatternStore.h"
 #include "Sequencer/Sequencer.h"
 #include "SampleData.h"
@@ -37,6 +39,14 @@ public:
 
     SampleSlot& sampleSlot (int voice) { return slots[(size_t) voice]; }
     PatternStore& patternStore() { return patterns; }
+    int getPatternVersion() const { return patterns.getVersion(); }
+    SnapshotStore<MovementData>& movementStore() { return movement; }
+    const SnapshotStore<MovementData>& movementStore() const { return movement; }
+    const Modulators& getModulators() const { return mods; }
+    float getCurrentGlobal (int param) const { return current.global[(size_t) param]; } // after morph + modulation
+
+    // Blocks of this many samples between modulation updates.
+    static constexpr int kControlSamples = 32;
     const Sequencer& getSequencer() const { return sequencer; }
 
     // The XY position the chain is using right now (a step lock or the pad).
@@ -52,6 +62,9 @@ public:
 private:
     void handle (const juce::MidiMessage& message);
     void handle (const SeqEvent& e);
+    void applyParams (bool modulatedOnly);
+    void computeParams();
+    void tick (int offset); // one control step: advance the modulators, apply them
     bool isPatternKey (const juce::MidiMessage& message) const;
     void applyChainSettings();
     void renderSegment (int start, int numSamples, juce::AudioBuffer<float>& buffer,
@@ -64,6 +77,14 @@ private:
     bool safetyClip = true;
     Sequencer sequencer;
     PatternStore patterns;
+    SnapshotStore<MovementData> movement { defaultMovement() };
+    const MovementData* movementData = nullptr;
+    Modulators mods;
+    KitParams host, current;  // from the host; after scene morph and modulation
+    std::array<bool, kNumVoices> voiceModulated {};
+    bool globalsModulated = false, anyTargets = false;
+    int controlCountdown = 0;
+    double sampleRateHz = 48000.0, clockPpq = 0.0, clockPpqPerSample = 0.0, internalClock = 0.0;
     SeqSettings seqSettings;
     std::vector<SeqEvent> seqEvents;
     std::array<float, kNumGlobalParams> globals {};

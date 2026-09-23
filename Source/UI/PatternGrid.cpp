@@ -299,6 +299,7 @@ void PatternGrid::trackMenu (int track)
             repaint();
             return;
         }
+        proc.beginUndoStep();
         proc.patterns().edit ([&] (PatternBank& b)
         {
             auto& tr = b.patterns[(size_t) pi].tracks[(size_t) track];
@@ -342,6 +343,8 @@ void PatternGrid::mouseDown (const juce::MouseEvent& e)
     const auto& pat = proc.patterns().get().patterns[(size_t) pi];
     if (absStep >= pat.length)
         return;
+
+    proc.beginUndoStep(); // kept only if this press changes something
 
     if (e.mods.isAltDown() && row < kNumTracks)
     {
@@ -473,7 +476,7 @@ void PatternGrid::mouseUp (const juce::MouseEvent&)
 
 PageMap::PageMap (BatidaProcessor& p, PatternGrid& g) : proc (p), grid (g)
 {
-    setTooltip ("All 64 steps: click a bar to show it");
+    setTooltip ("All 64 steps: click a bar to show it; right-click to copy, paste or clear a bar");
     startTimerHz (15);
 }
 
@@ -519,6 +522,49 @@ void PageMap::paint (juce::Graphics& g)
 void PageMap::mouseDown (const juce::MouseEvent& e)
 {
     const auto bar = (int) (e.x * PatternGrid::kPages / (float) std::max (1, getWidth()));
+
+    if (e.mods.isPopupMenu())
+    {
+        // Copy or paste one bar (16 steps) of all tracks and the XY locks.
+        static std::optional<std::pair<std::array<std::array<Step, 16>, kNumTracks>, std::array<XyLock, 16>>> barClipboard;
+        juce::PopupMenu m;
+        m.addSectionHeader ("Bar " + juce::String (bar + 1));
+        m.addItem (1, "Copy bar");
+        m.addItem (2, "Paste bar", barClipboard.has_value());
+        m.addItem (3, "Clear bar");
+        m.showMenuAsync (juce::PopupMenu::Options(), [this, bar] (int choice)
+        {
+            const auto pi = std::clamp (proc.displayPattern(), 0, kNumPatterns - 1);
+            const auto first = bar * 16;
+            if (choice == 1)
+            {
+                const auto& pat = proc.patterns().get().patterns[(size_t) pi];
+                std::pair<std::array<std::array<Step, 16>, kNumTracks>, std::array<XyLock, 16>> clip;
+                for (int t = 0; t < kNumTracks; ++t)
+                    for (int s = 0; s < 16; ++s)
+                        clip.first[(size_t) t][(size_t) s] = pat.tracks[(size_t) t].steps[(size_t) (first + s)];
+                for (int s = 0; s < 16; ++s)
+                    clip.second[(size_t) s] = pat.xy[(size_t) (first + s)];
+                barClipboard = clip;
+            }
+            else if (choice == 2 || choice == 3)
+            {
+                proc.beginUndoStep();
+                proc.patterns().edit ([&] (PatternBank& b)
+                {
+                    auto& pat = b.patterns[(size_t) pi];
+                    for (int t = 0; t < kNumTracks; ++t)
+                        for (int s = 0; s < 16; ++s)
+                            pat.tracks[(size_t) t].steps[(size_t) (first + s)] = choice == 2 ? barClipboard->first[(size_t) t][(size_t) s] : Step {};
+                    for (int s = 0; s < 16; ++s)
+                        pat.xy[(size_t) (first + s)] = choice == 2 ? barClipboard->second[(size_t) s] : XyLock {};
+                });
+            }
+            repaint();
+        });
+        return;
+    }
+
     grid.setPage (bar);
     repaint();
 }

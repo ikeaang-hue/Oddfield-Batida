@@ -1,14 +1,16 @@
 # Negative Space Batida
 
 A sound-design drum instrument (AU, macOS). The design is in [SPEC.md](SPEC.md); the current
-phase is described in [docs/PHASE1-PLAN.md](docs/PHASE1-PLAN.md).
+phase is described in [docs/PHASE4-PLAN.md](docs/PHASE4-PLAN.md).
 
 **So far:** 8 monophonic voices, each FM (4 operators, 8 algorithms, macros), Sample, or both
 layered, with punch → drive → filter, envelopes and glide (phase 1). A shared **kit chain**
 (dynamics → distortion with exciter and clean low end → EQ → output), played as a whole from an
 **XY pad**, with a dry/wet Chain amount per voice and a sidechain input (phase 2). A **step
 sequencer** with 16 patterns, played by pattern keys or the host transport, with per-step XY
-locks and sample slicing (phase 3). Minimal stock-control UI.
+locks and sample slicing (phase 3). **Movement and inspiration**: two drawn modulators, guided
+**Vary**, chain scenes with morph, and undo for what Logic can't undo (phase 4). Minimal
+stock-control UI.
 
 ## Build
 
@@ -43,7 +45,8 @@ state, including sample paths and missing files. Host values: knobs are normalis
 ## Playing it in Logic
 
 Insert it as an instrument: *AU Instruments → Negative Space → Batida*. It opens on the **KIT**
-page (pad and chain); **SEQ** is the sequencer; **VOICE** edits the selected sound.
+page (pad and chain); **SEQ** is the sequencer; **MOD** holds the two modulators; **VOICE** edits
+the selected sound (its **Vary** tab suggests variations).
 
 - **XY pad:** X = character (warm → aggressive → digital), Y = heat (clean → destroyed). It moves
   the whole chain; orange dots show where each stage knob has been pushed. Double-click resets.
@@ -71,6 +74,25 @@ page (pad and chain); **SEQ** is the sequencer; **VOICE** edits the selected sou
 - **Wave** on each operator runs sine > triangle > saw > square > noise. The default hats,
   snare, rim and clap use the noise end through the voice filter.
 
+### Movement and inspiration
+
+- **Modulators (MOD page):** draw a shape (click adds a point, drag moves it, double-click
+  deletes, Option-drag bends a segment; **Shape...** for starting shapes). **Sync** loops on
+  Logic's bars (1/32 to 8 bars), **Free** runs in Hz, **One-shot** runs once per hit (any, or one
+  voice) or per pattern start. Smooth, Humanise, Amount, Unipolar/Bipolar.
+- **Assign:** right-click any knob → **Modulate with Mod 1 / Mod 2** (again to remove), or
+  **Add target...** on the MOD page. A modulated knob shows a green arc (its reach) and a moving
+  dot. Modulation never writes the knob, so it doesn't fight Logic's automation.
+- **Scenes (Kit page, under the pad):** **Store** then **A–D** saves the whole chain and pad;
+  click a letter to recall it. **Scene morph** blends From → To; it's automatable and a modulator
+  can drive it.
+- **Vary (VOICE → Vary):** press **Vary** for up to 4 nearby versions of the sound (Amount = how
+  far; Direction steers; Keep as is locks sections). Hold a suggestion to hear it, **Keep** it, or
+  **Back**. Silent, clipping and near-identical results are filtered out.
+- **Undo / Redo** (header): pattern edits, names, Vary Keep, scene recall and slot swaps. Single
+  knob moves are undone in Logic, so the two histories don't overlap.
+- During development Mod 1 gently moves XY Heat over each bar; the release starts empty.
+
 ### Patterns
 
 - **Hold C3–D#4** (60–75) to play patterns 1–16; release to stop. **C1–G1** still play the voices
@@ -88,7 +110,7 @@ page (pad and chain); **SEQ** is the sequencer; **VOICE** edits the selected sou
     shift-drag = paint steps on.
   - **Pitch, Slice, Ratchet, Prob:** drag up/down from the current value (Ratchet: tap cycles).
   - Option-click a step = that track's length (polymeter); right-click a track name for copy,
-    paste, clear and fill.
+    paste, clear and fill; right-click a bar in the page map to copy, paste or clear that bar.
 - **XY lock row:** tap a step to lock it to the pad's current position (tap again clears); drag
   to move the lock (up/down = heat, left/right = character). It lasts that step, then the pad
   snaps back. **XY Rec** (Kit page, by the pad) records pad moves into the playing steps.

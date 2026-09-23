@@ -53,12 +53,23 @@ int main (int argc, char* argv[])
         save ("0-Seq");
         seq->setVisible (false);
     }
+    // Put a voice target on Mod 2 so the MOD page shows a list, and the knob shows the arc.
+    proc.toggleModTarget (1, "v1_flt_cutoff");
+    if (auto* mod = editor->findChildWithID ("modPage"))
+    {
+        mod->setVisible (true);
+        save ("0-Mod");
+        mod->setVisible (false);
+    }
     tabs->setVisible (true);
+    proc.toggleModTarget (1, "v1_flt_cutoff"); // shows the modulation arc on the Voice FX cutoff knob
     for (int i = 0; i < tabs->getNumTabs(); ++i)
     {
         tabs->setCurrentTabIndex (i);
         save (juce::String (i + 1) + "-" + tabs->getTabNames()[i].replace (" ", "").replace ("&", ""));
     }
+
+    proc.toggleModTarget (1, "v1_flt_cutoff");
 
     // Gesture checks on the real editor: synthetic mouse events into the grid
     // and the tempo control.
@@ -122,6 +133,91 @@ int main (int argc, char* argv[])
         gesture (tempo, fracPart, { fracPart.translated (0, -15) });
         check (std::abs (bpm() - (t0 + 2.03f)) < 1.0e-3f, "tempo: dragging the decimals moves by 0.01 per step");
         std::printf ("  tempo now %.2f (was %.2f)\n", bpm(), t0);
+
+        // Modulation: assign, display, remove.
+        check (proc.isModTarget (1, "v1_flt_cutoff"), "right-click assign: Mod 2 now drives V1 Cutoff");
+        check (proc.modDisplayFor ("v1_flt_cutoff").has_value(), "the knob gets a live modulation display");
+        proc.toggleModTarget (1, "v1_flt_cutoff");
+        check (! proc.isModTarget (1, "v1_flt_cutoff") && ! proc.modDisplayFor ("v1_flt_cutoff").has_value(), "assigning again removes it");
+
+        // Shape editor: click adds a point, double-click deletes it.
+        std::function<juce::Component* (juce::Component*, const juce::String&)> findDeep = [&] (juce::Component* c, const juce::String& id) -> juce::Component*
+        {
+            for (auto* child : c->getChildren())
+            {
+                if (child->getComponentID() == id)
+                    return child;
+                if (auto* found = findDeep (child, id))
+                    return found;
+            }
+            return nullptr;
+        };
+        bool shapeChecked = false;
+        if (auto* modPage = editor->findChildWithID ("modPage"))
+            if (auto* shape = findDeep (modPage, "shape1"))
+            {
+                shapeChecked = true;
+                modPage->setVisible (true);
+                const auto before = proc.movement().get().mods[0].numPoints;
+                const juce::Point<float> at (shape->getWidth() * 0.8f, shape->getHeight() * 0.3f);
+                gesture (shape, at, {});
+                check (proc.movement().get().mods[0].numPoints == before + 1, "shape: click adds a point");
+                shape->mouseDoubleClick (event (shape, at, at, false));
+                check (proc.movement().get().mods[0].numPoints == before, "shape: double-click deletes it");
+                modPage->setVisible (false);
+            }
+        check (shapeChecked, "found the shape editor");
+
+        // Undo a step edit.
+        {
+            const auto was = stepOf (4, 7).gate;
+            gesture (grid, cell (4, 7), {});
+            check (stepOf (4, 7).gate != was, "tap changes a step");
+            proc.undo();
+            check (stepOf (4, 7).gate == was, "Undo restores it");
+            proc.redo();
+            check (stepOf (4, 7).gate != was, "Redo re-applies it");
+            proc.undo();
+        }
+
+        // Scenes: store, change, recall, undo the recall.
+        {
+            auto* drive = proc.getState().getParameter ("dist_drive");
+            auto value = [&] { return drive->convertFrom0to1 (drive->getValue()); };
+            drive->setValueNotifyingHost (drive->convertTo0to1 (0.3f));
+            proc.storeScene (0);
+            drive->setValueNotifyingHost (drive->convertTo0to1 (0.7f));
+            proc.recallScene (0);
+            check (std::abs (value() - 0.3f) < 1.0e-3f, "recall brings the scene back");
+            proc.undo();
+            check (std::abs (value() - 0.7f) < 1.0e-3f, "Undo reverts the recall");
+        }
+
+        // Vary: suggest, preview, keep, undo.
+        {
+            auto snare = [&] { return proc.readVoiceParams (2); };
+            const auto before = snare();
+            proc.startVary (2, 0.4f, batida::VaryDirection::None, false, false, false);
+            for (int i = 0; i < 200 && proc.isVarying(); ++i)
+                juce::MessageManager::getInstance()->runDispatchLoopUntil (20);
+            check (proc.varyCandidates().size() >= 3, "Vary finds at least 3 suggestions");
+            std::printf ("  %d suggestions\n", (int) proc.varyCandidates().size());
+            proc.previewCandidate (0);
+            check (snare()[batida::vp::FmBright] == before[batida::vp::FmBright]
+                       && snare()[batida::vp::AmpD] == before[batida::vp::AmpD], "preview doesn't touch the project");
+            proc.keepCandidate();
+            bool changed = false;
+            const auto after = snare();
+            for (int k = 0; k < batida::kNumVoiceParams; ++k)
+                changed = changed || std::abs (after[k] - before[k]) > 1.0e-5f;
+            check (changed, "Keep writes the suggestion into the voice");
+            proc.undo();
+            bool restored = true;
+            const auto undone = snare();
+            for (int k = 0; k < batida::kNumVoiceParams; ++k)
+                restored = restored && std::abs (undone[k] - before[k]) < 1.0e-3f * std::max (1.0f, std::abs (before[k]));
+            check (restored, "Undo brings the original back");
+        }
 
         // Rename and swap.
         proc.setVoiceName (2, "Crack");

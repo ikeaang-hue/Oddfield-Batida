@@ -101,7 +101,7 @@ void BatidaEditor::VoiceButton::itemDropped (const SourceDetails& d)
 
 BatidaEditor::BatidaEditor (BatidaProcessor& p)
     : AudioProcessorEditor (&p), proc (p), midiMode (p.getState()), keysVoice (p.getState()), master (p.getState()),
-      kitPage (p), seqPage (p)
+      kitPage (p), seqPage (p), modPage (p)
 {
     title.setText ("BATIDA", juce::dontSendNotification);
     title.setFont (juce::FontOptions (26.0f, juce::Font::bold));
@@ -165,6 +165,7 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
     tabs.addTab ("FM", tabColour, fmPage = new FmPage (p), true);
     tabs.addTab ("Voice FX", tabColour, chainPage = new ChainPage (p), true);
     tabs.addTab ("Envelopes & Play", tabColour, envelopePage = new EnvelopePage (p), true);
+    tabs.addTab ("Vary", tabColour, varyPage = new VaryPage (p), true);
     tabs.setTabBarDepth (30);
     tabs.setComponentID ("tabs");
     tabs.setCurrentTabIndex (1);
@@ -174,8 +175,18 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
     addAndMakeVisible (kitPage);
     seqPage.setComponentID ("seqPage");
     addChildComponent (seqPage);
+    modPage.setComponentID ("modPage");
+    addChildComponent (modPage);
 
-    for (auto* b : { &kitViewButton, &seqViewButton, &voiceViewButton })
+    undoButton.setTooltip ("Undo pattern edits, names, Vary Keep, scene recall and slot swaps "
+                           "(knob moves are undone in Logic)");
+    redoButton.setTooltip ("Redo");
+    undoButton.onClick = [this] { proc.undo(); refreshVoiceButtons(); };
+    redoButton.onClick = [this] { proc.redo(); refreshVoiceButtons(); };
+    addAndMakeVisible (undoButton);
+    addAndMakeVisible (redoButton);
+
+    for (auto* b : { &kitViewButton, &seqViewButton, &modViewButton, &voiceViewButton })
     {
         b->setClickingTogglesState (false);
         b->setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffc0632a));
@@ -183,6 +194,7 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
     }
     kitViewButton.onClick = [this] { showView (View::Kit); };
     seqViewButton.onClick = [this] { showView (View::Seq); };
+    modViewButton.onClick = [this] { showView (View::Mod); };
     voiceViewButton.onClick = [this] { showView (View::Voice); };
     showView (View::Kit); // the kit panel is the opening page
 
@@ -201,6 +213,8 @@ void BatidaEditor::showView (View view)
 {
     kitPage.setVisible (view == View::Kit);
     seqPage.setVisible (view == View::Seq);
+    modPage.setVisible (view == View::Mod);
+    modViewButton.setToggleState (view == View::Mod, juce::dontSendNotification);
     tabs.setVisible (view == View::Voice);
     kitViewButton.setToggleState (view == View::Kit, juce::dontSendNotification);
     seqViewButton.setToggleState (view == View::Seq, juce::dontSendNotification);
@@ -222,6 +236,7 @@ void BatidaEditor::selectVoice (int voice)
     fmPage->bindVoice (voice);
     chainPage->bindVoice (voice);
     envelopePage->bindVoice (voice);
+    varyPage->bindVoice (voice);
     updateInfo();
 }
 
@@ -254,6 +269,8 @@ void BatidaEditor::timerCallback()
 {
     updateInfo();
     refreshVoiceButtons();
+    undoButton.setEnabled (proc.canUndo());
+    redoButton.setEnabled (proc.canRedo());
 }
 
 void BatidaEditor::refreshVoiceButtons()
@@ -343,13 +360,14 @@ void BatidaEditor::resized()
     auto r = getLocalBounds().reduced (10);
     auto header = r.removeFromTop (ParamControl::kHeight);
 
-    auto titleArea = header.removeFromLeft (170);
+    auto titleArea = header.removeFromLeft (196);
     title.setBounds (titleArea.removeFromTop (30));
     auto views = titleArea.removeFromBottom (28).withTrimmedRight (6);
-    const auto bw = views.getWidth() / 3;
+    const auto bw = views.getWidth() / 4;
     kitViewButton.setBounds (views.removeFromLeft (bw).withTrimmedRight (2));
     seqViewButton.setBounds (views.removeFromLeft (bw).withTrimmedRight (2));
-    voiceViewButton.setBounds (views.withTrimmedLeft (0));
+    modViewButton.setBounds (views.removeFromLeft (bw).withTrimmedRight (2));
+    voiceViewButton.setBounds (views);
     master.setBounds (header.removeFromRight (ParamControl::kWidth));
     keysVoice.setBounds (header.removeFromRight (80));
     midiMode.setBounds (header.removeFromRight (110));
@@ -365,12 +383,15 @@ void BatidaEditor::resized()
         muteButtons[(size_t) v].setBounds (cell.removeFromLeft (cell.getWidth() / 2).withTrimmedRight (1));
         soloButtons[(size_t) v].setBounds (cell.withTrimmedLeft (1));
     }
+    redoButton.setBounds (header.removeFromRight (52).reduced (2, 3));
+    undoButton.setBounds (header.removeFromRight (52).reduced (2, 3));
     info.setBounds (header);
 
     r.removeFromTop (6);
     tabs.setBounds (r);
     kitPage.setBounds (r);
     seqPage.setBounds (r);
+    modPage.setBounds (r);
 }
 
 int BatidaEditor::voiceAt (int x, int y) const

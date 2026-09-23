@@ -186,6 +186,14 @@ void Sequencer::emitRun (const Run& r, double from, double to)
         // XY lane: a lock moves the pad for this step only.
         if (inside (stepTime))
         {
+            if (patStep == 0)
+            {
+                SeqEvent e;
+                e.type = SeqEvent::Type::PatternStart;
+                e.offset = offsetOf (stepTime);
+                push (e);
+            }
+
             const auto& lock = pat.xy[(size_t) patStep];
             if (lock.active)
             {

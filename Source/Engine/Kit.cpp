@@ -1,5 +1,7 @@
 #include "Kit.h"
 
+#include "ParamRange.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -9,11 +11,13 @@ namespace batida
 void Kit::prepare (double sampleRate, int maxBlockSize)
 {
     jassert (sampleRate > 0.0);
+    sampleRateHz = sampleRate;
     for (auto& v : voices)
         v.prepare (sampleRate);
 
     scratch.setSize (4, std::max (1, maxBlockSize));
     sequencer.prepare (sampleRate);
+    mods.prepare (sampleRate);
     seqEvents.reserve (4096);
     chain.prepare (sampleRate, std::max (1, maxBlockSize));
     master.setTime (5.0f, sampleRate);
@@ -26,22 +30,14 @@ void Kit::reset()
         v.reset();
     chain.reset();
     sequencer.reset();
+    mods.reset();
     xyLocked = false;
 }
 
 void Kit::setParameters (const KitParams& params)
 {
-    // Solo wins: while any voice is soloed, only soloed voices sound.
-    bool anySolo = false;
-    for (const auto& v : params.voices)
-        anySolo = anySolo || v.flag (vp::Solo);
-
-    for (int v = 0; v < kNumVoices; ++v)
-    {
-        const auto& p = params.voices[(size_t) v];
-        voices[(size_t) v].setAudible (! p.flag (vp::Mute) && (! anySolo || p.flag (vp::Solo)));
-        voices[(size_t) v].setParameters (p);
-    }
+    host = params;
+    movementData = movement.acquire();
 
     const auto mode = (MidiMode) std::clamp ((int) (params.global[gp::MidiMode] + 0.5f), 0, 1);
     const auto keys = std::clamp ((int) (params.global[gp::KeysVoice] + 0.5f), 0, kNumVoices - 1);
@@ -53,11 +49,6 @@ void Kit::setParameters (const KitParams& params)
 
     midiMode = mode;
     keysVoice = keys;
-    const auto db = params.global[gp::Master];
-    masterTarget = db <= -60.0f ? 0.0f : std::pow (10.0f, db / 20.0f);
-
-    globals = params.global;
-    applyChainSettings();
 
     const auto& g = params.global;
     seqSettings.run = (RunMode) std::clamp ((int) (g[gp::SeqRun] + 0.5f), 0, 1);
@@ -68,6 +59,105 @@ void Kit::setParameters (const KitParams& params)
     seqSettings.quantise = (Quantise) std::clamp ((int) (g[gp::SeqQuantise] + 0.5f), 0, 2);
     seqSettings.latch = g[gp::SeqLatch] > 0.5f;
     seqSettings.sync = g[gp::SeqSync] > 0.5f;
+
+    // With the modulators' latest values, so a block never starts unmodulated.
+    computeParams();
+    applyParams (false);
+}
+
+void Kit::computeParams()
+{
+    current = host;
+    voiceModulated.fill (false);
+    globalsModulated = anyTargets = false;
+    if (movementData == nullptr)
+        return;
+
+    auto offset = [&] (float& value, const juce::NormalisableRange<float>& range, float amount)
+    {
+        value = range.convertFrom0to1 (std::clamp (range.convertTo0to1 (value) + amount, 0.0f, 1.0f));
+    };
+
+    // 1. The scene morph (itself a possible modulation target).
+    auto& g = current.global;
+    for (int m = 0; m < kNumMods; ++m)
+        for (const auto& t : movementData->mods[(size_t) m].targets)
+            if (t.active && t.global && t.param == gp::SceneMorph)
+                offset (g[gp::SceneMorph], globalRanges()[(size_t) gp::SceneMorph], t.depth * mods.value (m));
+
+    if (g[gp::SceneMorphOn] > 0.5f)
+    {
+        const auto& a = movementData->scenes[(size_t) std::clamp ((int) (g[gp::SceneA] + 0.5f), 0, kNumScenes - 1)];
+        const auto& b = movementData->scenes[(size_t) std::clamp ((int) (g[gp::SceneB] + 0.5f), 0, kNumScenes - 1)];
+        if (a.stored && b.stored)
+        {
+            const auto x = std::clamp (g[gp::SceneMorph], 0.0f, 1.0f);
+            for (const auto p : sceneParams())
+                g[(size_t) p] = isContinuous (globalParamSpecs()[(size_t) p])
+                                    ? a.values[(size_t) p] + (b.values[(size_t) p] - a.values[(size_t) p]) * x
+                                    : (x < 0.5f ? a.values[(size_t) p] : b.values[(size_t) p]);
+            globalsModulated = true;
+        }
+    }
+
+    // 2. Everything else, on top of the knobs (and the morphed scene).
+    for (int m = 0; m < kNumMods; ++m)
+    {
+        const auto v = mods.value (m);
+        for (const auto& t : movementData->mods[(size_t) m].targets)
+        {
+            if (! t.active || (t.global && t.param == gp::SceneMorph))
+                continue;
+            anyTargets = true;
+            if (t.global)
+            {
+                offset (g[(size_t) t.param], globalRanges()[(size_t) t.param], t.depth * v);
+                globalsModulated = true;
+            }
+            else
+            {
+                offset (current.voices[(size_t) t.voice][t.param], voiceRanges()[(size_t) t.param], t.depth * v);
+                voiceModulated[(size_t) t.voice] = true;
+            }
+        }
+        anyTargets = anyTargets || movementData->mods[(size_t) m].hasTargets();
+    }
+}
+
+void Kit::applyParams (bool modulatedOnly)
+{
+    // Solo wins: while any voice is soloed, only soloed voices sound.
+    bool anySolo = false;
+    for (const auto& v : current.voices)
+        anySolo = anySolo || v.flag (vp::Solo);
+
+    for (int v = 0; v < kNumVoices; ++v)
+    {
+        if (modulatedOnly && ! voiceModulated[(size_t) v])
+            continue;
+        const auto& p = current.voices[(size_t) v];
+        voices[(size_t) v].setAudible (! p.flag (vp::Mute) && (! anySolo || p.flag (vp::Solo)));
+        voices[(size_t) v].setParameters (p);
+    }
+
+    if (modulatedOnly && ! globalsModulated)
+        return;
+    const auto db = current.global[gp::Master];
+    masterTarget = db <= -60.0f ? 0.0f : std::pow (10.0f, db / 20.0f);
+    globals = current.global;
+    applyChainSettings();
+}
+
+void Kit::tick (int offset)
+{
+    if (movementData == nullptr)
+        return;
+    mods.advance (kControlSamples, clockPpq + offset * clockPpqPerSample, clockPpqPerSample, host.global, *movementData);
+    if (anyTargets || host.global[gp::SceneMorphOn] > 0.5f)
+    {
+        computeParams();
+        applyParams (true);
+    }
 }
 
 void Kit::applyChainSettings()
@@ -97,10 +187,11 @@ void Kit::handle (const SeqEvent& e)
 {
     switch (e.type)
     {
-        case SeqEvent::Type::NoteOn:    voices[(size_t) e.voice].noteOn (e.key, e.velocity, e.slice); break;
+        case SeqEvent::Type::NoteOn:    voices[(size_t) e.voice].noteOn (e.key, e.velocity, e.slice); mods.hit (e.voice); break;
         case SeqEvent::Type::NoteOff:   voices[(size_t) e.voice].noteOff (e.key); break;
         case SeqEvent::Type::XyLock:    xyLocked = true; lockX = e.x; lockY = e.y; applyChainSettings(); break;
         case SeqEvent::Type::XyRelease: xyLocked = false; applyChainSettings(); break;
+        case SeqEvent::Type::PatternStart: mods.patternStart(); break;
     }
 }
 
@@ -119,7 +210,10 @@ void Kit::handle (const juce::MidiMessage& message)
 
     auto& voice = voices[(size_t) e.voice];
     if (e.isNoteOn)
+    {
         voice.noteOn (e.key, e.velocity);
+        mods.hit (e.voice);
+    }
     else
         voice.noteOff (e.key);
 }
@@ -222,16 +316,37 @@ void Kit::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& mid
     uiFollowingHost = transport.hostPlaying && seqSettings.sync;
     uiHostBpm = transport.bpm;
 
+    // The modulators' clock: the host's position when following it, else ours.
+    if (uiFollowingHost)
+    {
+        clockPpq = transport.ppq;
+        clockPpqPerSample = std::max (1.0, transport.bpm) / 60.0 / sampleRateHz;
+    }
+    else
+    {
+        clockPpq = internalClock;
+        clockPpqPerSample = std::max (1.0, seqSettings.tempo) / 60.0 / sampleRateHz;
+        internalClock += total * clockPpqPerSample;
+    }
+
     // Merge live MIDI and sequencer events in time order.
     int cursor = 0;
     size_t next = 0;
     auto renderTo = [&] (int pos)
     {
+        // In control steps: the modulators move every kControlSamples.
         pos = std::clamp (pos, 0, total);
-        if (pos > cursor)
+        while (cursor < pos)
         {
-            renderSegment (cursor, pos - cursor, buffer, sidechain);
-            cursor = pos;
+            if (controlCountdown <= 0)
+            {
+                tick (cursor);
+                controlCountdown = kControlSamples;
+            }
+            const auto n = std::min (pos - cursor, controlCountdown);
+            renderSegment (cursor, n, buffer, sidechain);
+            cursor += n;
+            controlCountdown -= n;
         }
     };
 
