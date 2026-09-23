@@ -44,7 +44,8 @@ private:
     SourceMode mode = SourceMode::FM;
     bool oneShot = true;
 
-    FmSource fm;
+    FmSource fm;                 // runs at 2x the voice's sample rate
+    HalfbandDecimator fmDecimator;
     SampleSource sampleSource;
     Envelope ampEnv, pitchEnv;
     Punch punch;

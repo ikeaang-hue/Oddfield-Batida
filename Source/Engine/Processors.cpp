@@ -109,6 +109,74 @@ void Drive::process (float& left, float& right, float amount, DriveType type)
     right += (r - right) * mix;
 }
 
+// HalfbandDecimator ------------------------------------------------------------
+
+namespace
+{
+double besselI0 (double x)
+{
+    double sum = 1.0, term = 1.0;
+    for (int k = 1; k < 32; ++k)
+    {
+        term *= (x / (2.0 * k)) * (x / (2.0 * k));
+        sum += term;
+    }
+    return sum;
+}
+
+const std::array<float, HalfbandDecimator::kTaps>& halfbandTaps()
+{
+    static const auto taps = []
+    {
+        constexpr int n = HalfbandDecimator::kTaps;
+        constexpr double beta = 8.0;
+        std::array<float, n> h {};
+        double sum = 0.0;
+        std::array<double, n> d {};
+
+        for (int i = 0; i < n; ++i)
+        {
+            const auto k = i - (n - 1) / 2;
+            const auto sinc = k == 0 ? 0.5 : std::sin (3.141592653589793 * k / 2.0) / (3.141592653589793 * k);
+            const auto r = 2.0 * i / (n - 1) - 1.0;
+            d[(size_t) i] = sinc * besselI0 (beta * std::sqrt (1.0 - r * r)) / besselI0 (beta);
+            sum += d[(size_t) i];
+        }
+        for (int i = 0; i < n; ++i)
+            h[(size_t) i] = (float) (d[(size_t) i] / sum);
+        return h;
+    }();
+    return taps;
+}
+} // namespace
+
+void HalfbandDecimator::reset()
+{
+    history.fill (0.0f);
+    pos = 0;
+}
+
+void HalfbandDecimator::push (float x)
+{
+    // Written twice so the last kTaps samples are always contiguous.
+    history[(size_t) pos] = x;
+    history[(size_t) (pos + kTaps)] = x;
+    pos = (pos + 1) % kTaps;
+}
+
+float HalfbandDecimator::process (float first, float second)
+{
+    push (first);
+    push (second);
+
+    const auto& h = halfbandTaps();
+    const auto* x = history.data() + pos;
+    float y = 0.0f;
+    for (int i = 0; i < kTaps; ++i)
+        y += h[(size_t) i] * x[i];
+    return y;
+}
+
 // Filter ---------------------------------------------------------------------
 
 void SvfFilter::prepare (double newSampleRate)

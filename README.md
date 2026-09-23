@@ -47,14 +47,16 @@ Insert it as an instrument: *AU Instruments → Negative Space → Batida*.
 - **Samples:** drop a WAV/AIFF/FLAC onto a voice button (or the window), or use *Load...*.
   A voice on FM switches to Sample when you load one.
 - **Orange dots** on the FM operator knobs show where the macros have moved that operator.
+- **Wave** on each operator runs sine > triangle > saw > square > noise. The default hats,
+  snare, rim and clap use the noise end through the voice filter.
 
 | Voice | Note | Default sound |
 |---|---|---|
 | 1 | C1 (36) | Kick |
 | 2 | C#1 (37) | Rim |
 | 3 | D1 (38) | Snare |
-| 4 | D#1 (39) | Tom |
-| 5 | E1 (40) | Zap |
+| 4 | D#1 (39) | Clap |
+| 5 | E1 (40) | Tom |
 | 6 | F1 (41) | Bass (Gate mode, glide) |
 | 7 | F#1 (42) | Closed hat |
 | 8 | G1 (43) | Open hat |

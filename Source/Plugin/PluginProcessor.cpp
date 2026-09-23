@@ -38,9 +38,9 @@ juce::String formatValue (const ParamSpec& spec, float v)
         return juce::String (v, 3);
     if (u == "wave")
     {
-        static const char* names[] = { "Sine", "Tri", "Saw", "Square" };
-        const auto m = v * 3.0f;
-        const auto i = std::min ((int) m, 2);
+        static const char* names[] = { "Sine", "Tri", "Saw", "Square", "Noise" };
+        const auto m = v * 4.0f;
+        const auto i = std::min ((int) m, 3);
         const auto t = m - (float) i;
         if (t < 0.02f) return names[i];
         if (t > 0.98f) return names[i + 1];
@@ -64,8 +64,8 @@ float parseValue (const ParamSpec& spec, const juce::String& text)
     else if (u == "pan")
         v = t.startsWith ("l") ? -v / 100.0f : (t.startsWith ("r") ? v / 100.0f : 0.0f);
     else if (u == "wave")
-        v = t.startsWith ("sine") ? 0.0f : t.startsWith ("tri") ? 1.0f / 3.0f
-          : t.startsWith ("saw") ? 2.0f / 3.0f : t.startsWith ("sq") ? 1.0f : v;
+        v = t.startsWith ("sine") ? 0.0f : t.startsWith ("tri") ? 0.25f : t.startsWith ("saw") ? 0.5f
+          : t.startsWith ("sq") ? 0.75f : t.startsWith ("noise") ? 1.0f : v;
     return juce::jlimit (spec.min, spec.max, v);
 }
 

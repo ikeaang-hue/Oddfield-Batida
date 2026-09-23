@@ -60,7 +60,8 @@ public:
 
     bool isActive() const;
 
-    // One sample at the given base frequency (ratio 1).
+    // One sample at the given base frequency (ratio 1). The voice runs this
+    // at twice its sample rate and decimates (see HalfbandDecimator).
     float process (float baseHz);
 
 private:
@@ -71,6 +72,7 @@ private:
     float feedbackDepth = 0.0f;
     std::array<Envelope, kNumOps> env;
     std::array<float, kNumOps> phase {};
+    std::array<uint32_t, kNumOps> noiseState { 0x9e3779b9u, 0x85ebca6bu, 0xc2b2ae35u, 0x27d4eb2fu };
     float feedbackSample = 0.0f;
 };
 

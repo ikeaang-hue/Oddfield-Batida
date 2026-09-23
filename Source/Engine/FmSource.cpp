@@ -17,7 +17,7 @@ constexpr float kMaxDepthCycles = 2.0f;
 
 // Full feedback, in cycles. Above roughly two thirds the operator turns
 // chaotic, which is the noise source for snares and hats.
-constexpr float kMaxFeedbackCycles = 0.6f;
+constexpr float kMaxFeedbackCycles = 0.9f;
 
 constexpr uint8_t bit (int op) { return (uint8_t) (1u << op); }
 
@@ -46,27 +46,28 @@ float applyHarmonic (float ratio, float harm, int op)
     return ratio * std::exp (a + (b - a) * f);
 }
 
-inline float basicWave (int shape, float p)
+inline float basicWave (int shape, float p, float noise)
 {
     switch (shape)
     {
         case 0:  return std::sin (kTwoPi * p);
         case 1:  return p < 0.25f ? 4.0f * p : (p < 0.75f ? 2.0f - 4.0f * p : 4.0f * p - 4.0f);
         case 2:  return p < 0.5f ? 2.0f * p : 2.0f * p - 2.0f;
-        default: return p < 0.5f ? 1.0f : -1.0f;
+        case 3:  return p < 0.5f ? 1.0f : -1.0f;
+        default: return noise; // white noise ignores phase and pitch
     }
 }
 
-// Sine → triangle → saw → square across 0..1, then an optional sine fold.
-inline float shapeWave (float p, float morph, float fold)
+// Sine → triangle → saw → square → noise across 0..1, then an optional sine fold.
+inline float shapeWave (float p, float morph, float fold, float noise)
 {
-    const auto m = morph * 3.0f;
-    const auto i = std::min ((int) m, 2);
+    const auto m = morph * 4.0f;
+    const auto i = std::min ((int) m, 3);
     const auto t = m - (float) i;
 
-    auto w = basicWave (i, p);
+    auto w = basicWave (i, p, noise);
     if (t > 0.0f)
-        w += (basicWave (i + 1, p) - w) * t;
+        w += (basicWave (i + 1, p, noise) - w) * t;
 
     if (fold > 0.0f)
     {
@@ -219,7 +220,18 @@ float FmSource::process (float baseHz)
         auto p = ph + mod;
         p -= std::floor (p);
 
-        const auto a = shapeWave (p, op.wave, op.fold) * env[(size_t) k].next();
+        // xorshift32 white noise, only generated when the wave reaches it
+        float noise = 0.0f;
+        if (op.wave > 0.75f)
+        {
+            auto& s = noiseState[(size_t) k];
+            s ^= s << 13;
+            s ^= s >> 17;
+            s ^= s << 5;
+            noise = (float) (int32_t) s * (1.0f / 2147483648.0f);
+        }
+
+        const auto a = shapeWave (p, op.wave, op.fold, noise) * env[(size_t) k].next();
 
         if (k == kNumOps - 1)
             feedbackSample = a;

@@ -352,6 +352,54 @@ public:
     }
 };
 
+class OversamplingTests final : public juce::UnitTest
+{
+public:
+    OversamplingTests() : juce::UnitTest ("Oversampling and noise", "Batida") {}
+
+    // Gain in dB of a sine at `hz` generated at 96 kHz and decimated to 48 kHz.
+    static float decimatorGainDb (double hz)
+    {
+        HalfbandDecimator d;
+        d.reset();
+        float peak = 0.0f;
+        for (int n = 0; n < 8000; ++n)
+        {
+            const auto a = (float) std::sin (2.0 * 3.141592653589793 * hz * (2 * n) / 96000.0);
+            const auto b = (float) std::sin (2.0 * 3.141592653589793 * hz * (2 * n + 1) / 96000.0);
+            const auto y = d.process (a, b);
+            if (n > 200)
+                peak = std::max (peak, std::abs (y));
+        }
+        return 20.0f * std::log10 (std::max (peak, 1.0e-9f));
+    }
+
+    void runTest() override
+    {
+        beginTest ("Halfband decimator: flat in the audio band, blocks what would alias");
+        for (const auto hz : { 100.0, 5000.0, 12000.0, 18000.0 })
+            expectWithinAbsoluteError (decimatorGainDb (hz), 0.0f, 0.2f, juce::String (hz) + " Hz");
+        for (const auto hz : { 30000.0, 36000.0, 44000.0 })
+            expectLessThan (decimatorGainDb (hz), -70.0f, juce::String (hz) + " Hz");
+        logMessage ("  gain at 20 kHz: " + juce::String (decimatorGainDb (20000.0), 2) + " dB, at 28 kHz: "
+                    + juce::String (decimatorGainDb (28000.0), 1) + " dB");
+
+        beginTest ("Noise waveform is broadband and does not follow pitch");
+        {
+            auto p = plainVoice();
+            p[vp::FmAlgo] = 7.0f;
+            p[opParam (0, Wave)] = 1.0f;
+            const auto low = tools::measure (tools::renderVoice (kitWith (p), 0, 36, 1.0f, 0.3), kRate);
+            const auto high = tools::measure (tools::renderVoice (kitWith (p), 0, 84, 1.0f, 0.3), kRate);
+            logMessage ("  zero-crossing rate: " + juce::String (low.centroidHz, 0) + " / "
+                        + juce::String (high.centroidHz, 0) + " Hz");
+            expectGreaterThan (low.centroidHz, 8000.0f);
+            expectWithinAbsoluteError (high.centroidHz / low.centroidHz, 1.0f, 0.1f);
+            expect (low.finite && low.peakDb > -12.0f && low.peakDb < 3.0f);
+        }
+    }
+};
+
 class DefaultKitTests final : public juce::UnitTest
 {
 public:
@@ -390,6 +438,7 @@ static VoiceTests voiceTests;
 static MidiTests midiTests;
 static SampleTests sampleTests;
 static FmTests fmTests;
+static OversamplingTests oversamplingTests;
 static DefaultKitTests defaultKitTests;
 
 } // namespace batida

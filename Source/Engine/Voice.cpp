@@ -14,7 +14,7 @@ float dbToGain (float db) { return db <= -60.0f ? 0.0f : std::pow (10.0f, db / 2
 void Voice::prepare (double newSampleRate)
 {
     sampleRate = newSampleRate;
-    fm.prepare (sampleRate);
+    fm.prepare (2.0 * sampleRate);
     sampleSource.prepare (sampleRate);
     ampEnv.setSampleRate (sampleRate);
     pitchEnv.setSampleRate (sampleRate);
@@ -151,6 +151,7 @@ void Voice::reset()
     active = stealing = false;
     numHeld = 0;
     fm.reset();
+    fmDecimator.reset();
     sampleSource.reset();
     ampEnv.reset();
     pitchEnv.reset();
@@ -164,11 +165,13 @@ void Voice::startNote (int key, float velocity)
     targetPitch = pitch = (float) (key - kBaseKey);
     velocityGain = 1.0f - params[vp::VelSens] * (1.0f - velocity * velocity);
 
+    // The old note has faded to silence; clear everything that could carry it over.
     ampEnv.reset();
     pitchEnv.reset();
     punch.reset();
     drive.reset();
     filter.reset();
+    fmDecimator.reset();
 
     ampEnv.trigger (oneShot);
     pitchEnv.trigger (true);
@@ -230,7 +233,9 @@ void Voice::render (float* left, float* right, int numSamples)
 
         if (useFm)
         {
-            const auto x = fm.process (kBaseHz * std::exp2 ((fmPitch + semis) * (1.0f / 12.0f))) * fmGain;
+            const auto hz = kBaseHz * std::exp2 ((fmPitch + semis) * (1.0f / 12.0f));
+            const auto a = fm.process (hz);
+            const auto x = fmDecimator.process (a, fm.process (hz)) * fmGain;
             l += x;
             r += x;
         }

@@ -1,6 +1,6 @@
 # Negative Space Batida: Design Spec
 
-*Version 1.2, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split)*
+*Version 1.3, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM)*
 
 ## 1. Identity
 
@@ -43,7 +43,10 @@ The eight voices are identical, general-purpose slots. Any slot can hold any sou
 **FM**
 - **4 operators** and about **8 algorithms**, shown as diagrams.
 - Per operator: ratio or fixed frequency, level, its own envelope, and a morphable waveform
-  (sine → triangle → saw → square, plus fold).
+  (sine → triangle → saw → square → noise, plus fold). Noise is white and ignores pitch; it is
+  the clean noise source for hats, snares and claps.
+- The FM source runs at 2× oversampling, so overtones above the audible range don't fold back
+  as inharmonic fizz.
 - Feedback.
 - **Macro surface** on top of the operators:
   - *Harmonic ↔ Inharmonic:* chooses from curated ratio sets.

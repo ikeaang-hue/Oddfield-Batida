@@ -125,7 +125,7 @@ func encodeState(_ xml: String) -> Data {
 
 print("Batida AU offline check")
 
-let names = ["Kick", "Rim", "Snare", "Tom", "Zap", "Bass", "ClosedHat", "OpenHat"]
+let names = ["Kick", "Rim", "Snare", "Clap", "Tom", "Bass", "ClosedHat", "OpenHat"]
 
 print("Default kit through the drum map (notes 36-43, channel 1):")
 do {

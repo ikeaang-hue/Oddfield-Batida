@@ -46,6 +46,25 @@ private:
     int holdCounter = 0;
 };
 
+// 2x → 1x decimation for the oversampled FM source: a 63-tap Kaiser-windowed
+// halfband FIR. Flat to ~20 kHz, below -75 dB from ~28 kHz (at 48 kHz out),
+// so overtones above the audible range don't fold back as inharmonic fizz.
+// Latency: 15.5 output samples.
+class HalfbandDecimator
+{
+public:
+    static constexpr int kTaps = 63;
+
+    void reset();
+    float process (float first, float second); // two 2x samples in, one out
+
+private:
+    void push (float x);
+
+    std::array<float, 2 * kTaps> history {};
+    int pos = 0;
+};
+
 // Topology-preserving state-variable filter (LP/HP/BP), stereo.
 class SvfFilter
 {
