@@ -4,6 +4,36 @@
 //   BatidaSnapshot <out-dir> [sample.wav]
 
 #include "Plugin/PluginProcessor.h"
+#include "UI/LibraryPage.h"
+
+namespace
+{
+juce::File writeTone (const juce::File& file, float hz)
+{
+    file.getParentDirectory().createDirectory();
+    file.deleteFile();
+    juce::AudioBuffer<float> b (1, 4800);
+    for (int i = 0; i < b.getNumSamples(); ++i)
+        b.setSample (0, i, 0.5f * std::sin (6.2831853f * hz * (float) i / 48000.0f));
+    std::unique_ptr<juce::OutputStream> out (file.createOutputStream());
+    juce::WavAudioFormat wav;
+    if (auto w = wav.createWriterFor (out, juce::AudioFormatWriterOptions {}.withSampleRate (48000.0).withNumChannels (1).withBitsPerSample (16)))
+        w->writeFromAudioSampleBuffer (b, 0, b.getNumSamples());
+    return file;
+}
+
+juce::Button* findButton (juce::Component& parent, const juce::String& text)
+{
+    for (auto* c : parent.getChildren())
+    {
+        if (auto* b = dynamic_cast<juce::Button*> (c); b != nullptr && b->getButtonText() == text)
+            return b;
+        if (auto* b = findButton (*c, text))
+            return b;
+    }
+    return nullptr;
+}
+} // namespace
 
 int main (int argc, char* argv[])
 {
@@ -12,6 +42,13 @@ int main (int argc, char* argv[])
     const auto cwd = juce::File::getCurrentWorkingDirectory();
     const auto outDir = cwd.getChildFile (argc > 1 ? argv[1] : "snapshots");
     outDir.createDirectory();
+
+    // A library of its own, so the checks never touch the real one.
+    const auto libDir = outDir.getParentDirectory().getChildFile ("snapshot-library");
+    libDir.deleteRecursively();
+    setenv ("BATIDA_LIBRARY", libDir.getFullPathName().toRawUTF8(), 1);
+    const auto sampleDir = outDir.getParentDirectory().getChildFile ("snapshot-samples");
+    sampleDir.deleteRecursively();
 
     BatidaProcessor proc;
     proc.prepareToPlay (48000.0, 512);
@@ -62,6 +99,8 @@ int main (int argc, char* argv[])
         mod->setVisible (false);
     }
     tabs->setVisible (true);
+    if (auto* strip = editor->findChildWithID ("soundStrip"))
+        strip->setVisible (true);
     proc.toggleModTarget (1, "v1_flt_cutoff"); // shows the modulation arc on the Voice FX cutoff knob
     for (int i = 0; i < tabs->getNumTabs(); ++i)
     {
@@ -70,6 +109,8 @@ int main (int argc, char* argv[])
     }
 
     proc.toggleModTarget (1, "v1_flt_cutoff");
+    if (auto* strip = editor->findChildWithID ("soundStrip"))
+        strip->setVisible (false);
 
     // Gesture checks on the real editor: synthetic mouse events into the grid
     // and the tempo control.
@@ -244,7 +285,158 @@ int main (int argc, char* argv[])
         proc.swapVoices (0, 2);
         check (std::abs (pitchOf (0) - p0) < 1.0e-3f && proc.getVoiceName (2) == "Crack", "swapping back restores them");
 
+        // Library: browse, merged undo, favourites, strips, save, init, sets, relink.
+        {
+            using namespace batida;
+            auto& lib = proc.library();
+            lib.scanNow();
+            auto* libPage = dynamic_cast<LibraryPage*> (editor->findChildWithID ("libraryPage"));
+            check (libPage != nullptr && lib.getRoot().getChildFile ("Factory/Kits/Neutral.batida-kit").existsAsFile(),
+                   "the factory library is installed");
+            tabs->setVisible (false);
+            libPage->setVisible (true);
+            libPage->setMode (LibraryPage::Mode::Sounds);
+            check (libPage->getNumShown() == 8, "the 8 factory sounds are listed");
+            auto rowOf = [&] (PresetType type, const juce::String& n)
+            {
+                const auto list = lib.shown (type);
+                for (size_t i = 0; i < list.size(); ++i)
+                    if (list[i].info.name == n)
+                        return (int) i;
+                return -1;
+            };
+            proc.selectedVoice = 0;
+            const auto before = proc.readVoiceParams (0);
+            const auto nameBefore = proc.getVoiceName (0);
+            libPage->clickRow (rowOf (PresetType::Sound, "Snare"));
+            check (proc.getVoiceName (0) == "Snare"
+                       && std::abs (proc.readVoiceParams (0)[vp::FmPitch] - defaultKitParams().voices[2][vp::FmPitch]) < 1.0e-3f,
+                   "clicking a sound loads it into the selected voice");
+            libPage->clickRow (rowOf (PresetType::Sound, "Open Hat"));
+            check (proc.getVoiceName (0) == "Open Hat", "clicking another tries that one");
+            save ("6-Lib");
+            proc.undo();
+            check (proc.getVoiceName (0) == nameBefore && std::abs (proc.readVoiceParams (0)[vp::AmpD] - before[vp::AmpD]) < 1.0e-3f
+                       && std::abs (proc.readVoiceParams (0)[vp::FmBright] - before[vp::FmBright]) < 1.0e-3f,
+                   "one Undo goes back to before browsing");
+
+            const auto kickFile = lib.getRoot().getChildFile ("Factory/Sounds/Kick/Kick.batida-sound");
+            libPage->clickRow (rowOf (PresetType::Sound, "Kick"), 5);
+            check (lib.isFavourite (kickFile) && proc.getVoiceName (0) == nameBefore, "the heart marks a favourite without loading");
+
+            libPage->setMode (LibraryPage::Mode::Kits);
+            save ("6-LibKits");
+            if (auto* strip = editor->findChildWithID ("kitStrip"))
+                if (auto* nextButton = dynamic_cast<juce::Button*> (strip->getChildComponent (2)))
+                    nextButton->onClick();
+            check (proc.getOrigins().kitName == "Neutral" && proc.getOrigins().kitFile.existsAsFile(), "the kit strip steps to a library kit");
+
+            // Save a sound through the panel; the same name asks before replacing.
+            libPage->setMode (LibraryPage::Mode::Sounds);
+            auto saveThroughPanel = [&] (const juce::String& name, int clicks)
+            {
+                if (auto* b = findButton (*libPage, "Save..."))
+                    b->onClick();
+                auto* panel = editor->findChildWithID ("savePanel");
+                if (panel == nullptr)
+                    return juce::String ("no panel");
+                if (auto* field = dynamic_cast<juce::TextEditor*> (panel->findChildWithID ("saveName")))
+                    field->setText (name, true);
+                auto* button = dynamic_cast<juce::Button*> (panel->findChildWithID ("saveButton"));
+                for (int i = 0; i < clicks && button != nullptr; ++i)
+                    button->onClick();
+                const auto text = button != nullptr ? button->getButtonText() : juce::String();
+                juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
+                return text;
+            };
+            if (auto* b = findButton (*libPage, "Save..."))
+                b->onClick();
+            if (auto* panel = editor->findChildWithID ("savePanel"))
+            {
+                if (auto* field = dynamic_cast<juce::TextEditor*> (panel->findChildWithID ("saveName")))
+                    field->setText ("Test Kick", true);
+                save ("7-Save");
+                if (auto* cancel = findButton (*panel, "Cancel"))
+                    cancel->onClick();
+                juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
+            }
+            saveThroughPanel ("Test Kick", 1);
+            const auto mine = lib.getRoot().getChildFile ("User/Sounds/Kick/Test Kick.batida-sound");
+            check (mine.existsAsFile() && proc.getVoiceName (0) == "Test Kick", "Save puts it in the library and names the voice");
+            const auto firstSave = mine.getLastModificationTime();
+            const auto armed = saveThroughPanel ("Test Kick", 1);
+            check (armed == "Replace", "saving the same name asks first (Replace)");
+            if (auto* panel = editor->findChildWithID ("savePanel"))
+                if (auto* cancel = findButton (*panel, "Cancel"))
+                    cancel->onClick();
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
+            check (mine.getLastModificationTime() == firstSave, "and doesn't replace it until asked");
+            lib.scanNow();
+            check (rowOf (PresetType::Sound, "Test Kick") >= 0, "the saved sound is in the list");
+
+            // Init and undo.
+            proc.initSound (3);
+            check (proc.getVoiceName (3) == "Init", "Init sound gives a plain sound");
+            proc.undo();
+            check (proc.getVoiceName (3) == "Clap", "and Undo brings the sound back");
+
+            // A set holds everything: save, init everything, load it back.
+            auto* tempoParam = proc.getState().getParameter (globalParamID (gp::SeqTempo));
+            tempoParam->setValueNotifyingHost (tempoParam->convertTo0to1 (97.0f));
+            proc.setVoiceName (5, "Sub");
+            const auto setFile = lib.userFileFor (PresetType::Set, { "My Set", "", "", {}, {} });
+            check (proc.saveSet (setFile, { "My Set", "", "", {}, {} }, false), "save a set");
+            proc.initAll();
+            check (std::abs (tempoParam->convertFrom0to1 (tempoParam->getValue()) - 120.0f) < 0.01f && proc.getVoiceName (5) == "Bass",
+                   "Init everything resets the project");
+            proc.loadPresetFile (setFile, 0, 0, BatidaProcessor::LoadMode::Step);
+            check (std::abs (tempoParam->convertFrom0to1 (tempoParam->getValue()) - 97.0f) < 0.01f && proc.getVoiceName (5) == "Sub"
+                       && ! proc.patterns().get().patterns[0].isEmpty(),
+                   "loading the set brings it all back");
+
+            // A pattern file into slot 2.
+            proc.loadPresetFile (lib.getRoot().getChildFile ("Factory/Patterns/Breakbeat.batida-pattern"), 0, 1, BatidaProcessor::LoadMode::Step);
+            check (! proc.patterns().get().patterns[1].isEmpty() && proc.getPatternName (1) == "Breakbeat", "a pattern loads into its slot");
+
+            // Missing samples: move a sample away, reopen, relink.
+            const auto tone = writeTone (sampleDir.getChildFile ("a/relink-me.wav"), 330.0f);
+            proc.loadSample (4, tone);
+            juce::MemoryBlock withSample;
+            proc.getStateInformation (withSample);
+            const auto moved = sampleDir.getChildFile ("b/relink-me.wav");
+            moved.getParentDirectory().createDirectory();
+            tone.moveFileTo (moved);
+            proc.clearSample (4); // as if the project were opened fresh
+            proc.setStateInformation (withSample.getData(), (int) withSample.getSize());
+            check (proc.numMissingSamples() == 1, "a moved sample shows as missing");
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (300); // the editor's timer updates the header
+            if (auto* b = findButton (*editor, "1 sample missing: Relink..."))
+            {
+                b->onClick();
+                save ("7-Relink");
+                if (auto* panel = editor->findChildWithID ("relinkPanel"))
+                    if (auto* close = findButton (*panel, "Close"))
+                        close->onClick();
+                juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
+            }
+            else
+                check (false, "the header shows the missing-sample notice");
+            proc.relinkSample (4, moved);
+            check (proc.numMissingSamples() == 0 && proc.sampleSlot (4).getPath() == moved.getFullPathName(), "Locate relinks it");
+            // Next time it's found on its own: Batida remembers where samples turned up.
+            BatidaProcessor other;
+            proc.getStateInformation (withSample);
+            other.setStateInformation (withSample.getData(), (int) withSample.getSize());
+            check (other.numMissingSamples() == 0, "a relinked project opens with its sample");
+
+            libPage->setMode (LibraryPage::Mode::Samples);
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (300);
+            save ("6-LibSamples");
+            libPage->setVisible (false);
+        }
+
         // State keeps names.
+        proc.setVoiceName (2, "Crack");
         juce::MemoryBlock saved;
         proc.getStateInformation (saved);
         BatidaProcessor other;

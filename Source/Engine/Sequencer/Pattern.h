@@ -58,6 +58,13 @@ struct PatternBank
     void fromXml (const juce::XmlElement& xml); // missing parts keep their defaults
 };
 
+// One pattern as XML (the same form the project uses), for pattern files.
+std::unique_ptr<juce::XmlElement> patternToXml (const Pattern& pattern);
+void patternFromXml (const juce::XmlElement& xml, Pattern& pattern);
+
+// The breakbeat for the default kit (a factory pattern, and the dev default).
+Pattern breakbeatPattern();
+
 // Development default: pattern 1 is a breakbeat demo, 2-16 empty.
 // RELEASE: set kShipDemoPattern to false, so every pattern starts empty.
 constexpr bool kShipDemoPattern = true;

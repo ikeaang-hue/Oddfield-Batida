@@ -155,6 +155,16 @@ void Voice::allNotesOff()
     }
 }
 
+void Voice::choke()
+{
+    if (! active)
+        return;
+    stealing = true;
+    stealGain = std::min (stealGain, 1.0f);
+    pendingKey = -1; // nothing to start afterwards
+    numHeld = 0;
+}
+
 void Voice::reset()
 {
     active = stealing = false;
@@ -228,6 +238,11 @@ void Voice::render (float* dryL, float* dryR, float* wetL, float* wetR, int numS
             if (stealGain <= 0.0f)
             {
                 stealing = false;
+                if (pendingKey < 0) // choked
+                {
+                    reset();
+                    return;
+                }
                 startNote (pendingKey, pendingVelocity, pendingSlice);
             }
             else
@@ -285,14 +300,14 @@ void Voice::render (float* dryL, float* dryR, float* wetL, float* wetR, int numS
 
         if (! ampEnv.isActive() || ! sourceActive())
         {
-            if (stealing)
+            if (stealing && pendingKey >= 0)
             {
                 stealing = false;
                 startNote (pendingKey, pendingVelocity, pendingSlice);
             }
             else
             {
-                active = false;
+                active = stealing = false;
                 return;
             }
         }

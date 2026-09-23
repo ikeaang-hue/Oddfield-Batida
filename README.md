@@ -1,7 +1,7 @@
 # Negative Space Batida
 
 A sound-design drum instrument (AU, macOS). The design is in [SPEC.md](SPEC.md); the current
-phase is described in [docs/PHASE4-PLAN.md](docs/PHASE4-PLAN.md).
+phase is described in [docs/PHASE5-PLAN.md](docs/PHASE5-PLAN.md).
 
 **So far:** 8 monophonic voices, each FM (4 operators, 8 algorithms, macros), Sample, or both
 layered, with punch → drive → filter, envelopes and glide (phase 1). A shared **kit chain**
@@ -9,8 +9,9 @@ layered, with punch → drive → filter, envelopes and glide (phase 1). A share
 **XY pad**, with a dry/wet Chain amount per voice and a sidechain input (phase 2). A **step
 sequencer** with 16 patterns, played by pattern keys or the host transport, with per-step XY
 locks and sample slicing (phase 3). **Movement and inspiration**: two drawn modulators, guided
-**Vary**, chain scenes with morph, and undo for what Logic can't undo (phase 4). Minimal
-stock-control UI.
+**Vary**, chain scenes with morph, and undo for what Logic can't undo (phase 4). A **library** of
+sounds, kits, patterns and sets, with a browser, tags, favourites, Save/Load/Init at every level,
+and sample collecting and relinking (phase 5). Minimal stock-control UI.
 
 ## Build
 
@@ -46,7 +47,7 @@ state, including sample paths and missing files. Host values: knobs are normalis
 
 Insert it as an instrument: *AU Instruments → Negative Space → Batida*. It opens on the **KIT**
 page (pad and chain); **SEQ** is the sequencer; **MOD** holds the two modulators; **VOICE** edits
-the selected sound (its **Vary** tab suggests variations).
+the selected sound (its **Vary** tab suggests variations); **LIB** is the library.
 
 - **XY pad:** X = character (warm → aggressive → digital), Y = heat (clean → destroyed). It moves
   the whole chain; orange dots show where each stage knob has been pushed. Double-click resets.
@@ -73,6 +74,32 @@ the selected sound (its **Vary** tab suggests variations).
 - **Orange dots** on the FM operator knobs show where the macros have moved that operator.
 - **Wave** on each operator runs sine > triangle > saw > square > noise. The default hats,
   snare, rim and clap use the noise end through the voice filter.
+
+### Library
+
+- **Where:** `~/Music/Negative Space/Batida/`, with `Factory` (written by Batida) and `User`
+  (yours). Files are readable XML: `.batida-sound`, `.batida-kit`, `.batida-pattern`,
+  `.batida-set`. Manage them in Finder as you like.
+- **Levels:** a **sound** (one voice), a **kit** (8 voices, chain, pad, scenes, modulators; not the
+  patterns), a **pattern**, and a **set** (everything, including all 16 patterns and the settings).
+- **LIB view:** pick Sounds / Kits / Patterns / Sets / Samples; filter by All / Factory / User /
+  ♥, category, character and search. **Click a row to try it**, live and in the beat: a sound goes
+  into the selected voice (and plays once if nothing is running), a pattern into the current
+  pattern. ◀ ▶ step through the list. A run of tries is one **Undo**. Click the ♥ to keep a
+  favourite. A User file's character can be edited on the right.
+- **◀ name ▶ strips:** the kit (header, under MIDI Mode), the sound (VOICE view, right of the
+  tabs) and the pattern (SEQ page) step through the LIB list from any page. **Click the name** for
+  **Init**, **Load…**, **Save** and **Save as…**. The kit's menu also has the whole set (Init
+  everything / Load / Save), Relink samples, Collect samples and Show library in Finder.
+- **Saving** opens a small panel: name, category, character, author, and **Collect samples**
+  (copies them into "<name> Samples" next to the file, so it travels). Saving over a name asks
+  first. **Save elsewhere…** writes anywhere.
+- **Samples tab:** browse the library or your own folders (**Add folder…**); click a file to load
+  it into the selected voice.
+- **Missing samples:** Batida looks for them by name and size in the library and wherever
+  samples were found before. What's still missing shows in the header: **Relink…** searches a
+  folder you pick, or locate each file.
+- Drop a `.batida-sound` onto a voice, or a kit, pattern or set anywhere on the window.
 
 ### Movement and inspiration
 

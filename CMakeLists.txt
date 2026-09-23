@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Batida VERSION 0.4.0)
+project(Batida VERSION 0.5.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -36,17 +36,21 @@ target_sources(BatidaEngine
         Source/Engine/Sequencer/Sequencer.cpp
         Source/Engine/Movement/Movement.cpp
         Source/Engine/Movement/Modulators.cpp
-        Source/Engine/Movement/Vary.cpp)
+        Source/Engine/Movement/Vary.cpp
+        Source/Library/PresetFiles.cpp
+        Source/Library/SampleLocator.cpp
+        Source/Library/Library.cpp)
 
 target_include_directories(BatidaEngine INTERFACE Source)
 
-target_link_libraries(BatidaEngine INTERFACE juce::juce_audio_formats juce::juce_dsp)
+target_link_libraries(BatidaEngine INTERFACE juce::juce_audio_formats juce::juce_dsp juce::juce_events)
 
 set(BATIDA_DEFINITIONS
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_DISPLAY_SPLASH_SCREEN=0
-    JUCE_VST3_CAN_REPLACE_VST2=0)
+    JUCE_VST3_CAN_REPLACE_VST2=0
+    BATIDA_VERSION="${PROJECT_VERSION}")
 
 # ---------------------------------------------------------------------------
 # Plugin (AU only for now; VST3 comes in phase 7)
@@ -79,7 +83,10 @@ target_sources(Batida
         Source/UI/SeqPage.cpp
         Source/UI/DraggableNumber.cpp
         Source/UI/ModPage.cpp
-        Source/UI/VaryPage.cpp)
+        Source/UI/VaryPage.cpp
+        Source/UI/BrowseStrip.cpp
+        Source/UI/LibraryController.cpp
+        Source/UI/LibraryPage.cpp)
 
 target_compile_definitions(Batida PUBLIC ${BATIDA_DEFINITIONS})
 
@@ -104,6 +111,7 @@ target_sources(BatidaTests
         tests/ChainTests.cpp
         tests/SequencerTests.cpp
         tests/MovementTests.cpp
+        tests/LibraryTests.cpp
         tests/Tools.cpp)
 
 target_compile_definitions(BatidaTests PRIVATE ${BATIDA_DEFINITIONS})
@@ -133,7 +141,10 @@ target_sources(BatidaSnapshot
         Source/UI/SeqPage.cpp
         Source/UI/DraggableNumber.cpp
         Source/UI/ModPage.cpp
-        Source/UI/VaryPage.cpp)
+        Source/UI/VaryPage.cpp
+        Source/UI/BrowseStrip.cpp
+        Source/UI/LibraryController.cpp
+        Source/UI/LibraryPage.cpp)
 
 target_compile_definitions(BatidaSnapshot PRIVATE ${BATIDA_DEFINITIONS} JucePlugin_Name="Batida" JUCE_MODAL_LOOPS_PERMITTED=1)
 

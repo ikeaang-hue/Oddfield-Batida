@@ -32,6 +32,10 @@ public:
     void allNotesOff();                    // release, or hard stop if reset
     void reset();
 
+    // Fades a sounding voice out over ~1.5 ms and stops it, for when its sound
+    // is about to be replaced (loading a sound or kit while playing).
+    void choke();
+
     // Adds this voice into the dry and wet buses, split by its Chain amount.
     // Passing the same buffers for dry and wet gives the plain voice output.
     void render (float* dryL, float* dryR, float* wetL, float* wetR, int numSamples);
