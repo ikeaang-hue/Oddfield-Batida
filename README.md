@@ -6,8 +6,9 @@ phase is described in [docs/PHASE1-PLAN.md](docs/PHASE1-PLAN.md).
 **So far:** 8 monophonic voices, each FM (4 operators, 8 algorithms, macros), Sample, or both
 layered, with punch → drive → filter, envelopes and glide (phase 1). A shared **kit chain**
 (dynamics → distortion with exciter and clean low end → EQ → output), played as a whole from an
-**XY pad**, with a dry/wet Chain amount per voice and a sidechain input (phase 2). Minimal
-stock-control UI. No sequencer yet.
+**XY pad**, with a dry/wet Chain amount per voice and a sidechain input (phase 2). A **step
+sequencer** with 16 patterns, played by pattern keys or the host transport, with per-step XY
+locks and sample slicing (phase 3). Minimal stock-control UI.
 
 ## Build
 
@@ -29,6 +30,7 @@ build/BatidaTests_artefacts/Release/BatidaTests              # engine unit tests
 build/BatidaTests_artefacts/Release/BatidaTests --bench      # CPU, worst-case load
 build/BatidaTests_artefacts/Release/BatidaTests --render build/renders   # default kit as WAVs
 build/BatidaTests_artefacts/Release/BatidaTests --pad build/pad          # a beat at 5 pad positions
+build/BatidaTests_artefacts/Release/BatidaTests --beat build/beat        # the breakbeat (pattern 1)
 auval -v aumu Btda Ngsp                                      # Apple's AU validation
 swiftc -O -o build/au_check tests/au_check.swift && build/au_check   # installed AU, host-style
 build/BatidaSnapshot_artefacts/Release/BatidaSnapshot build/snapshots  # editor screenshots
@@ -63,6 +65,25 @@ page; **VOICE** edits the selected sound.
 - **Orange dots** on the FM operator knobs show where the macros have moved that operator.
 - **Wave** on each operator runs sine > triangle > saw > square > noise. The default hats,
   snare, rim and clap use the noise end through the voice filter.
+
+### Patterns
+
+- **Hold C3–D#4** (60–75) to play patterns 1–16; release to stop. **C1–G1** still play the voices
+  on top. In Chromatic mode the pattern keys are on channel 10.
+- **Run:** *Keys* (default) plays only while a pattern key is held (or with **Latch**, until
+  pressed again). *Transport* plays whenever Logic plays, using the **Pattern** parameter.
+- **Start on** Step / Beat / Bar: when a pressed key starts (with Logic playing). With Logic
+  stopped, patterns start at once on Batida's **Tempo**.
+- **Grid** (Kit page): pick a lane (Gate, Velocity, Pitch, Slice, Ratchet, Prob) and click or
+  drag. Option-click sets a track's length (polymeter); right-click a track name for copy, paste,
+  clear and fill. The small orange bar in each track header is its Chain amount.
+- **XY row:** click a step to lock it to the pad's current position (right-click clears). The
+  lock lasts that step, then the pad snaps back. **XY Rec** records pad moves into the steps
+  while a pattern plays.
+- **Slices:** on a sample voice, set Slice Mode to Grid or Transients (Source tab); the Slice
+  lane picks which slice each step plays.
+- Pattern 1 holds a breakbeat demo during development; the release build ships with every
+  pattern empty.
 
 | Voice | Note | Default sound |
 |---|---|---|

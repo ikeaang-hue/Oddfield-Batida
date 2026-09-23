@@ -91,7 +91,7 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
 
     selectVoice (juce::jlimit (0, kNumVoices - 1, proc.selectedVoice.load()));
 
-    setSize (980, 640);
+    setSize (1100, 820);
     startTimerHz (4);
 }
 

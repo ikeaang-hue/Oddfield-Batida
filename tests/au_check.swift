@@ -8,6 +8,8 @@
 import AVFoundation
 import AudioToolbox
 
+setvbuf(stdout, nil, _IONBF, 0) // unbuffered, so output survives a crash
+
 let sampleRate = 48000.0
 let outDir = URL(fileURLWithPath: "build/au-renders", isDirectory: true)
 var failures = 0
@@ -93,9 +95,12 @@ final class SidechainRenderer {
     var phase = 0.0
     var sampleTime = 0.0
 
+    var params: [String: AUParameter] = [:]
+
     init(_ unit: AVAudioUnit) {
         au = unit.auAudioUnit
         out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 512)!
+        for p in au.parameterTree?.allParameters ?? [] { params[p.displayName] = p }
         try! au.outputBusses[0].setFormat(format)
         try! au.inputBusses[0].setFormat(format)
         au.inputBusses[0].isEnabled = true
@@ -104,7 +109,8 @@ final class SidechainRenderer {
     }
 
     func param(_ name: String) -> AUParameter {
-        au.parameterTree!.allParameters.first { $0.displayName == name }!
+        guard let p = params[name] else { fatalError("no parameter \(name)") }
+        return p
     }
 
     func midi(_ bytes: [UInt8]) {
@@ -141,6 +147,84 @@ final class SidechainRenderer {
         }
         return result
     }
+}
+
+// Classic AU v2 host with host callbacks, the way Logic hands a plugin its
+// tempo, position and play state. (The v3 bridge can't carry transport for a
+// v2 instrument in this test setup.)
+var v2Tempo = 120.0
+var v2SampleTime = 0.0
+var v2Playing = true
+
+func renderWithHostTransport(runTransportMode: Bool, seconds: Double) -> [Float] {
+    var desc = description
+    var unit: AudioUnit?
+    AudioComponentInstanceNew(AudioComponentFindNext(nil, &desc)!, &unit)
+    let au = unit!
+    var fmt = AudioStreamBasicDescription(mSampleRate: sampleRate, mFormatID: kAudioFormatLinearPCM,
+        mFormatFlags: kAudioFormatFlagsNativeFloatPacked | kAudioFormatFlagIsNonInterleaved,
+        mBytesPerPacket: 4, mFramesPerPacket: 1, mBytesPerFrame: 4, mChannelsPerFrame: 2, mBitsPerChannel: 32, mReserved: 0)
+    let size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
+    AudioUnitSetProperty(au, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, 0, &fmt, size)
+    var maxFrames: UInt32 = 512
+    AudioUnitSetProperty(au, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &maxFrames, 4)
+
+    var callbacks = HostCallbackInfo()
+    callbacks.beatAndTempoProc = { _, beat, tempo in
+        beat?.pointee = v2SampleTime / sampleRate * v2Tempo / 60
+        tempo?.pointee = v2Tempo
+        return noErr
+    }
+    callbacks.musicalTimeLocationProc = { _, offset, numerator, denominator, downbeat in
+        offset?.pointee = 0
+        numerator?.pointee = 4
+        denominator?.pointee = 4
+        downbeat?.pointee = 0
+        return noErr
+    }
+    callbacks.transportStateProc = { _, playing, changed, position, cycling, cycleStart, cycleEnd in
+        playing?.pointee = DarwinBoolean(v2Playing)
+        changed?.pointee = DarwinBoolean(false)
+        position?.pointee = v2SampleTime
+        cycling?.pointee = DarwinBoolean(false)
+        return noErr
+    }
+    AudioUnitSetProperty(au, kAudioUnitProperty_HostCallbacks, kAudioUnitScope_Global, 0, &callbacks,
+                         UInt32(MemoryLayout<HostCallbackInfo>.size))
+    AudioUnitInitialize(au)
+
+    if runTransportMode { // find "Run Mode" and set it to Transport (menus are indexes)
+        var listSize: UInt32 = 0
+        AudioUnitGetPropertyInfo(au, kAudioUnitProperty_ParameterList, kAudioUnitScope_Global, 0, &listSize, nil)
+        var ids = [AudioUnitParameterID](repeating: 0, count: Int(listSize) / 4)
+        AudioUnitGetProperty(au, kAudioUnitProperty_ParameterList, kAudioUnitScope_Global, 0, &ids, &listSize)
+        for id in ids {
+            var info = AudioUnitParameterInfo()
+            var infoSize = UInt32(MemoryLayout<AudioUnitParameterInfo>.size)
+            AudioUnitGetProperty(au, kAudioUnitProperty_ParameterInfo, kAudioUnitScope_Global, id, &info, &infoSize)
+            if let name = info.cfNameString?.takeUnretainedValue() as String?, name == "Run Mode" {
+                AudioUnitSetParameter(au, id, kAudioUnitScope_Global, 0, 1, 0)
+            }
+        }
+    }
+
+    let bufs = AudioBufferList.allocate(maximumBuffers: 2)
+    let storage = (0..<2).map { _ in UnsafeMutablePointer<Float>.allocate(capacity: 512) }
+    var ts = AudioTimeStamp()
+    ts.mFlags = .sampleTimeValid
+    var out: [Float] = []
+    v2SampleTime = 0
+    while out.count < Int(seconds * sampleRate) {
+        for i in 0..<2 { bufs[i] = AudioBuffer(mNumberChannels: 1, mDataByteSize: 512 * 4, mData: storage[i]) }
+        var flags = AudioUnitRenderActionFlags()
+        ts.mSampleTime = v2SampleTime
+        AudioUnitRender(au, &flags, &ts, 0, 512, bufs.unsafeMutablePointer)
+        out.append(contentsOf: UnsafeBufferPointer(start: storage[0], count: 512))
+        v2SampleTime += 512
+    }
+    AudioUnitUninitialize(au)
+    AudioComponentInstanceDispose(au)
+    return out
 }
 
 func peakDb(_ x: [Float]) -> Float {
@@ -212,7 +296,8 @@ do {
     check(peakDb(rim) > -30, String(format: "chromatic: channel 2 note 64 plays the keys voice (%.1f dB)", peakDb(rim)))
     check(peakDb(r.play(channel: 11, note: 50)) > -30, "chromatic: any channel plays the keys voice")
     check(peakDb(r.play(channel: 10, note: 36)) > -30, "chromatic: channel 10 note 36 still plays the kick")
-    check(peakDb(r.play(channel: 10, note: 60)) < -100, "chromatic: channel 10 outside the drum map is silent")
+    check(peakDb(r.play(channel: 10, note: 50)) < -100, "chromatic: channel 10 outside the drum map and pattern keys is silent")
+    check(peakDb(r.play(channel: 10, note: 60, seconds: 0.6, noteSeconds: 0.5)) > -40, "chromatic: channel 10 C3 plays pattern 1")
 }
 
 print("Chromatic play (keys voice 6 = bass, channel 1):")
@@ -246,6 +331,49 @@ do {
     let open = bassLevel(0), keyed = bassLevel(1)
     check(keyed < open - 6, String(format: "a key signal ducks the chain (%.1f dB → %.1f dB)", open, keyed))
     check(abs(open - bassLevel(0)) < 1, "without a key the level comes back")
+}
+
+func energy(_ x: ArraySlice<Float>) -> Float { x.map { $0 * $0 }.reduce(0, +) }
+
+print("Sequencer (pattern keys, Transport mode, saved patterns):")
+do {
+    // Pattern key through the real AU, host stopped: internal tempo.
+    let r = Renderer(instantiate())
+    let beat = r.play(channel: 1, note: 60, seconds: 2.0, noteSeconds: 1.5) // hold C3: pattern 1
+    let playing = energy(beat[24000..<72000]), after = energy(beat[84000...])
+    check(playing > 1 && after < playing * 0.01,
+          String(format: "holding C3 plays the breakbeat, release stops it (%.1f vs %.4f)", playing, after))
+    let silent = energy(r.play(channel: 1, note: 62, seconds: 1.0, noteSeconds: 0.9)[...])
+    check(silent < 1e-6, "an empty pattern (D3 = pattern 3) is silent")
+
+    // Transport mode follows the host tempo: the kick on step 3 (2 x 16th)
+    // lands at 0.25 s at 120 bpm, at 0.5 s at 60 bpm.
+    func kickAtQuarterSecond(_ bpm: Double) -> Float {
+        v2Tempo = bpm
+        v2Playing = true
+        return energy(renderWithHostTransport(runTransportMode: true, seconds: 0.4)[12000..<13500])
+    }
+    let fast = kickAtQuarterSecond(120), slow = kickAtQuarterSecond(60)
+    check(fast > slow * 20, String(format: "Transport mode follows the host tempo (%.2f vs %.4f at 0.25 s)", fast, slow))
+    v2Playing = false
+    let stopped = energy(renderWithHostTransport(runTransportMode: true, seconds: 0.4)[...])
+    check(stopped < 1e-6, "Transport mode is silent while the host is stopped (and Play is off)")
+    v2Playing = true
+    let keysMode = energy(renderWithHostTransport(runTransportMode: false, seconds: 0.4)[...])
+    check(keysMode < 1e-6, "Keys mode doesn't start by itself when the host plays")
+
+    // Patterns are saved with the project: put a kick on every beat of pattern 2.
+    guard let data = r.unit.auAudioUnit.fullState?["jucePluginState"] as? Data else { fatalError("no JUCE state") }
+    var xml = decodeState(data)
+    check(xml.contains("<PATTERNS"), "state XML contains the patterns")
+    let kick = "<PATTERN index=\"1\" length=\"16\" xy=\"\"><TRACK voice=\"0\" length=\"16\" noteLength=\"0.5\" gate=\"1000100010001000\"/></PATTERN>"
+    xml = xml.replacingOccurrences(of: "</PATTERNS>", with: kick + "</PATTERNS>")
+    var state = r.unit.auAudioUnit.fullState!
+    state["jucePluginState"] = encodeState(xml)
+    let restored = Renderer(instantiate())
+    restored.unit.auAudioUnit.fullState = state
+    let p2 = restored.play(channel: 1, note: 61, seconds: 1.2, noteSeconds: 1.1) // C#3: pattern 2
+    check(energy(p2[0..<3000]) > 0.1 && energy(p2[24000..<27000]) > 0.1, "a pattern written into a saved project plays after reload")
 }
 
 print("State round trip (parameters):")

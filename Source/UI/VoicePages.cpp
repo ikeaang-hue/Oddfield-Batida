@@ -1,5 +1,7 @@
 #include "VoicePages.h"
 
+#include "Engine/SampleSource.h"
+
 using namespace batida;
 
 namespace
@@ -162,6 +164,26 @@ void WaveformView::paint (juce::Graphics& g)
                                             binW + 0.5f, std::max (1.0f, (hi - lo) * half)));
     }
 
+    // Slice boundaries, numbered as the sequencer's Slice lane counts them.
+    SliceSpec spec;
+    spec.mode = (SliceMode) juce::jlimit (0, 2, p.choice (vp::SmpSliceMode));
+    spec.gridCount = juce::roundToInt (p[vp::SmpSlices]);
+    spec.sensitivity = p[vp::SmpSliceSens];
+    if (spec.mode != SliceMode::Off)
+    {
+        const auto frames = (double) data->numFrames();
+        const auto count = sliceCount (*data, spec, start * frames, end * frames);
+        g.setFont (juce::FontOptions (11.0f));
+        for (int k = 0; k < count; ++k)
+        {
+            const auto from = sliceRegion (*data, spec, start * frames, end * frames, k).first / frames;
+            g.setColour (juce::Colours::yellow.withAlpha (0.7f));
+            g.drawVerticalLine ((int) xAt ((float) from), r.getY(), r.getBottom());
+            g.drawText (juce::String (k + 1), juce::Rectangle<float> (xAt ((float) from) + 2.0f, r.getY() + 2.0f, 24.0f, 12.0f),
+                        juce::Justification::topLeft);
+        }
+    }
+
     // Markers
     g.setColour (juce::Colours::white);
     g.drawVerticalLine ((int) xAt (start), r.getY(), r.getBottom());
@@ -212,6 +234,11 @@ SourcePage::SourcePage (BatidaProcessor& p) : VoicePage (p), waveform (p)
     add (loopSection, vp::SmpLoop);
     add (loopSection, vp::SmpLoopStart);
     add (loopSection, vp::SmpLoopEnd);
+
+    sliceSection = addSection ("Slices (sequencer Slice lane)");
+    add (sliceSection, vp::SmpSliceMode, "Mode").withWidth (100);
+    add (sliceSection, vp::SmpSlices, "Grid Slices");
+    add (sliceSection, vp::SmpSliceSens, "Sensitivity");
 
     addAndMakeVisible (loadButton);
     addAndMakeVisible (clearButton);
@@ -280,8 +307,9 @@ void SourcePage::timerCallback()
 {
     // Repaint when the sample or any marker changes (including automation).
     const auto p = proc.readVoiceParams (voice);
-    const std::array<float, 5> markers { p[vp::SmpStart], p[vp::SmpEnd], p[vp::SmpLoopStart],
-                                         p[vp::SmpLoopEnd], p[vp::SmpLoop] + 2.0f * p[vp::PlayMode] };
+    const std::array<float, 8> markers { p[vp::SmpStart], p[vp::SmpEnd], p[vp::SmpLoopStart],
+                                         p[vp::SmpLoopEnd], p[vp::SmpLoop] + 2.0f * p[vp::PlayMode],
+                                         p[vp::SmpSliceMode], p[vp::SmpSlices], p[vp::SmpSliceSens] };
     const auto version = proc.sampleSlot (voice).getVersion();
 
     if (version != lastVersion)
@@ -310,7 +338,7 @@ void SourcePage::resized()
     waveform.setBounds (sampleRow.withTrimmedLeft (kGap));
     area.removeFromTop (kGap);
 
-    layoutRow (area, { sampleSection, loopSection });
+    layoutRow (area, { sampleSection, loopSection, sliceSection });
 }
 
 // ChainPage -------------------------------------------------------------------

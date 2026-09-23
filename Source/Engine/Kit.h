@@ -2,6 +2,8 @@
 
 #include "Chain/KitChain.h"
 #include "MidiRouter.h"
+#include "Sequencer/PatternStore.h"
+#include "Sequencer/Sequencer.h"
 #include "SampleData.h"
 #include "Voice.h"
 
@@ -10,7 +12,8 @@ namespace batida
 
 // The 8 voices, split into dry and wet buses by each voice's Chain amount; the
 // wet bus runs through the kit chain, the dry bus is added back, then the
-// master level and the safety clipper.
+// master level and the safety clipper. The sequencer's hits and live MIDI go
+// into the voices the same way; pattern keys (C3-D#4) drive the sequencer.
 class Kit
 {
 public:
@@ -23,20 +26,30 @@ public:
     // Clears the buffer and renders into it (2 channels, or 1 for a mono mix).
     // `sidechain` (optional, 1-2 channels, same length) keys the compressor.
     void process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi,
-                  const juce::AudioBuffer<float>* sidechain = nullptr);
+                  const juce::AudioBuffer<float>* sidechain = nullptr, const Transport& transport = {});
 
     int getLatencySamples() const { return chain.getLatencySamples(); }
     float getGainReductionDb() const { return chain.getGainReductionDb(); }
 
     // Direct triggering, used by the editor's audition buttons and by tests.
-    void noteOn (int voice, int key, float velocity) { voices[(size_t) voice].noteOn (key, velocity); }
+    void noteOn (int voice, int key, float velocity, int slice = -1) { voices[(size_t) voice].noteOn (key, velocity, slice); }
     void noteOff (int voice, int key) { voices[(size_t) voice].noteOff (key); }
 
     SampleSlot& sampleSlot (int voice) { return slots[(size_t) voice]; }
+    PatternStore& patternStore() { return patterns; }
+    const Sequencer& getSequencer() const { return sequencer; }
+
+    // The XY position the chain is using right now (a step lock or the pad).
+    bool isXyLocked() const { return uiXyLocked.load(); }
+    float getLockX() const { return uiLockX.load(); }
+    float getLockY() const { return uiLockY.load(); }
     const Voice& getVoice (int voice) const { return voices[(size_t) voice]; }
 
 private:
     void handle (const juce::MidiMessage& message);
+    void handle (const SeqEvent& e);
+    bool isPatternKey (const juce::MidiMessage& message) const;
+    void applyChainSettings();
     void renderSegment (int start, int numSamples, juce::AudioBuffer<float>& buffer,
                         const juce::AudioBuffer<float>* sidechain);
 
@@ -45,6 +58,16 @@ private:
     juce::AudioBuffer<float> scratch; // dry L/R, wet L/R
     KitChain chain;
     bool safetyClip = true;
+    Sequencer sequencer;
+    PatternStore patterns;
+    SeqSettings seqSettings;
+    std::vector<SeqEvent> seqEvents;
+    std::array<float, kNumGlobalParams> globals {};
+    bool xyLocked = false;
+    float lockX = 0.5f, lockY = 0.0f;
+    std::atomic<bool> uiXyLocked { false };
+    std::atomic<float> uiLockX { 0.5f }, uiLockY { 0.0f };
+
     MidiMode midiMode = MidiMode::DrumMap;
     int keysVoice = 0;
     Smoother master;

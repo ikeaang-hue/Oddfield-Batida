@@ -23,7 +23,7 @@ public:
     void setParameters (const VoiceParams& p);
     void setSampleData (const SampleData* data) { sampleSource.setData (data); }
 
-    void noteOn (int key, float velocity); // velocity 0..1
+    void noteOn (int key, float velocity, int slice = -1); // velocity 0..1; slice for sliced samples
     void noteOff (int key);
     void allNotesOff();                    // release, or hard stop if reset
     void reset();
@@ -36,7 +36,7 @@ public:
     float getPitchOffset() const { return pitch; } // semitones from the base key, for tests
 
 private:
-    void startNote (int key, float velocity);
+    void startNote (int key, float velocity, int slice);
     void removeHeld (int key);
     bool sourceActive() const;
 
@@ -65,7 +65,7 @@ private:
 
     bool stealing = false;
     float stealGain = 1.0f, stealStep = 0.0f;
-    int pendingKey = kBaseKey;
+    int pendingKey = kBaseKey, pendingSlice = -1;
     float pendingVelocity = 1.0f;
 
     std::array<int, 16> held {};

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Batida VERSION 0.2.0)
+project(Batida VERSION 0.3.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,7 +30,10 @@ target_sources(BatidaEngine
         Source/Engine/Chain/ChainSettings.cpp
         Source/Engine/Chain/Compressor.cpp
         Source/Engine/Chain/Saturator.cpp
-        Source/Engine/Chain/KitChain.cpp)
+        Source/Engine/Chain/KitChain.cpp
+        Source/Engine/Sequencer/Pattern.cpp
+        Source/Engine/Sequencer/PatternStore.cpp
+        Source/Engine/Sequencer/Sequencer.cpp)
 
 target_include_directories(BatidaEngine INTERFACE Source)
 
@@ -68,7 +71,8 @@ target_sources(Batida
         Source/UI/ParamControl.cpp
         Source/UI/VoicePages.cpp
         Source/UI/FmPage.cpp
-        Source/UI/KitPage.cpp)
+        Source/UI/KitPage.cpp
+        Source/UI/PatternGrid.cpp)
 
 target_compile_definitions(Batida PUBLIC ${BATIDA_DEFINITIONS})
 
@@ -91,6 +95,7 @@ target_sources(BatidaTests
         tests/TestMain.cpp
         tests/EngineTests.cpp
         tests/ChainTests.cpp
+        tests/SequencerTests.cpp
         tests/Tools.cpp)
 
 target_compile_definitions(BatidaTests PRIVATE ${BATIDA_DEFINITIONS})
@@ -115,7 +120,8 @@ target_sources(BatidaSnapshot
         Source/UI/ParamControl.cpp
         Source/UI/VoicePages.cpp
         Source/UI/FmPage.cpp
-        Source/UI/KitPage.cpp)
+        Source/UI/KitPage.cpp
+        Source/UI/PatternGrid.cpp)
 
 target_compile_definitions(BatidaSnapshot PRIVATE ${BATIDA_DEFINITIONS} JucePlugin_Name="Batida")
 

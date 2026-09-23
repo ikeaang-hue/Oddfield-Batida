@@ -203,6 +203,47 @@ int runPad (const juce::File& outDir)
     return 0;
 }
 
+int runBeat (const juce::File& outDir)
+{
+    // Pattern 1 (the breakbeat), played by holding C3 for 4 bars on the
+    // internal tempo, at three pad positions.
+    outDir.createDirectory();
+    struct Position { float x, y; const char* name; };
+    for (const auto& p : { Position { 0.5f, 0.2f, "default" }, Position { 0.0f, 0.6f, "warm-hot" },
+                           Position { 1.0f, 0.9f, "digital-destroyed" } })
+    {
+        auto params = defaultKitParams();
+        params.global[gp::XyX] = p.x;
+        params.global[gp::XyY] = p.y;
+
+        constexpr int block = 256;
+        const auto total = (int) (48000.0 * 8.5);
+        Kit kit;
+        kit.setParameters (params);
+        kit.prepare (48000.0, block);
+        juce::AudioBuffer<float> out (2, total), buf (2, block);
+        for (int pos = 0; pos < total; pos += block)
+        {
+            const auto n = std::min (block, total - pos);
+            buf.setSize (2, n, false, false, true);
+            juce::MidiBuffer midi;
+            if (pos == 0)
+                midi.addEvent (juce::MidiMessage::noteOn (1, 60, 0.8f), 0);
+            if (pos <= 48000 * 8 && pos + n > 48000 * 8)
+                midi.addEvent (juce::MidiMessage::noteOff (1, 60), 48000 * 8 - pos);
+            kit.setParameters (params);
+            kit.process (buf, midi);
+            out.copyFrom (0, pos, buf, 0, 0, n);
+            out.copyFrom (1, pos, buf, 1, 0, n);
+        }
+        const auto [rms, peak] = levelOfTail (out, 8.0);
+        std::printf ("%-18s rms %6.1f dB  peak %6.1f dB\n", p.name, rms, peak);
+        writeWav (outDir.getChildFile (juce::String ("breakbeat-") + p.name + ".wav"), out, 48000.0);
+    }
+    std::printf ("WAVs written to %s\n", outDir.getFullPathName().toRawUTF8());
+    return 0;
+}
+
 int runBenchmark()
 {
     // Worst case for phase 1: all 8 voices held at once, every operator active,

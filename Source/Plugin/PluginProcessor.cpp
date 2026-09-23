@@ -8,6 +8,7 @@ const juce::Identifier kSamplesTag ("SAMPLES");
 const juce::Identifier kSampleTag ("SAMPLE");
 const juce::Identifier kVoiceAttr ("voice");
 const juce::Identifier kPathAttr ("path");
+const juce::Identifier kPatternsTag ("PATTERNS");
 
 juce::String formatValue (const ParamSpec& spec, float v)
 {
@@ -36,6 +37,10 @@ juce::String formatValue (const ParamSpec& spec, float v)
                                      : (v < 0.0f ? "L" : "R") + juce::String (juce::roundToInt (std::abs (v) * 100.0f));
     if (u == "x")
         return juce::String (v, 3);
+    if (u == "n")
+        return juce::String (juce::roundToInt (v));
+    if (u == "bpm")
+        return juce::String (v, 1) + " bpm";
     if (u == "dist")
     {
         static const char* names[] = { "Tape", "Tube", "Clip", "Fold", "Crush" };
@@ -216,7 +221,36 @@ void BatidaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
         sidechain = &sidechainCopy;
     }
 
-    kit.process (buffer, midi, sidechain);
+    // Where the host is: the sequencer follows its bar/beat position and tempo.
+    Transport transport;
+    if (auto* head = getPlayHead())
+        if (const auto pos = head->getPosition())
+        {
+            const auto ppq = pos->getPpqPosition();
+            transport.hostPlaying = pos->getIsPlaying() && ppq.hasValue();
+            transport.ppq = ppq.orFallback (0.0);
+            transport.bpm = pos->getBpm().orFallback (120.0);
+            if (const auto sig = pos->getTimeSignature())
+                transport.beatsPerBar = sig->numerator * 4.0 / std::max (1, sig->denominator);
+        }
+
+    kit.process (buffer, midi, sidechain, transport);
+}
+
+int BatidaProcessor::displayPattern() const
+{
+    const auto& seq = kit.getSequencer();
+    if (seq.isRunning())
+        return seq.getActivePattern();
+    return juce::roundToInt (globalRaw[(size_t) gp::SeqPattern]->load());
+}
+
+void BatidaProcessor::setPatternParameter (int pattern)
+{
+    auto* p = state.getParameter (globalParamID (gp::SeqPattern));
+    p->beginChangeGesture();
+    p->setValueNotifyingHost (p->convertTo0to1 ((float) pattern));
+    p->endChangeGesture();
 }
 
 void BatidaProcessor::audition (int voice, bool on)
@@ -269,12 +303,16 @@ void BatidaProcessor::timerCallback()
 {
     for (int v = 0; v < kNumVoices; ++v)
         kit.sampleSlot (v).collectGarbage();
+    kit.patternStore().collectGarbage();
 }
 
 void BatidaProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     auto tree = state.copyState();
     tree.removeChild (tree.getChildWithName (kSamplesTag), nullptr);
+    tree.removeChild (tree.getChildWithName (kPatternsTag), nullptr);
+    if (const auto patternXml = kit.patternStore().get().toXml())
+        tree.appendChild (juce::ValueTree::fromXml (*patternXml), nullptr);
 
     juce::ValueTree samples (kSamplesTag);
     for (int v = 0; v < kNumVoices; ++v)
@@ -298,7 +336,18 @@ void BatidaProcessor::setStateInformation (const void* data, int sizeInBytes)
     auto tree = juce::ValueTree::fromXml (*xml);
     const auto samples = tree.getChildWithName (kSamplesTag);
     tree.removeChild (samples, nullptr);
+    const auto patternTree = tree.getChildWithName (kPatternsTag);
+    tree.removeChild (patternTree, nullptr);
     state.replaceState (tree);
+
+    // Projects from before phase 3 have no patterns: keep the defaults.
+    if (patternTree.isValid())
+        if (const auto patternXml = patternTree.createXml())
+        {
+            PatternBank bank;
+            bank.fromXml (*patternXml);
+            kit.patternStore().replace (bank);
+        }
 
     std::array<juce::String, kNumVoices> paths;
     for (const auto& s : samples)

@@ -33,6 +33,7 @@ std::pair<float, float> levelOfTail (const juce::AudioBuffer<float>& audio, doub
 
 int runRender (const juce::File& outDir);
 int runPad (const juce::File& outDir);
+int runBeat (const juce::File& outDir);
 int runBenchmark();
 
 } // namespace batida::tools

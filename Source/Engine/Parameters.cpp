@@ -85,6 +85,9 @@ std::vector<ParamSpec> buildVoiceSpecs()
     s[vp::SmpLoop]      = toggle ("smp_loop", "Loop");
     s[vp::SmpLoopStart] = flt ("smp_loop_start", "Loop Start", 0.0f, 1.0f, 0.0f, "%");
     s[vp::SmpLoopEnd]   = flt ("smp_loop_end", "Loop End", 0.0f, 1.0f, 1.0f, "%");
+    s[vp::SmpSliceMode] = choice ("smp_slice_mode", "Slice Mode", { "Off", "Grid", "Transients" });
+    s[vp::SmpSlices]    = flt ("smp_slices", "Slices", 2.0f, 32.0f, 8.0f, "n", 0.0f, 1.0f);
+    s[vp::SmpSliceSens] = flt ("smp_slice_sens", "Slice Sensitivity", 0.0f, 1.0f, 0.5f, "%");
 
     s[vp::Punch]     = flt ("punch", "Punch", 0.0f, 1.0f, 0.0f, "%");
     s[vp::Drive]     = flt ("drive", "Drive", 0.0f, 1.0f, 0.0f, "%");
@@ -151,6 +154,15 @@ std::vector<ParamSpec> buildGlobalSpecs()
 
     s[gp::ChainOut]   = flt ("chain_out", "Chain Out", -24.0f, 12.0f, 0.0f, "dB", 0.0f, 0.1f);
     s[gp::SafetyClip] = toggle ("safety_clip", "Safety Clip", true);
+
+    s[gp::SeqPattern]  = choice ("seq_pattern", "Pattern", { "1", "2", "3", "4", "5", "6", "7", "8",
+                                                             "9", "10", "11", "12", "13", "14", "15", "16" });
+    s[gp::SeqRun]      = choice ("seq_run", "Run Mode", { "Keys", "Transport" });
+    s[gp::SeqPlay]     = toggle ("seq_play", "Play");
+    s[gp::SeqTempo]    = flt ("seq_tempo", "Tempo", 40.0f, 240.0f, 120.0f, "bpm", 0.0f, 0.1f);
+    s[gp::SeqSwing]    = flt ("seq_swing", "Swing", 0.5f, 0.75f, 0.5f, "%");
+    s[gp::SeqQuantise] = choice ("seq_quantise", "Quantise", { "Step", "Beat", "Bar" }, 1);
+    s[gp::SeqLatch]    = toggle ("seq_latch", "Latch");
     return s;
 }
 } // namespace

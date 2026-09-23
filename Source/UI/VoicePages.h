@@ -70,14 +70,14 @@ private:
     void timerCallback() override;
     void refreshStatus();
 
-    int voiceSection, sampleSection, loopSection;
+    int voiceSection, sampleSection, loopSection, sliceSection;
     juce::TextButton loadButton { "Load..." }, clearButton { "Clear" };
     juce::Label fileLabel;
     WaveformView waveform;
     std::unique_ptr<juce::FileChooser> chooser;
 
     int lastVersion = -1;
-    std::array<float, 5> lastMarkers {};
+    std::array<float, 8> lastMarkers {};
 };
 
 class ChainPage final : public VoicePage

@@ -37,6 +37,13 @@ public:
     // Editor interface (message thread) ------------------------------------
     juce::AudioProcessorValueTreeState& getState() { return state; }
     batida::SampleSlot& sampleSlot (int voice) { return kit.sampleSlot (voice); }
+    batida::PatternStore& patterns() { return kit.patternStore(); }
+    const batida::Sequencer& sequencer() const { return kit.getSequencer(); }
+    const batida::Kit& getKit() const { return kit; }
+
+    // The pattern the grid shows: the one playing, or the Pattern parameter.
+    int displayPattern() const;
+    void setPatternParameter (int pattern);
     juce::AudioFormatManager& getFormats() { return formats; }
 
     // Loads a file into a voice. A voice on FM switches to Sample so the new
