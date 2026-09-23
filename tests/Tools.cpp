@@ -10,6 +10,7 @@ juce::AudioBuffer<float> renderVoice (const KitParams& params, int voice, int ke
 {
     constexpr int block = 128;
     Kit kit;
+    kit.setParameters (params); // so the chain starts at these settings, not sweeping to them
     kit.prepare (sampleRate, block);
 
     const auto total = (int) (seconds * sampleRate);
@@ -108,6 +109,95 @@ int runRender (const juce::File& outDir)
 
         const auto name = juce::String (v + 1) + "-" + juce::String (defaultVoiceName (v)).replace (" ", "") + ".wav";
         writeWav (outDir.getChildFile (name), audio, 48000.0);
+    }
+    std::printf ("WAVs written to %s\n", outDir.getFullPathName().toRawUTF8());
+    return 0;
+}
+
+std::pair<float, float> levelOfTail (const juce::AudioBuffer<float>& audio, double seconds, double sampleRate)
+{
+    const auto start = std::max (0, audio.getNumSamples() - (int) (seconds * sampleRate));
+    double sum = 0.0;
+    float peak = 0.0f;
+    for (int ch = 0; ch < audio.getNumChannels(); ++ch)
+        for (int i = start; i < audio.getNumSamples(); ++i)
+        {
+            const auto v = audio.getSample (ch, i);
+            sum += (double) v * v;
+            peak = std::max (peak, std::abs (v));
+        }
+    const auto n = (double) audio.getNumChannels() * (audio.getNumSamples() - start);
+    return { (float) (10.0 * std::log10 (std::max (1.0e-20, sum / n))), 20.0f * std::log10 (std::max (peak, 1.0e-10f)) };
+}
+
+juce::AudioBuffer<float> renderLoop (const KitParams& params, int repeats, double sampleRate)
+{
+    constexpr int block = 128;
+    const auto sixteenth = sampleRate * 0.125; // 120 bpm
+    const auto total = (int) (sixteenth * 32 * repeats + sampleRate * 0.5);
+
+    // (step, voice) pairs over two bars of 16 steps.
+    std::vector<std::pair<int, int>> hits;
+    for (int s = 0; s < 32 * repeats; ++s)
+    {
+        if (s % 4 == 0) hits.push_back ({ s, 0 });                  // kick on the beat
+        if (s % 8 == 4) hits.push_back ({ s, 2 });                  // snare on 2 and 4
+        if (s % 2 == 0 && s % 16 != 14) hits.push_back ({ s, 6 });  // closed hat on 8ths
+        if (s % 16 == 14) hits.push_back ({ s, 7 });                // open hat before the bar
+        if (s % 32 == 30) hits.push_back ({ s, 3 });                // clap at the end
+    }
+
+    Kit kit;
+    kit.setParameters (params);
+    kit.prepare (sampleRate, block);
+    juce::AudioBuffer<float> out (2, total), buf (2, block);
+
+    for (int pos = 0; pos < total; pos += block)
+    {
+        const auto n = std::min (block, total - pos);
+        buf.setSize (2, n, false, false, true);
+        juce::MidiBuffer midi;
+        for (const auto& [step, voice] : hits)
+        {
+            const auto at = (int) std::lround (step * sixteenth);
+            if (at >= pos && at < pos + n)
+            {
+                midi.addEvent (juce::MidiMessage::noteOn (1, kDrumMapFirstNote + voice, 0.85f), at - pos);
+                midi.addEvent (juce::MidiMessage::noteOff (1, kDrumMapFirstNote + voice), std::min (n - 1, at - pos + 1));
+            }
+        }
+        kit.setParameters (params);
+        kit.process (buf, midi);
+        out.copyFrom (0, pos, buf, 0, 0, n);
+        out.copyFrom (1, pos, buf, 1, 0, n);
+    }
+    return out;
+}
+
+int runPad (const juce::File& outDir)
+{
+    // Loudness of the beat at five pad positions, relative to bottom-left
+    // (warm, clean), plus WAVs for listening.
+    outDir.createDirectory();
+    struct Position { float x, y; const char* name; };
+    const Position positions[] = { { 0.0f, 0.0f, "warm-clean" }, { 1.0f, 0.0f, "digital-clean" },
+                                   { 0.5f, 0.5f, "centre" }, { 0.0f, 1.0f, "warm-destroyed" },
+                                   { 1.0f, 1.0f, "digital-destroyed" } };
+
+    float reference = 0.0f;
+    std::printf ("%-18s %8s %8s %10s\n", "pad position", "rms dB", "peak dB", "vs bottom-left");
+    for (const auto& p : positions)
+    {
+        auto params = defaultKitParams();
+        params.global[gp::XyX] = p.x;
+        params.global[gp::XyY] = p.y;
+        // Three passes; measure the last one, once the adaptive stages have settled.
+        const auto audio = renderLoop (params, 3);
+        const auto [rms, peak] = levelOfTail (audio, 4.0);
+        if (&p == &positions[0])
+            reference = rms;
+        std::printf ("%-18s %8.1f %8.1f %+10.1f\n", p.name, rms, peak, rms - reference);
+        writeWav (outDir.getChildFile (juce::String ("pad-") + p.name + ".wav"), audio, 48000.0);
     }
     std::printf ("WAVs written to %s\n", outDir.getFullPathName().toRawUTF8());
     return 0;

@@ -43,6 +43,7 @@ enum : int
     SmpTune, SmpStart, SmpEnd, SmpReverse, SmpFadeIn, SmpFadeOut, SmpGain,
     SmpLoop, SmpLoopStart, SmpLoopEnd,
     Punch, Drive, DriveType, FltType, FltCutoff, FltRes,
+    ChainAmt, // dry/wet into the kit chain
     OpBase
 };
 }
@@ -54,7 +55,17 @@ constexpr int kNumVoiceParams = vp::OpBase + kNumOps * kNumOpFields;
 
 namespace gp
 {
-enum : int { MidiMode, Master, KeysVoice, Count };
+enum : int
+{
+    MidiMode, Master, KeysVoice,
+    // Kit chain (phase 2)
+    XyX, XyY,
+    CompAmount, CompAttack, CompRelease, CompMix, CompDetector, CompFollow,
+    DistDrive, DistType, DistLowKeep, ExcAmount, ExcTone, DistFollow,
+    EqHp, EqLp, EqLow, EqMid, EqHigh, EqFollow,
+    ChainOut, SafetyClip,
+    Count
+};
 }
 constexpr int kNumGlobalParams = gp::Count;
 
@@ -63,6 +74,7 @@ enum class PlayMode { OneShot, Gate };
 enum class DriveType { Soft, Hard, Fold, Crush };
 enum class FilterType { LowPass, HighPass, BandPass };
 enum class MidiMode { DrumMap, Chromatic };
+enum class Detector { Internal, Sidechain };
 
 const std::vector<ParamSpec>& voiceParamSpecs();  // kNumVoiceParams entries, in index order
 const std::vector<ParamSpec>& globalParamSpecs(); // kNumGlobalParams entries

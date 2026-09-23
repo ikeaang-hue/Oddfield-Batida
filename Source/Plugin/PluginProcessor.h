@@ -47,6 +47,8 @@ public:
     void audition (int voice, bool on);
     void setKeysVoice (int voice); // what Chromatic mode plays; follows the editor selection
     batida::VoiceParams readVoiceParams (int voice) const;
+    std::array<float, batida::kNumGlobalParams> readGlobalParams() const;
+    float getGainReductionDb() const { return kit.getGainReductionDb(); }
 
     std::atomic<int> selectedVoice { 0 };
 
@@ -58,6 +60,7 @@ private:
     juce::AudioProcessorValueTreeState state;
     batida::Kit kit;
     batida::KitParams params;
+    juce::AudioBuffer<float> sidechainCopy;
 
     std::array<std::array<std::atomic<float>*, batida::kNumVoiceParams>, batida::kNumVoices> voiceRaw {};
     std::array<std::atomic<float>*, batida::kNumGlobalParams> globalRaw {};

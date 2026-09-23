@@ -28,8 +28,9 @@ public:
     void allNotesOff();                    // release, or hard stop if reset
     void reset();
 
-    // Adds this voice into the buffers.
-    void render (float* left, float* right, int numSamples);
+    // Adds this voice into the dry and wet buses, split by its Chain amount.
+    // Passing the same buffers for dry and wet gives the plain voice output.
+    void render (float* dryL, float* dryR, float* wetL, float* wetR, int numSamples);
 
     bool isActive() const { return active; }
     float getPitchOffset() const { return pitch; } // semitones from the base key, for tests
@@ -52,7 +53,7 @@ private:
     Drive drive;
     SvfFilter filter;
 
-    Smoother gainL, gainR, logCutoff;
+    Smoother gainL, gainR, logCutoff, chainAmt;
     std::array<float, 2> gainTargets { 1.0f, 1.0f };
     float cutoffTarget = 14.29f; // log2 Hz
     float cutoffHz = 20000.0f;

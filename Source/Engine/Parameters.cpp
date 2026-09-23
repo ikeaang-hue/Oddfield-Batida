@@ -93,6 +93,8 @@ std::vector<ParamSpec> buildVoiceSpecs()
     s[vp::FltCutoff] = flt ("flt_cutoff", "Cutoff", 20.0f, 20000.0f, 20000.0f, "Hz", 1000.0f);
     s[vp::FltRes]    = flt ("flt_res", "Resonance", 0.0f, 1.0f, 0.0f, "%");
 
+    s[vp::ChainAmt] = flt ("chain_amt", "Chain", 0.0f, 1.0f, 1.0f, "%");
+
     for (int o = 0; o < kNumOps; ++o)
     {
         const auto k = "op" + std::to_string (o + 1) + "_";
@@ -120,8 +122,35 @@ std::vector<ParamSpec> buildGlobalSpecs()
 {
     std::vector<ParamSpec> s (kNumGlobalParams);
     s[gp::MidiMode] = choice ("midi_mode", "MIDI Mode", { "Drum map", "Chromatic" });
-    s[gp::Master]   = flt ("master", "Master", -60.0f, 6.0f, 0.0f, "dB", -12.0f, 0.1f);
+    s[gp::Master]   = flt ("master", "Master", -60.0f, 6.0f, -8.0f, "dB", -12.0f, 0.1f); // headroom: overlapping hits sum hot
     s[gp::KeysVoice] = choice ("keys_voice", "Keys Voice", { "1", "2", "3", "4", "5", "6", "7", "8" });
+
+    s[gp::XyX] = flt ("xy_x", "XY Character", 0.0f, 1.0f, 0.5f, "%");
+    s[gp::XyY] = flt ("xy_y", "XY Heat", 0.0f, 1.0f, 0.2f, "%");
+
+    s[gp::CompAmount]   = flt ("comp_amount", "Comp Amount", 0.0f, 1.0f, 0.0f, "%");
+    s[gp::CompAttack]   = flt ("comp_attack", "Comp Attack", 0.1f, 100.0f, 10.0f, "ms", 10.0f);
+    s[gp::CompRelease]  = flt ("comp_release", "Comp Release", 10.0f, 1000.0f, 120.0f, "ms", 120.0f);
+    s[gp::CompMix]      = flt ("comp_mix", "Comp Mix", 0.0f, 1.0f, 1.0f, "%");
+    s[gp::CompDetector] = choice ("comp_detector", "Comp Detector", { "Internal", "Sidechain" });
+    s[gp::CompFollow]   = toggle ("comp_follow", "Comp Follow XY", true);
+
+    s[gp::DistDrive]   = flt ("dist_drive", "Dist Drive", 0.0f, 1.0f, 0.0f, "%");
+    s[gp::DistType]    = flt ("dist_type", "Dist Type", 0.0f, 1.0f, 0.5f, "dist");
+    s[gp::DistLowKeep] = flt ("dist_low_keep", "Low Keep", 40.0f, 300.0f, 90.0f, "Hz", 100.0f);
+    s[gp::ExcAmount]   = flt ("exc_amount", "Exciter", 0.0f, 1.0f, 0.0f, "%");
+    s[gp::ExcTone]     = flt ("exc_tone", "Exciter Tone", 2000.0f, 12000.0f, 5000.0f, "Hz", 5000.0f);
+    s[gp::DistFollow]  = toggle ("dist_follow", "Dist Follow XY", true);
+
+    s[gp::EqHp]     = flt ("eq_hp", "EQ High-pass", 20.0f, 1000.0f, 20.0f, "Hz", 100.0f);
+    s[gp::EqLp]     = flt ("eq_lp", "EQ Low-pass", 1000.0f, 20000.0f, 20000.0f, "Hz", 6000.0f);
+    s[gp::EqLow]    = flt ("eq_low", "EQ Low", -12.0f, 12.0f, 0.0f, "dB", 0.0f, 0.1f);
+    s[gp::EqMid]    = flt ("eq_mid", "EQ Mid", -12.0f, 12.0f, 0.0f, "dB", 0.0f, 0.1f);
+    s[gp::EqHigh]   = flt ("eq_high", "EQ High", -12.0f, 12.0f, 0.0f, "dB", 0.0f, 0.1f);
+    s[gp::EqFollow] = toggle ("eq_follow", "EQ Follow XY", true);
+
+    s[gp::ChainOut]   = flt ("chain_out", "Chain Out", -24.0f, 12.0f, 0.0f, "dB", 0.0f, 0.1f);
+    s[gp::SafetyClip] = toggle ("safety_clip", "Safety Clip", true);
     return s;
 }
 } // namespace

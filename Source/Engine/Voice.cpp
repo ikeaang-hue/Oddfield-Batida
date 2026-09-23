@@ -23,6 +23,7 @@ void Voice::prepare (double newSampleRate)
     gainL.setTime (5.0f, sampleRate);
     gainR.setTime (5.0f, sampleRate);
     logCutoff.setTime (10.0f, sampleRate);
+    chainAmt.setTime (10.0f, sampleRate);
     stealStep = (float) (1.0 / (0.0015 * sampleRate));
     reset();
 }
@@ -70,6 +71,7 @@ void Voice::setParameters (const VoiceParams& p)
         gainL.snap (targetL);
         gainR.snap (targetR);
         logCutoff.snap (targetCutoff);
+        chainAmt.snap (std::clamp (p[vp::ChainAmt], 0.0f, 1.0f));
         cutoffHz = std::exp2 (targetCutoff);
     }
     gainTargets[0] = targetL;
@@ -193,7 +195,7 @@ bool Voice::sourceActive() const
         || (mode != SourceMode::FM && sampleSource.isActive());
 }
 
-void Voice::render (float* left, float* right, int numSamples)
+void Voice::render (float* dryL, float* dryR, float* wetL, float* wetR, int numSamples)
 {
     if (! active)
         return;
@@ -208,6 +210,7 @@ void Voice::render (float* left, float* right, int numSamples)
     const auto resonance = params[vp::FltRes];
     const bool useFm = mode != SourceMode::Sample;
     const bool useSample = mode != SourceMode::FM;
+    const auto chainTarget = std::clamp (params[vp::ChainAmt], 0.0f, 1.0f);
 
     for (int i = 0; i < numSamples; ++i)
     {
@@ -262,8 +265,13 @@ void Voice::render (float* left, float* right, int numSamples)
         if (filterType != FilterType::LowPass || cutoffHz < 19900.0f)
             filter.process (l, r, cutoffHz, resonance, filterType);
 
-        left[i] += l * gainL.next (gainTargets[0]);
-        right[i] += r * gainR.next (gainTargets[1]);
+        l *= gainL.next (gainTargets[0]);
+        r *= gainR.next (gainTargets[1]);
+        const auto a = chainAmt.next (chainTarget);
+        dryL[i] += l * (1.0f - a);
+        dryR[i] += r * (1.0f - a);
+        wetL[i] += l * a;
+        wetR[i] += r * a;
 
         if (! ampEnv.isActive() || ! sourceActive())
         {

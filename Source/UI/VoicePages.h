@@ -3,8 +3,9 @@
 #include "ParamControl.h"
 #include "Plugin/PluginProcessor.h"
 
-// Base for the per-voice tabs: titled sections of parameter controls that
-// re-bind to whichever voice is selected.
+// Base for the pages: titled sections of parameter controls. Controls follow
+// the selected voice (re-bound by bindVoice), or are kit-wide, or belong to
+// one fixed voice (the Kit page's Chain amount row).
 class VoicePage : public juce::Component
 {
 public:
@@ -15,7 +16,9 @@ public:
 
 protected:
     int addSection (const juce::String& title);
-    ParamControl& add (int section, int param, const juce::String& label = {});
+    ParamControl& add (int section, int param, const juce::String& label = {});           // selected voice
+    ParamControl& addGlobal (int section, int param, const juce::String& label = {});     // kit-wide
+    ParamControl& addFixedVoice (int section, int voice, int param, const juce::String& label = {});
     void setSectionTitle (int section, const juce::String& title) { sections[(size_t) section].title = title; }
 
     // Lays sections out left to right from the top-left of `area`; returns the
@@ -34,8 +37,11 @@ private:
         juce::Rectangle<int> bounds;
     };
 
+    ParamControl& addControl (int section, const juce::String& label);
+
     std::vector<Section> sections;
-    std::vector<std::pair<std::unique_ptr<ParamControl>, int>> controls; // control, voice param index
+    std::vector<std::unique_ptr<ParamControl>> owned;
+    std::vector<std::pair<ParamControl*, int>> selectedVoiceControls; // control, voice param index
 };
 
 // Draws the loaded sample with start/end and loop markers.

@@ -1,6 +1,6 @@
 # Negative Space Batida: Design Spec
 
-*Version 1.4, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-voice Chain amount, sidechain input, chain before sequencer)*
+*Version 1.5, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-voice Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2)*
 
 ## 1. Identity
 
@@ -90,13 +90,17 @@ One shared chain, fed by the wet part of every voice (see Chain amount, §3). Th
 added back after it. The order is fixed.
 
 1. **Dynamics:** compressor with amount, attack, release and **mix** (for parallel compression).
+   Make-up gain is adaptive: it matches loudness in and out over about 1.5 s, so Amount changes
+   density, not level.
    - **Sidechain:** the detector listens either to the chain's own signal (default) or to the
      plugin's **sidechain input** from the DAW (in Logic, the Side Chain menu). Ducking and
      pumping are done in the DAW; there is no internal voice-keyed ducking.
 2. **Distortion / saturation:**
    - Character types from warm (tape/tube), through aggressive (clip/fold), to digital
      (crush/decimate), blended continuously.
-   - **Clean low end:** a crossover that keeps the sub intact.
+   - **Clean low end:** a Linkwitz-Riley crossover that keeps the sub intact. The dry bus gets
+     the matching allpass, so dry and wet stay in phase at any Chain amount (phase only; level
+     and tone are unchanged).
    - **Exciter:** a high-band control inside this stage, sharing the distortion engine.
 3. **Filter/EQ:** high-pass and low-pass, plus broad low/mid/high bands.
 4. **Output level.**
@@ -112,7 +116,8 @@ Reverb, delay and stereo/spatial effects are left to the DAW.
 
 The main way the chain is operated: one gesture moves the whole chain.
 
-- **Y = heat** (clean → destroyed): raises drive, compression and exciter together.
+- **Y = heat** (clean → destroyed): raises drive, compression and exciter together, and
+  shortens the compressor attack so transients are caught rather than spiking.
   **Automatic gain compensation** keeps loudness roughly steady, so heat changes character, not
   volume. The clean-low-end crossover rises with heat, so the sub stays solid.
 - **X = character** (warm → aggressive → digital): blends the distortion types continuously;

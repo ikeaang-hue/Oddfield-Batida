@@ -82,6 +82,67 @@ final class Renderer {
     func silence(seconds: Double) { _ = play(channel: 16, note: 0, velocity: 1, seconds: seconds, noteSeconds: 0) }
 }
 
+// Drives the AU directly, like a host that feeds the side-chain: the input bus
+// is pulled for audio on every render call. (AVAudioEngine can't connect
+// anything into an instrument node.)
+final class SidechainRenderer {
+    let au: AUAudioUnit
+    let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)!
+    let out: AVAudioPCMBuffer
+    var keyLevel: Float = 0
+    var phase = 0.0
+    var sampleTime = 0.0
+
+    init(_ unit: AVAudioUnit) {
+        au = unit.auAudioUnit
+        out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 512)!
+        try! au.outputBusses[0].setFormat(format)
+        try! au.inputBusses[0].setFormat(format)
+        au.inputBusses[0].isEnabled = true
+        au.maximumFramesToRender = 512
+        try! au.allocateRenderResources()
+    }
+
+    func param(_ name: String) -> AUParameter {
+        au.parameterTree!.allParameters.first { $0.displayName == name }!
+    }
+
+    func midi(_ bytes: [UInt8]) {
+        bytes.withUnsafeBufferPointer { au.scheduleMIDIEventBlock!(AUEventSampleTimeImmediate, 0, bytes.count, $0.baseAddress!) }
+    }
+
+    func play(note: UInt8, seconds: Double, noteSeconds: Double) -> [Float] {
+        var result: [Float] = []
+        let offAt = Int(noteSeconds * sampleRate)
+        if note > 0 { midi([0x90, note, 110]) }
+        while result.count < Int(seconds * sampleRate) {
+            if note > 0 && result.count <= offAt && result.count + 512 > offAt { midi([0x80, note, 0]) }
+            out.frameLength = 512
+            var flags = AudioUnitRenderActionFlags()
+            var ts = AudioTimeStamp()
+            ts.mSampleTime = sampleTime
+            ts.mFlags = .sampleTimeValid
+            let level = keyLevel
+            let status = au.renderBlock(&flags, &ts, 512, 0, out.mutableAudioBufferList) { _, _, frames, _, list in
+                for b in UnsafeMutableAudioBufferListPointer(list) {
+                    let p = b.mData!.assumingMemoryBound(to: Float.self)
+                    var ph = self.phase
+                    for i in 0..<Int(frames) {
+                        p[i] = level * Float(sin(ph))
+                        ph += 2 * Double.pi * 100 / sampleRate
+                    }
+                }
+                self.phase += Double(frames) * 2 * Double.pi * 100 / sampleRate
+                return noErr
+            }
+            precondition(status == noErr, "render failed: \(status)")
+            sampleTime += 512
+            result.append(contentsOf: UnsafeBufferPointer(start: out.floatChannelData![0], count: 512))
+        }
+        return result
+    }
+}
+
 func peakDb(_ x: [Float]) -> Float {
     let p = x.map { abs($0) }.max() ?? 0
     return p > 0 ? 20 * log10(p) : -200
@@ -165,18 +226,46 @@ do {
     check(abs(high / low - 2.0) < 0.1, String(format: "an octave up doubles the pitch (%.0f Hz → %.0f Hz)", low, high))
 }
 
+print("Sidechain input (kit compressor keyed from outside):")
+do {
+    let unit = instantiate()
+    let bus = unit.auAudioUnit.inputBusses
+    check(bus.count == 1, "the AU has one input bus (the sidechain): \(bus.count)")
+
+    let r = SidechainRenderer(unit)
+    r.param("Comp Detector").value = 1   // Sidechain (menu index)
+    r.param("Comp Amount").value = 0.8
+    r.param("XY Heat").value = 0         // compressor only, no pad offsets
+    func bassLevel(_ key: Float) -> Float {
+        r.keyLevel = key
+        _ = r.play(note: 0, seconds: 0.5, noteSeconds: 0) // let the envelopes settle
+        let x = r.play(note: 41, seconds: 0.6, noteSeconds: 0.6) // voice 6, bass (Gate)
+        let tail = x[9600...]
+        return 10 * log10(tail.map { $0 * $0 }.reduce(0, +) / Float(tail.count))
+    }
+    let open = bassLevel(0), keyed = bassLevel(1)
+    check(keyed < open - 6, String(format: "a key signal ducks the chain (%.1f dB → %.1f dB)", open, keyed))
+    check(abs(open - bassLevel(0)) < 1, "without a key the level comes back")
+}
+
 print("State round trip (parameters):")
 do {
     let a = Renderer(instantiate())
     a.param("V1 FM Pitch").value = 0.75
     a.param("V1 Drive").value = 0.8
     a.param("V1 Drive Type").value = 1.0
+    a.param("XY Character").value = 0.9
+    a.param("XY Heat").value = 0.7
+    a.param("V3 Chain").value = 0.25
+    a.param("EQ Follow XY").value = 0
     let original = a.play(channel: 1, note: 36)
     let state = a.unit.auAudioUnit.fullState
 
     let b = Renderer(instantiate())
     b.unit.auAudioUnit.fullState = state
     check(abs(b.param("V1 FM Pitch").value - 0.75) < 1e-4, "restored V1 FM Pitch = \(b.param("V1 FM Pitch").value)")
+    check(abs(b.param("XY Heat").value - 0.7) < 1e-4 && abs(b.param("V3 Chain").value - 0.25) < 1e-4
+              && b.param("EQ Follow XY").value == 0, "restored pad position, Chain amount and Follow XY")
     let restored = b.play(channel: 1, note: 36)
     let diff = zip(original, restored).map { abs($0 - $1) }.max() ?? 1
     check(diff < 1e-4, String(format: "restored instance renders the same audio (max diff %.2e)", diff))
@@ -197,6 +286,9 @@ do {
     // Switch voice 1 to Sample and point it at the tone.
     xml = xml.replacingOccurrences(of: #"<PARAM id="v1_src_mode" value="[^"]*"/>"#,
                                    with: #"<PARAM id="v1_src_mode" value="1.0"/>"#, options: .regularExpression)
+    // Dry, so the pitch check hears the sample itself rather than the chain.
+    xml = xml.replacingOccurrences(of: #"<PARAM id="v1_chain_amt" value="[^"]*"/>"#,
+                                   with: #"<PARAM id="v1_chain_amt" value="0.0"/>"#, options: .regularExpression)
     check(xml.contains("<SAMPLES/>"), "state XML has an (empty) sample list")
     xml = xml.replacingOccurrences(of: "<SAMPLES/>",
                                    with: "<SAMPLES><SAMPLE voice=\"0\" path=\"\(tonePath)\"/></SAMPLES>")
@@ -207,8 +299,10 @@ do {
     r.unit.auAudioUnit.fullState = state
     r.silence(seconds: 0.1)
     let x = r.play(channel: 1, note: 36)
-    let hz = zeroCrossingHz(Array(x[7200..<13000])) // after voice 1's pitch sweep settles
-    check(peakDb(x) > -20 && abs(hz - 440) < 10, String(format: "voice 1 plays the restored sample (%.0f Hz, %.1f dB)", hz, peakDb(x)))
+    // 100-175 ms: voice 1's pitch sweep has settled and the tone is still playing
+    // (the sweep plays its start fast, so it ends around 200 ms).
+    let hz = zeroCrossingHz(Array(x[4800..<8400]))
+    check(peakDb(x) > -26 && abs(hz - 440) < 10, String(format: "voice 1 plays the restored sample (%.0f Hz, %.1f dB)", hz, peakDb(x)))
 
     let missing = xml.replacingOccurrences(of: tonePath, with: "/nonexistent/gone.wav")
     state["jucePluginState"] = encodeState(missing)

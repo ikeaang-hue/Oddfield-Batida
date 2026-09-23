@@ -24,7 +24,15 @@ Stats measure (const juce::AudioBuffer<float>& audio, double sampleRate);
 
 bool writeWav (const juce::File& file, const juce::AudioBuffer<float>& audio, double sampleRate);
 
+// A simple two-bar beat at 120 bpm (kick, snare, hats, clap) from MIDI,
+// played `repeats` times.
+juce::AudioBuffer<float> renderLoop (const KitParams& params, int repeats = 1, double sampleRate = 48000.0);
+
+// RMS and peak (dB) of the last `seconds` of a buffer, both channels.
+std::pair<float, float> levelOfTail (const juce::AudioBuffer<float>& audio, double seconds, double sampleRate = 48000.0);
+
 int runRender (const juce::File& outDir);
+int runPad (const juce::File& outDir);
 int runBenchmark();
 
 } // namespace batida::tools

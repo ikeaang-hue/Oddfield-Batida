@@ -1,11 +1,14 @@
 #pragma once
 
 #include "FmPage.h"
+#include "KitPage.h"
 #include "VoicePages.h"
 
-// Minimal demo UI (stock JUCE controls): voice selector with audition, and the
-// selected voice's Source / FM / Chain / Envelope pages. Kept apart from the
-// engine so a proper visual design can replace it later.
+// Minimal demo UI (stock JUCE controls). Two views: KIT, the main panel for
+// the whole kit (XY pad, chain, Chain amounts), which opens first; and VOICE,
+// the selected sound's Source / FM / Voice FX / Envelope pages. The voice
+// buttons (select + audition) sit above both. Kept apart from the engine so a
+// proper visual design can replace it later.
 class BatidaEditor final : public juce::AudioProcessorEditor,
                            public juce::FileDragAndDropTarget,
                            private juce::Timer
@@ -33,6 +36,7 @@ private:
     };
 
     void selectVoice (int voice);
+    void showView (bool kit);
     int voiceAt (int x, int y) const;
     void timerCallback() override;
     void updateInfo();
@@ -42,6 +46,8 @@ private:
     juce::Label title, info;
     ParamControl midiMode, keysVoice, master;
     std::array<VoiceButton, batida::kNumVoices> voiceButtons;
+    juce::TextButton kitViewButton { "KIT" }, voiceViewButton { "VOICE" };
+    KitPage kitPage;
     juce::TabbedComponent tabs { juce::TabbedButtonBar::TabsAtTop };
 
     SourcePage* sourcePage = nullptr;

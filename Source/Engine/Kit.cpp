@@ -12,7 +12,8 @@ void Kit::prepare (double sampleRate, int maxBlockSize)
     for (auto& v : voices)
         v.prepare (sampleRate);
 
-    scratch.setSize (2, std::max (1, maxBlockSize));
+    scratch.setSize (4, std::max (1, maxBlockSize));
+    chain.prepare (sampleRate, std::max (1, maxBlockSize));
     master.setTime (5.0f, sampleRate);
     master.snap (masterTarget);
 }
@@ -21,6 +22,7 @@ void Kit::reset()
 {
     for (auto& v : voices)
         v.reset();
+    chain.reset();
 }
 
 void Kit::setParameters (const KitParams& params)
@@ -40,6 +42,10 @@ void Kit::setParameters (const KitParams& params)
     keysVoice = keys;
     const auto db = params.global[gp::Master];
     masterTarget = db <= -60.0f ? 0.0f : std::pow (10.0f, db / 20.0f);
+
+    const auto settings = computeEffectiveChain (params.global);
+    chain.setSettings (settings);
+    safetyClip = settings.safetyClip;
 }
 
 void Kit::handle (const juce::MidiMessage& message)
@@ -62,25 +68,56 @@ void Kit::handle (const juce::MidiMessage& message)
         voice.noteOff (e.key);
 }
 
-void Kit::renderSegment (int start, int numSamples, juce::AudioBuffer<float>& buffer)
+namespace
 {
-    // Render through the scratch buffer so any host block size and channel
+// Soft ceiling: linear up to -1 dBFS, then bends smoothly towards 0 dBFS.
+inline float softClip (float x)
+{
+    constexpr float t = 0.891f;
+    const auto a = std::abs (x);
+    if (a <= t)
+        return x;
+    return std::copysign (t + (1.0f - t) * std::tanh ((a - t) / (1.0f - t)), x);
+}
+} // namespace
+
+void Kit::renderSegment (int start, int numSamples, juce::AudioBuffer<float>& buffer,
+                         const juce::AudioBuffer<float>* sidechain)
+{
+    // Render through the scratch buses so any host block size and channel
     // count works without allocating.
     while (numSamples > 0)
     {
         const auto n = std::min (numSamples, scratch.getNumSamples());
         scratch.clear (0, n);
-        auto* l = scratch.getWritePointer (0);
-        auto* r = scratch.getWritePointer (1);
+        auto* dl = scratch.getWritePointer (0);
+        auto* dr = scratch.getWritePointer (1);
+        auto* wl = scratch.getWritePointer (2);
+        auto* wr = scratch.getWritePointer (3);
 
         for (auto& v : voices)
-            v.render (l, r, n);
+            v.render (dl, dr, wl, wr, n);
+
+        const float* scL = nullptr;
+        const float* scR = nullptr;
+        if (sidechain != nullptr && sidechain->getNumChannels() > 0)
+        {
+            scL = sidechain->getReadPointer (0, start);
+            scR = sidechain->getReadPointer (std::min (1, sidechain->getNumChannels() - 1), start);
+        }
+
+        chain.process (dl, dr, wl, wr, scL, scR, n); // result in dl/dr
 
         for (int i = 0; i < n; ++i)
         {
             const auto g = master.next (masterTarget);
-            l[i] *= g;
-            r[i] *= g;
+            dl[i] *= g;
+            dr[i] *= g;
+            if (safetyClip)
+            {
+                dl[i] = softClip (dl[i]);
+                dr[i] = softClip (dr[i]);
+            }
         }
 
         if (buffer.getNumChannels() >= 2)
@@ -99,7 +136,8 @@ void Kit::renderSegment (int start, int numSamples, juce::AudioBuffer<float>& bu
     }
 }
 
-void Kit::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi)
+void Kit::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi,
+                   const juce::AudioBuffer<float>* sidechain)
 {
     buffer.clear();
     if (scratch.getNumSamples() == 0) // not prepared yet
@@ -116,14 +154,14 @@ void Kit::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& mid
         const auto pos = std::clamp (metadata.samplePosition, 0, total);
         if (pos > cursor)
         {
-            renderSegment (cursor, pos - cursor, buffer);
+            renderSegment (cursor, pos - cursor, buffer, sidechain);
             cursor = pos;
         }
         handle (metadata.getMessage());
     }
 
     if (cursor < total)
-        renderSegment (cursor, total - cursor, buffer);
+        renderSegment (cursor, total - cursor, buffer, sidechain);
 }
 
 } // namespace batida
