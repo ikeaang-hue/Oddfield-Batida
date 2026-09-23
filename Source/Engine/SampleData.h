@@ -15,6 +15,7 @@ struct SampleData
     double sampleRate = 44100.0;
     juce::String path;
     std::vector<std::pair<float, float>> peaks; // min/max per display bin
+    std::vector<std::pair<int, float>> onsets;  // frame, strength 0..1 (for Transients slicing)
 
     int numFrames() const { return audio.getNumSamples(); }
     int numChannels() const { return audio.getNumChannels(); }

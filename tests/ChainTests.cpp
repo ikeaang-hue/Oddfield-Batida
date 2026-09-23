@@ -258,6 +258,54 @@ public:
             expectLessThan (oversampled, direct - 10.0f, name);
         }
 
+        beginTest ("Mute and solo");
+        {
+            auto peakOf = [] (const KitParams& k, int voice)
+            {
+                return tools::measure (tools::renderVoice (k, voice, 60, 1.0f, 0.3), kRate).peakDb;
+            };
+            auto kit = defaultKitParams();
+            const auto open = peakOf (kit, 0);
+
+            auto muted = kit;
+            muted.voices[0][vp::Mute] = 1.0f;
+            expectLessThan (peakOf (muted, 0), -100.0f, "a muted voice is silent");
+
+            auto otherSolo = kit;
+            otherSolo.voices[2][vp::Solo] = 1.0f;
+            expectLessThan (peakOf (otherSolo, 0), -100.0f, "while another voice is soloed");
+
+            auto ownSolo = otherSolo;
+            ownSolo.voices[0][vp::Solo] = 1.0f;
+            expectWithinAbsoluteError (peakOf (ownSolo, 0), open, 0.01f, "soloed voices still sound");
+
+            // Muting mid-note fades out instead of clicking.
+            Kit k;
+            k.setParameters (kit);
+            k.prepare (kRate, 64);
+            juce::AudioBuffer<float> buf (2, 64);
+            k.noteOn (5, 60, 1.0f); // bass, sustained
+            float lastPeak = 0.0f, maxStep = 0.0f, prev = 0.0f;
+            for (int b = 0; b < 60; ++b) // mute at block 20 (27 ms in), measure ~40 ms later
+            {
+                auto p = kit;
+                if (b >= 20)
+                    p.voices[5][vp::Mute] = 1.0f;
+                k.setParameters (p);
+                k.process (buf, {});
+                for (int i = 0; i < 64; ++i)
+                {
+                    const auto x = buf.getSample (0, i);
+                    if (b >= 20)
+                        maxStep = std::max (maxStep, std::abs (x - prev));
+                    prev = x;
+                }
+                lastPeak = buf.getMagnitude (0, 0, 64);
+            }
+            expectLessThan (lastPeak, 1.0e-4f, "silent after the fade");
+            expectLessThan (maxStep, 0.05f, "no click when muting");
+        }
+
         beginTest ("Every pad corner stays finite");
         for (const auto [x, y] : { std::pair { 0.0f, 0.0f }, std::pair { 1.0f, 0.0f }, std::pair { 0.5f, 0.5f },
                                    std::pair { 0.0f, 1.0f }, std::pair { 1.0f, 1.0f } })

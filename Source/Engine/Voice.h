@@ -23,7 +23,11 @@ public:
     void setParameters (const VoiceParams& p);
     void setSampleData (const SampleData* data) { sampleSource.setData (data); }
 
-    void noteOn (int key, float velocity); // velocity 0..1
+    // Mute/solo, decided by the kit: fades the voice out (or back in) over a
+    // few ms. A muted voice still plays underneath, so unmuting mid-note works.
+    void setAudible (bool audible) { audibleTarget = audible ? 1.0f : 0.0f; }
+
+    void noteOn (int key, float velocity, int slice = -1); // velocity 0..1; slice for sliced samples
     void noteOff (int key);
     void allNotesOff();                    // release, or hard stop if reset
     void reset();
@@ -36,7 +40,7 @@ public:
     float getPitchOffset() const { return pitch; } // semitones from the base key, for tests
 
 private:
-    void startNote (int key, float velocity);
+    void startNote (int key, float velocity, int slice);
     void removeHeld (int key);
     bool sourceActive() const;
 
@@ -53,7 +57,8 @@ private:
     Drive drive;
     SvfFilter filter;
 
-    Smoother gainL, gainR, logCutoff, chainAmt;
+    Smoother gainL, gainR, logCutoff, chainAmt, audibleGain;
+    float audibleTarget = 1.0f;
     std::array<float, 2> gainTargets { 1.0f, 1.0f };
     float cutoffTarget = 14.29f; // log2 Hz
     float cutoffHz = 20000.0f;
@@ -65,7 +70,7 @@ private:
 
     bool stealing = false;
     float stealGain = 1.0f, stealStep = 0.0f;
-    int pendingKey = kBaseKey;
+    int pendingKey = kBaseKey, pendingSlice = -1;
     float pendingVelocity = 1.0f;
 
     std::array<int, 16> held {};

@@ -42,8 +42,10 @@ enum : int
     FmPitch, FmAlgo, FmFeedback, FmHarm, FmBright, FmBrightDecay, FmGrit,
     SmpTune, SmpStart, SmpEnd, SmpReverse, SmpFadeIn, SmpFadeOut, SmpGain,
     SmpLoop, SmpLoopStart, SmpLoopEnd,
+    SmpSliceMode, SmpSlices, SmpSliceSens,
     Punch, Drive, DriveType, FltType, FltCutoff, FltRes,
     ChainAmt, // dry/wet into the kit chain
+    Mute, Solo,
     OpBase
 };
 }
@@ -64,6 +66,9 @@ enum : int
     DistDrive, DistType, DistLowKeep, ExcAmount, ExcTone, DistFollow,
     EqHp, EqLp, EqLow, EqMid, EqHigh, EqFollow,
     ChainOut, SafetyClip,
+    // Sequencer (phase 3)
+    SeqPattern, SeqRun, SeqPlay, SeqTempo, SeqSwing, SeqQuantise, SeqLatch,
+    SeqSync,
     Count
 };
 }
@@ -75,6 +80,7 @@ enum class DriveType { Soft, Hard, Fold, Crush };
 enum class FilterType { LowPass, HighPass, BandPass };
 enum class MidiMode { DrumMap, Chromatic };
 enum class Detector { Internal, Sidechain };
+enum class SliceMode { Off, Grid, Transients };
 
 const std::vector<ParamSpec>& voiceParamSpecs();  // kNumVoiceParams entries, in index order
 const std::vector<ParamSpec>& globalParamSpecs(); // kNumGlobalParams entries

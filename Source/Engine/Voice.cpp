@@ -24,6 +24,8 @@ void Voice::prepare (double newSampleRate)
     gainR.setTime (5.0f, sampleRate);
     logCutoff.setTime (10.0f, sampleRate);
     chainAmt.setTime (10.0f, sampleRate);
+    audibleGain.setTime (3.0f, sampleRate);
+    audibleGain.snap (audibleTarget);
     stealStep = (float) (1.0 / (0.0015 * sampleRate));
     reset();
 }
@@ -50,6 +52,9 @@ void Voice::setParameters (const VoiceParams& p)
     s.reverse = p.flag (vp::SmpReverse);
     s.loop = p.flag (vp::SmpLoop);
     s.gate = ! oneShot;
+    s.slices.mode = (SliceMode) std::clamp (p.choice (vp::SmpSliceMode), 0, 2);
+    s.slices.gridCount = (int) std::lround (p[vp::SmpSlices]);
+    s.slices.sensitivity = p[vp::SmpSliceSens];
     sampleSource.setSettings (s);
 
     const auto balance = std::clamp (p[vp::Balance], 0.0f, 1.0f);
@@ -72,6 +77,7 @@ void Voice::setParameters (const VoiceParams& p)
         gainR.snap (targetR);
         logCutoff.snap (targetCutoff);
         chainAmt.snap (std::clamp (p[vp::ChainAmt], 0.0f, 1.0f));
+        audibleGain.snap (audibleTarget);
         cutoffHz = std::exp2 (targetCutoff);
     }
     gainTargets[0] = targetL;
@@ -85,7 +91,7 @@ void Voice::removeHeld (int key)
     numHeld = (int) (std::remove (held.begin(), end, key) - held.begin());
 }
 
-void Voice::noteOn (int key, float velocity)
+void Voice::noteOn (int key, float velocity, int slice)
 {
     removeHeld (key);
     if (numHeld == (int) held.size())
@@ -97,7 +103,7 @@ void Voice::noteOn (int key, float velocity)
 
     if (! active)
     {
-        startNote (key, velocity);
+        startNote (key, velocity, slice);
     }
     else if (glideCoef > 0.0f)
     {
@@ -107,7 +113,7 @@ void Voice::noteOn (int key, float velocity)
         ampEnv.trigger (oneShot);
         pitchEnv.trigger (true);
         fm.trigger (oneShot, false);
-        sampleSource.trigger();
+        sampleSource.trigger (slice);
     }
     else
     {
@@ -115,6 +121,7 @@ void Voice::noteOn (int key, float velocity)
         stealGain = 1.0f;
         pendingKey = key;
         pendingVelocity = velocity;
+        pendingSlice = slice;
     }
 }
 
@@ -162,7 +169,7 @@ void Voice::reset()
     filter.reset();
 }
 
-void Voice::startNote (int key, float velocity)
+void Voice::startNote (int key, float velocity, int slice)
 {
     targetPitch = pitch = (float) (key - kBaseKey);
     velocityGain = 1.0f - params[vp::VelSens] * (1.0f - velocity * velocity);
@@ -178,7 +185,7 @@ void Voice::startNote (int key, float velocity)
     ampEnv.trigger (oneShot);
     pitchEnv.trigger (true);
     fm.trigger (oneShot, true);
-    sampleSource.trigger();
+    sampleSource.trigger (slice);
     active = true;
 
     // A gate note that was released while the old note faded out.
@@ -221,7 +228,7 @@ void Voice::render (float* dryL, float* dryR, float* wetL, float* wetR, int numS
             if (stealGain <= 0.0f)
             {
                 stealing = false;
-                startNote (pendingKey, pendingVelocity);
+                startNote (pendingKey, pendingVelocity, pendingSlice);
             }
             else
             {
@@ -265,8 +272,11 @@ void Voice::render (float* dryL, float* dryR, float* wetL, float* wetR, int numS
         if (filterType != FilterType::LowPass || cutoffHz < 19900.0f)
             filter.process (l, r, cutoffHz, resonance, filterType);
 
-        l *= gainL.next (gainTargets[0]);
-        r *= gainR.next (gainTargets[1]);
+        auto audible = audibleGain.next (audibleTarget);
+        if (audibleTarget == 0.0f && audible < 1.0e-5f) // fully muted: true silence
+            audible = audibleGain.value = 0.0f;
+        l *= gainL.next (gainTargets[0]) * audible;
+        r *= gainR.next (gainTargets[1]) * audible;
         const auto a = chainAmt.next (chainTarget);
         dryL[i] += l * (1.0f - a);
         dryR[i] += r * (1.0f - a);
@@ -278,7 +288,7 @@ void Voice::render (float* dryL, float* dryR, float* wetL, float* wetR, int numS
             if (stealing)
             {
                 stealing = false;
-                startNote (pendingKey, pendingVelocity);
+                startNote (pendingKey, pendingVelocity, pendingSlice);
             }
             else
             {

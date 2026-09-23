@@ -2,9 +2,54 @@
 
 #include <algorithm>
 #include <cmath>
+#include <tuple>
 
 namespace batida
 {
+
+int sliceCount (const SampleData& data, const SliceSpec& spec, double start, double end)
+{
+    if (spec.mode == SliceMode::Grid)
+        return std::clamp (spec.gridCount, 2, 32);
+    if (spec.mode == SliceMode::Off)
+        return 1;
+
+    const auto threshold = 1.0f - std::clamp (spec.sensitivity, 0.0f, 1.0f);
+    int n = 1;
+    for (const auto& [frame, strength] : data.onsets)
+        if (frame > start + 64 && frame < end - 64 && strength >= threshold && n < 32)
+            ++n;
+    return n;
+}
+
+std::pair<double, double> sliceRegion (const SampleData& data, const SliceSpec& spec, double start, double end, int index)
+{
+    const auto count = sliceCount (data, spec, start, end);
+    const auto k = ((index % count) + count) % count;
+
+    if (spec.mode == SliceMode::Grid)
+        return { start + (end - start) * k / count, start + (end - start) * (k + 1) / count };
+    if (spec.mode == SliceMode::Off)
+        return { start, end };
+
+    const auto threshold = 1.0f - std::clamp (spec.sensitivity, 0.0f, 1.0f);
+    double from = start, to = end;
+    int n = 0;
+    for (const auto& [frame, strength] : data.onsets)
+    {
+        if (frame <= start + 64 || frame >= end - 64 || strength < threshold || n >= 31)
+            continue;
+        ++n;
+        if (n == k)
+            from = frame;
+        else if (n == k + 1)
+        {
+            to = frame;
+            break;
+        }
+    }
+    return { from, to };
+}
 
 void SampleSource::prepare (double hostSampleRate)
 {
@@ -26,7 +71,7 @@ void SampleSource::setSettings (const Settings& newSettings)
     settings = newSettings;
 }
 
-void SampleSource::trigger()
+void SampleSource::trigger (int slice)
 {
     if (data == nullptr || data->numFrames() < 2)
     {
@@ -35,8 +80,16 @@ void SampleSource::trigger()
     }
 
     const auto len = (double) data->numFrames();
-    const auto s = std::min (settings.start, settings.end) * len;
-    const auto e = std::max (settings.start, settings.end) * len;
+    auto s = std::min (settings.start, settings.end) * len;
+    auto e = std::max (settings.start, settings.end) * len;
+
+    sliced = settings.slices.mode != SliceMode::Off;
+    if (sliced)
+    {
+        std::tie (s, e) = sliceRegion (*data, settings.slices, s, e, std::max (0, slice));
+        sliceStart = s;
+        sliceEnd = e;
+    }
 
     pos = settings.reverse ? std::max (s, e - 1.0) : s;
     elapsed = 0.0;
@@ -74,8 +127,8 @@ void SampleSource::process (float pitchRatio, float& left, float& right)
         return;
 
     const auto len = (double) data->numFrames();
-    const auto s = std::min (settings.start, settings.end) * len;
-    const auto e = std::max (settings.start, settings.end) * len;
+    const auto s = sliced ? sliceStart : std::min (settings.start, settings.end) * len;
+    const auto e = sliced ? sliceEnd : std::max (settings.start, settings.end) * len;
 
     const auto speed = (double) pitchRatio * data->sampleRate / hostRate;
     const auto inc = settings.reverse ? -speed : speed;

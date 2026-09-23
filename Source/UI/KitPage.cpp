@@ -25,6 +25,15 @@ void XyPad::timerCallback()
         repaint();
 }
 
+void XyPad::setLock (std::optional<juce::Point<float>> lock)
+{
+    if (lock != lockPos)
+    {
+        lockPos = lock;
+        repaint();
+    }
+}
+
 void XyPad::paint (juce::Graphics& g)
 {
     const auto r = padArea();
@@ -71,14 +80,26 @@ void XyPad::paint (juce::Graphics& g)
     g.fillEllipse (juce::Rectangle<float> (18.0f, 18.0f).withCentre (p));
     g.setColour (juce::Colours::black);
     g.drawEllipse (juce::Rectangle<float> (18.0f, 18.0f).withCentre (p), 1.5f);
+
+    // Where a sequencer step's lock has moved the chain right now.
+    if (lockPos.has_value())
+    {
+        const juce::Point<float> l (r.getX() + lockPos->x * r.getWidth(), r.getBottom() - lockPos->y * r.getHeight());
+        g.setColour (juce::Colours::white);
+        g.drawEllipse (juce::Rectangle<float> (24.0f, 24.0f).withCentre (l), 2.0f);
+    }
 }
 
 void XyPad::setFromMouse (juce::Point<float> p)
 {
     const auto r = padArea();
-    x->setValueNotifyingHost (juce::jlimit (0.0f, 1.0f, (p.x - r.getX()) / r.getWidth()));
-    y->setValueNotifyingHost (juce::jlimit (0.0f, 1.0f, (r.getBottom() - p.y) / r.getHeight()));
+    const auto nx = juce::jlimit (0.0f, 1.0f, (p.x - r.getX()) / r.getWidth());
+    const auto ny = juce::jlimit (0.0f, 1.0f, (r.getBottom() - p.y) / r.getHeight());
+    x->setValueNotifyingHost (nx);
+    y->setValueNotifyingHost (ny);
     repaint();
+    if (onMove)
+        onMove (nx, ny);
 }
 
 void XyPad::mouseDown (const juce::MouseEvent& e)
@@ -146,17 +167,44 @@ KitPage::KitPage (BatidaProcessor& p) : VoicePage (p), pad (p.getState())
 
     chainSection = addSection ("Chain amount per voice (0% = dry)");
     for (int v = 0; v < kNumVoices; ++v)
-        addFixedVoice (chainSection, v, vp::ChainAmt,
-                       juce::String (v + 1) + " " + juce::MidiMessage::getMidiNoteName (kDrumMapFirstNote + v, true, true, 3));
+        chainControls[(size_t) v] = &addFixedVoice (chainSection, v, vp::ChainAmt, juce::String (v + 1));
+
+    xyRecButton.setTooltip ("While a pattern plays, moving the pad records XY locks into its steps (see SEQ).");
+    addAndMakeVisible (xyRecButton);
+    pad.onMove = [this] (float x, float y)
+    {
+        const auto& seq = proc.sequencer();
+        if (! xyRecButton.getToggleState() || ! seq.isRunning() || seq.getPatternStep() < 0)
+            return;
+        const auto pi = seq.getActivePattern();
+        const auto step = seq.getPatternStep();
+        proc.patterns().edit ([&] (PatternBank& b) { b.patterns[(size_t) pi].xy[(size_t) step] = { true, x, y }; });
+    };
 
     timerCallback(); // markers right away, not only on the first tick
     startTimerHz (20);
 }
 
+KitPage::~KitPage()
+{
+    stopTimer();
+}
+
 void KitPage::timerCallback()
 {
     const auto base = proc.readGlobalParams();
-    const auto e = computeEffectiveChain (base);
+    auto shown = base;
+    const auto& kit = proc.getKit();
+    if (kit.isXyLocked())
+    {
+        shown[gp::XyX] = kit.getLockX();
+        shown[gp::XyY] = kit.getLockY();
+        pad.setLock (juce::Point<float> (kit.getLockX(), kit.getLockY()));
+    }
+    else
+        pad.setLock (std::nullopt);
+
+    const auto e = computeEffectiveChain (shown);
 
     auto marker = [] (float effective, float knob) -> std::optional<double>
     {
@@ -174,6 +222,13 @@ void KitPage::timerCallback()
     tone->setMarker (marker (e.excToneHz, base[gp::ExcTone]));
     eqHigh->setMarker (marker (e.highDb, base[gp::EqHigh]));
 
+    if (proc.getNamesVersion() != shownNames)
+    {
+        shownNames = proc.getNamesVersion();
+        for (int v = 0; v < kNumVoices; ++v)
+            chainControls[(size_t) v]->setLabelText (juce::String (v + 1) + " " + proc.getVoiceName (v));
+    }
+
     const auto gr = proc.getGainReductionDb();
     setSectionTitle (dynamicsSection, gr < -0.1f ? "Dynamics   GR " + juce::String (gr, 1) + " dB" : juce::String ("Dynamics"));
     repaint (0, 0, getWidth(), 30);
@@ -184,8 +239,10 @@ void KitPage::resized()
     auto area = getLocalBounds().reduced (10);
 
     auto left = area.removeFromLeft (310);
-    pad.setBounds (left.removeFromTop (330));
-    left.removeFromTop (10);
+    pad.setBounds (left.removeFromTop (340));
+    left.removeFromTop (6);
+    xyRecButton.setBounds (left.removeFromTop (24).withWidth (90));
+    left.removeFromTop (8);
     layoutRow (left, { outputSection });
 
     area.removeFromLeft (14);

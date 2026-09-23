@@ -161,6 +161,8 @@ The main way the chain is operated: one gesture moves the whole chain.
   after release. Starts are quantised to the next step, beat or bar (a setting), and follow the
   host tempo (internal tempo when the host is stopped). The key's velocity scales the pattern's
   dynamics. One-shot hits on C1–G1 still play on top of a running pattern.
+- **Default patterns:** during development pattern 1 holds a breakbeat demo. **The release
+  build ships with every pattern empty**; factory patterns come through the library (§10, §11).
 - **Excluded:** song mode and arrangement (the DAW does these).
 
 ## 9. MIDI

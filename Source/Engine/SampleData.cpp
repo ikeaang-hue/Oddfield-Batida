@@ -28,6 +28,82 @@ void computePeaks (SampleData& data)
         data.peaks[(size_t) bin] = { lo, hi };
     }
 }
+// Onsets for transient slicing: rises in high-passed energy, found once when
+// the sample loads. Strength is relative to the strongest onset in the file,
+// so the sensitivity knob works the same on quiet and loud material.
+void computeOnsets (SampleData& data)
+{
+    data.onsets.clear();
+    const auto frames = data.numFrames();
+    constexpr int hop = 256, window = 512;
+    if (frames < window * 2)
+        return;
+
+    std::vector<float> level;
+    for (int start = 0; start + window <= frames; start += hop)
+    {
+        double e = 0.0;
+        for (int ch = 0; ch < data.numChannels(); ++ch)
+        {
+            const auto* x = data.audio.getReadPointer (ch);
+            for (int i = std::max (1, start); i < start + window; ++i)
+            {
+                const auto d = x[i] - 0.9f * x[i - 1]; // tilt towards transients
+                e += (double) d * d;
+            }
+        }
+        level.push_back ((float) (10.0 * std::log10 (e / window + 1.0e-10)));
+    }
+
+    std::vector<float> rise (level.size(), 0.0f);
+    for (size_t k = 1; k < level.size(); ++k)
+        rise[k] = std::max (0.0f, level[k] - level[k - 1]);
+
+    const auto minGap = (int) (0.05 * data.sampleRate / hop); // 50 ms
+    float strongest = 0.0f;
+    std::vector<std::pair<int, float>> found;
+    for (size_t k = 1; k < rise.size(); ++k)
+    {
+        if (rise[k] < 3.0f)
+            continue;
+        bool peak = true;
+        for (int j = -3; j <= 3 && peak; ++j)
+        {
+            const auto n = (int) k + j;
+            if (j != 0 && n >= 0 && n < (int) rise.size() && rise[(size_t) n] > rise[k])
+                peak = false;
+        }
+        if (! peak || (! found.empty() && (int) k * hop - found.back().first < minGap * hop))
+            continue;
+        found.push_back ({ (int) k * hop, rise[k] });
+        strongest = std::max (strongest, rise[k]);
+    }
+
+    // Refine each onset from its analysis window to the attack itself: the first
+    // sample reaching a quarter of the window's peak, less a short pre-roll.
+    for (auto& [frame, strength] : found)
+    {
+        const auto end = std::min (frames, frame + window + hop);
+        float peak = 0.0f;
+        for (int ch = 0; ch < data.numChannels(); ++ch)
+            for (int i = frame; i < end; ++i)
+                peak = std::max (peak, std::abs (data.audio.getSample (ch, i)));
+
+        auto attack = frame;
+        for (int i = frame; i < end; ++i)
+        {
+            float v = 0.0f;
+            for (int ch = 0; ch < data.numChannels(); ++ch)
+                v = std::max (v, std::abs (data.audio.getSample (ch, i)));
+            if (v >= 0.25f * peak)
+            {
+                attack = i;
+                break;
+            }
+        }
+        data.onsets.push_back ({ std::max (0, attack - 32), strongest > 0.0f ? strength / strongest : 0.0f });
+    }
+}
 } // namespace
 
 bool SampleSlot::load (const juce::File& file, juce::AudioFormatManager& formats)
@@ -56,6 +132,7 @@ bool SampleSlot::load (const juce::File& file, juce::AudioFormatManager& formats
     data->sampleRate = reader->sampleRate;
     data->path = file.getFullPathName();
     computePeaks (*data);
+    computeOnsets (*data);
 
     {
         const juce::ScopedLock sl (lock);
@@ -73,6 +150,7 @@ bool SampleSlot::setData (std::unique_ptr<SampleData> data)
         return false;
 
     computePeaks (*data);
+    computeOnsets (*data);
     {
         const juce::ScopedLock sl (lock);
         status = Status::Loaded;

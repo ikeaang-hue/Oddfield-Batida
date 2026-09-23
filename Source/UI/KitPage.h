@@ -4,11 +4,15 @@
 
 // The XY pad: X = character (warm → aggressive → digital), Y = heat
 // (clean → destroyed). Drag to move; double-click to return to the default.
-// Writes the host parameters xy_x / xy_y, so it records as automation.
+// Writes the host parameters xy_x / xy_y, so it records as automation. A ring
+// shows where a sequencer step's XY lock has moved the chain.
 class XyPad final : public juce::Component, private juce::Timer
 {
 public:
     explicit XyPad (juce::AudioProcessorValueTreeState& state);
+
+    std::function<void (float, float)> onMove; // after a drag moves the pad
+    void setLock (std::optional<juce::Point<float>> lock);
 
     void paint (juce::Graphics& g) override;
     void mouseDown (const juce::MouseEvent& e) override;
@@ -24,22 +28,27 @@ private:
     juce::RangedAudioParameter* x;
     juce::RangedAudioParameter* y;
     float shownX = -1.0f, shownY = -1.0f;
+    std::optional<juce::Point<float>> lockPos;
 };
 
-// The main panel for the whole kit (opens first): the XY pad, the four chain
-// stages with their effective-value markers and Follow XY toggles, and a
+// The main panel for the whole kit (opens first): the XY pad (with XY Rec,
+// which records pad moves into the playing pattern's steps), the four chain
+// stages with their effective-value markers and Follow XY toggles, and the
 // Chain amount per voice.
 class KitPage final : public VoicePage, private juce::Timer
 {
 public:
     explicit KitPage (BatidaProcessor& p);
+    ~KitPage() override;
     void resized() override;
 
 private:
     void timerCallback() override;
 
     XyPad pad;
+    juce::ToggleButton xyRecButton { "XY Rec" };
     int dynamicsSection, distortionSection, eqSection, outputSection, chainSection;
-
     ParamControl *compAmount, *compAttack, *drive, *type, *lowKeep, *exciter, *tone, *eqHigh;
+    std::array<ParamControl*, batida::kNumVoices> chainControls {};
+    int shownNames = -1;
 };

@@ -4,12 +4,16 @@
 // BatidaTests --bench         measure CPU for the worst-case voice load
 // BatidaTests --render <dir>  render the default kit to WAV files
 // BatidaTests --pad <dir>     loudness of a beat across the XY pad, plus WAVs
+// BatidaTests --beat <dir>    the breakbeat (pattern 1) at three pad positions
 int main (int argc, char* argv[])
 {
     const juce::StringArray args (argv + 1, argc - 1);
 
     if (args.contains ("--bench"))
         return batida::tools::runBenchmark();
+
+    if (const auto i = args.indexOf ("--beat"); i >= 0)
+        return batida::tools::runBeat (juce::File::getCurrentWorkingDirectory().getChildFile (i + 1 < args.size() ? args[i + 1] : "renders"));
 
     if (const auto i = args.indexOf ("--pad"); i >= 0)
         return batida::tools::runPad (juce::File::getCurrentWorkingDirectory().getChildFile (i + 1 < args.size() ? args[i + 1] : "renders"));
