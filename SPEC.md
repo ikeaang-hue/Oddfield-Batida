@@ -1,6 +1,6 @@
 # Negative Space Batida: Design Spec
 
-*Version 1, agreed 2026-09-24*
+*Version 1.3, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM)*
 
 ## 1. Identity
 
@@ -43,7 +43,10 @@ The eight voices are identical, general-purpose slots. Any slot can hold any sou
 **FM**
 - **4 operators** and about **8 algorithms**, shown as diagrams.
 - Per operator: ratio or fixed frequency, level, its own envelope, and a morphable waveform
-  (sine → triangle → saw → square, plus fold).
+  (sine → triangle → saw → square → noise, plus fold). Noise is white and ignores pitch; it is
+  the clean noise source for hats, snares and claps.
+- The FM source runs at 2× oversampling, so overtones above the audible range don't fold back
+  as inharmonic fizz.
 - Feedback.
 - **Macro surface** on top of the operators:
   - *Harmonic ↔ Inharmonic:* chooses from curated ratio sets.
@@ -51,7 +54,9 @@ The eight voices are identical, general-purpose slots. Any slot can hold any sou
   - *Brightness decay:* how fast the brightness fades.
   - *Grit:* feedback.
 
-  The macros visibly move the real parameters, so the user learns FM by watching.
+  Each macro is an automatable host parameter, applied as an offset on top of the operator
+  settings. Each operator knob shows a second marker at its effective value, so the user sees
+  the macros move the real parameters and learns FM by watching.
 
 **Layer**
 - Sample and FM together, with a balance control (e.g. a sampled transient over an FM body).
@@ -126,8 +131,11 @@ Reverb, delay and stereo/spatial effects are left to the DAW.
 
 ## 9. MIDI
 
-- **Omni / channel 10:** GM drum map triggers voices (36 = voice 1, and so on).
-- **Channels 1–8:** play voices 1–8 chromatically.
+A **MIDI mode** switch chooses between:
+- **Drum map, any channel** (default): GM notes 36–43 trigger voices 1–8 on every channel.
+- **Chromatic:** every channel except 10 plays one chosen voice, the **Keys Voice**, like a mono
+  synth. Channel 10 still uses the drum map. Keys Voice is an automatable parameter that also
+  follows the voice selected in the editor.
 
 ## 10. Library and presets
 
@@ -182,6 +190,7 @@ Reverb, delay and stereo/spatial effects are left to the DAW.
   - **AU:** the primary format. Everything is built and tested as AU first.
   - **VST3 (macOS):** added once everything else is done.
   - No standalone app.
+- **Test host:** Logic Pro.
 
 ## 14. Build order
 
