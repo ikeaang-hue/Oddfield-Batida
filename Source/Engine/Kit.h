@@ -34,8 +34,14 @@ public:
     float getGainReductionDb() const { return chain.getGainReductionDb(); }
 
     // Direct triggering, used by the editor's audition buttons and by tests.
-    void noteOn (int voice, int key, float velocity, int slice = -1) { voices[(size_t) voice].noteOn (key, velocity, slice); }
-    void noteOff (int voice, int key) { voices[(size_t) voice].noteOff (key); }
+    void noteOn (int voice, int key, float velocity, int slice = -1);
+    void noteOff (int voice, int key);
+
+    // Message thread, just before replacing these voices' sounds (loading a
+    // sound or kit): a voice that is sounding fades out first (~1.5 ms). Until
+    // it has, it keeps its old settings and sample, and new hits wait for it.
+    void beginSwitch (uint32_t voiceMask) { switchRequests.fetch_or (voiceMask); }
+    bool isSwitching (int voice) const { return ((uiSwitching.load() >> voice) & 1u) != 0; }
 
     SampleSlot& sampleSlot (int voice) { return slots[(size_t) voice]; }
     PatternStore& patternStore() { return patterns; }
@@ -63,6 +69,8 @@ private:
     void handle (const juce::MidiMessage& message);
     void handle (const SeqEvent& e);
     void applyParams (bool modulatedOnly);
+    void applyVoice (int voice, bool anySolo);
+    void finishSwitches();
     void computeParams();
     void tick (int offset); // one control step: advance the modulators, apply them
     bool isPatternKey (const juce::MidiMessage& message) const;
@@ -94,6 +102,12 @@ private:
     std::atomic<float> uiLockX { 0.5f }, uiLockY { 0.0f };
     std::atomic<bool> uiFollowingHost { false };
     std::atomic<double> uiHostBpm { 120.0 };
+
+    // Voices whose sounds are being replaced (see beginSwitch).
+    struct Deferred { bool pending = false, released = false; int key = 0, slice = -1; float velocity = 1.0f; };
+    std::atomic<uint32_t> switchRequests { 0 }, uiSwitching { 0 };
+    uint32_t switching = 0;
+    std::array<Deferred, kNumVoices> deferred {};
 
     MidiMode midiMode = MidiMode::DrumMap;
     int keysVoice = 0;

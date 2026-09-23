@@ -22,49 +22,105 @@ void Pattern::clear()
 
 // XML: one <PATTERN> per non-empty pattern; each track stores its lanes as
 // comma-separated lists, so saved projects stay small and readable.
+std::unique_ptr<juce::XmlElement> patternToXml (const Pattern& pat)
+{
+    auto pe = std::make_unique<juce::XmlElement> ("PATTERN");
+    pe->setAttribute ("length", pat.length);
+
+    for (int t = 0; t < kNumTracks; ++t)
+    {
+        const auto& tr = pat.tracks[(size_t) t];
+        juce::StringArray gate, vel, pitch, slice, ratchet, prob;
+        for (const auto& s : tr.steps)
+        {
+            gate.add (s.gate ? "1" : "0");
+            vel.add (juce::String (s.velocity));
+            pitch.add (juce::String (s.pitch));
+            slice.add (juce::String (s.slice));
+            ratchet.add (juce::String (s.ratchet));
+            prob.add (juce::String (s.probability));
+        }
+        auto* te = pe->createNewChildElement ("TRACK");
+        te->setAttribute ("voice", t);
+        te->setAttribute ("length", tr.length);
+        te->setAttribute ("noteLength", tr.noteLength);
+        te->setAttribute ("gate", gate.joinIntoString (""));
+        te->setAttribute ("velocity", vel.joinIntoString (","));
+        te->setAttribute ("pitch", pitch.joinIntoString (","));
+        te->setAttribute ("slice", slice.joinIntoString (","));
+        te->setAttribute ("ratchet", ratchet.joinIntoString (","));
+        te->setAttribute ("probability", prob.joinIntoString (","));
+    }
+
+    juce::StringArray xy;
+    for (const auto& l : pat.xy)
+        xy.add (l.active ? juce::String (l.x, 3) + ":" + juce::String (l.y, 3) : juce::String ("-"));
+    pe->setAttribute ("xy", xy.joinIntoString (","));
+    return pe;
+}
+
+void patternFromXml (const juce::XmlElement& pe, Pattern& pat)
+{
+    pat = Pattern {};
+    pat.length = juce::jlimit (kMinPatternSteps, kMaxSteps, pe.getIntAttribute ("length", 16));
+
+    for (auto* te : pe.getChildWithTagNameIterator ("TRACK"))
+    {
+        const auto t = te->getIntAttribute ("voice", -1);
+        if (t < 0 || t >= kNumTracks)
+            continue;
+
+        auto& tr = pat.tracks[(size_t) t];
+        tr.length = juce::jlimit (1, kMaxSteps, te->getIntAttribute ("length", pat.length));
+        tr.noteLength = (float) juce::jlimit (0.05, 1.0, te->getDoubleAttribute ("noteLength", 0.5));
+
+        const auto gate = te->getStringAttribute ("gate");
+        auto list = [&] (const char* name)
+        {
+            juce::StringArray a;
+            a.addTokens (te->getStringAttribute (name), ",", "");
+            return a;
+        };
+        const auto vel = list ("velocity"), pitch = list ("pitch"), slice = list ("slice"),
+                   ratchet = list ("ratchet"), prob = list ("probability");
+
+        for (int s = 0; s < kMaxSteps; ++s)
+        {
+            auto& st = tr.steps[(size_t) s];
+            st.gate = s < gate.length() && gate[s] == '1';
+            if (s < vel.size())     st.velocity = (uint8_t) juce::jlimit (1, 127, vel[s].getIntValue());
+            if (s < pitch.size())   st.pitch = (int8_t) juce::jlimit (-24, 24, pitch[s].getIntValue());
+            if (s < slice.size())   st.slice = (uint8_t) juce::jlimit (0, kMaxSlices - 1, slice[s].getIntValue());
+            if (s < ratchet.size()) st.ratchet = (uint8_t) juce::jlimit (1, kMaxRatchet, ratchet[s].getIntValue());
+            if (s < prob.size())    st.probability = (uint8_t) juce::jlimit (0, 100, prob[s].getIntValue());
+        }
+    }
+
+    juce::StringArray xy;
+    xy.addTokens (pe.getStringAttribute ("xy"), ",", "");
+    for (int s = 0; s < kMaxSteps && s < xy.size(); ++s)
+    {
+        auto& l = pat.xy[(size_t) s];
+        l.active = xy[s].containsChar (':');
+        if (l.active)
+        {
+            l.x = juce::jlimit (0.0f, 1.0f, xy[s].upToFirstOccurrenceOf (":", false, false).getFloatValue());
+            l.y = juce::jlimit (0.0f, 1.0f, xy[s].fromFirstOccurrenceOf (":", false, false).getFloatValue());
+        }
+    }
+}
+
 std::unique_ptr<juce::XmlElement> PatternBank::toXml() const
 {
     auto root = std::make_unique<juce::XmlElement> ("PATTERNS");
-
     for (int p = 0; p < kNumPatterns; ++p)
     {
         const auto& pat = patterns[(size_t) p];
         if (pat.isEmpty() && pat.length == 16)
             continue;
-
-        auto* pe = root->createNewChildElement ("PATTERN");
+        auto pe = patternToXml (pat);
         pe->setAttribute ("index", p);
-        pe->setAttribute ("length", pat.length);
-
-        for (int t = 0; t < kNumTracks; ++t)
-        {
-            const auto& tr = pat.tracks[(size_t) t];
-            juce::StringArray gate, vel, pitch, slice, ratchet, prob;
-            for (const auto& s : tr.steps)
-            {
-                gate.add (s.gate ? "1" : "0");
-                vel.add (juce::String (s.velocity));
-                pitch.add (juce::String (s.pitch));
-                slice.add (juce::String (s.slice));
-                ratchet.add (juce::String (s.ratchet));
-                prob.add (juce::String (s.probability));
-            }
-            auto* te = pe->createNewChildElement ("TRACK");
-            te->setAttribute ("voice", t);
-            te->setAttribute ("length", tr.length);
-            te->setAttribute ("noteLength", tr.noteLength);
-            te->setAttribute ("gate", gate.joinIntoString (""));
-            te->setAttribute ("velocity", vel.joinIntoString (","));
-            te->setAttribute ("pitch", pitch.joinIntoString (","));
-            te->setAttribute ("slice", slice.joinIntoString (","));
-            te->setAttribute ("ratchet", ratchet.joinIntoString (","));
-            te->setAttribute ("probability", prob.joinIntoString (","));
-        }
-
-        juce::StringArray xy;
-        for (const auto& l : pat.xy)
-            xy.add (l.active ? juce::String (l.x, 3) + ":" + juce::String (l.y, 3) : juce::String ("-"));
-        pe->setAttribute ("xy", xy.joinIntoString (","));
+        root->addChildElement (pe.release());
     }
     return root;
 }
@@ -72,72 +128,27 @@ std::unique_ptr<juce::XmlElement> PatternBank::toXml() const
 void PatternBank::fromXml (const juce::XmlElement& xml)
 {
     *this = PatternBank {};
-
     for (auto* pe : xml.getChildWithTagNameIterator ("PATTERN"))
     {
         const auto p = pe->getIntAttribute ("index", -1);
-        if (p < 0 || p >= kNumPatterns)
-            continue;
-
-        auto& pat = patterns[(size_t) p];
-        pat.length = juce::jlimit (kMinPatternSteps, kMaxSteps, pe->getIntAttribute ("length", 16));
-
-        for (auto* te : pe->getChildWithTagNameIterator ("TRACK"))
-        {
-            const auto t = te->getIntAttribute ("voice", -1);
-            if (t < 0 || t >= kNumTracks)
-                continue;
-
-            auto& tr = pat.tracks[(size_t) t];
-            tr.length = juce::jlimit (1, kMaxSteps, te->getIntAttribute ("length", pat.length));
-            tr.noteLength = (float) juce::jlimit (0.05, 1.0, te->getDoubleAttribute ("noteLength", 0.5));
-
-            const auto gate = te->getStringAttribute ("gate");
-            auto list = [&] (const char* name)
-            {
-                juce::StringArray a;
-                a.addTokens (te->getStringAttribute (name), ",", "");
-                return a;
-            };
-            const auto vel = list ("velocity"), pitch = list ("pitch"), slice = list ("slice"),
-                       ratchet = list ("ratchet"), prob = list ("probability");
-
-            for (int s = 0; s < kMaxSteps; ++s)
-            {
-                auto& st = tr.steps[(size_t) s];
-                st.gate = s < gate.length() && gate[s] == '1';
-                if (s < vel.size())     st.velocity = (uint8_t) juce::jlimit (1, 127, vel[s].getIntValue());
-                if (s < pitch.size())   st.pitch = (int8_t) juce::jlimit (-24, 24, pitch[s].getIntValue());
-                if (s < slice.size())   st.slice = (uint8_t) juce::jlimit (0, kMaxSlices - 1, slice[s].getIntValue());
-                if (s < ratchet.size()) st.ratchet = (uint8_t) juce::jlimit (1, kMaxRatchet, ratchet[s].getIntValue());
-                if (s < prob.size())    st.probability = (uint8_t) juce::jlimit (0, 100, prob[s].getIntValue());
-            }
-        }
-
-        juce::StringArray xy;
-        xy.addTokens (pe->getStringAttribute ("xy"), ",", "");
-        for (int s = 0; s < kMaxSteps && s < xy.size(); ++s)
-        {
-            auto& l = pat.xy[(size_t) s];
-            l.active = xy[s].containsChar (':');
-            if (l.active)
-            {
-                l.x = juce::jlimit (0.0f, 1.0f, xy[s].upToFirstOccurrenceOf (":", false, false).getFloatValue());
-                l.y = juce::jlimit (0.0f, 1.0f, xy[s].fromFirstOccurrenceOf (":", false, false).getFloatValue());
-            }
-        }
+        if (p >= 0 && p < kNumPatterns)
+            patternFromXml (*pe, patterns[(size_t) p]);
     }
 }
 
 PatternBank defaultPatternBank()
 {
     PatternBank bank;
-    if (! kShipDemoPattern)
-        return bank;
+    if (kShipDemoPattern)
+        bank.patterns[0] = breakbeatPattern();
+    return bank;
+}
 
-    // Pattern 1: a breakbeat. Voices: 0 kick, 1 rim, 2 snare, 3 clap, 4 tom,
-    // 5 bass, 6 closed hat, 7 open hat.
-    auto& p = bank.patterns[0];
+Pattern breakbeatPattern()
+{
+    // A breakbeat for the default kit. Voices: 0 kick, 1 rim, 2 snare, 3 clap,
+    // 4 tom, 5 bass, 6 closed hat, 7 open hat.
+    Pattern p;
     auto hit = [&] (int track, int step, int velocity, int probability = 100, int ratchet = 1)
     {
         auto& s = p.tracks[(size_t) track].steps[(size_t) step];
@@ -167,7 +178,7 @@ PatternBank defaultPatternBank()
 
     // One XY lock: the second snare hits hotter and dirtier.
     p.xy[12] = { true, 0.85f, 0.75f };
-    return bank;
+    return p;
 }
 
 } // namespace batida

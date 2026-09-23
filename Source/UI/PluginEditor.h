@@ -2,17 +2,20 @@
 
 #include "FmPage.h"
 #include "KitPage.h"
+#include "LibraryPage.h"
 #include "ModPage.h"
 #include "SeqPage.h"
 #include "VaryPage.h"
 #include "VoicePages.h"
 
-// Minimal demo UI (stock JUCE controls). Three views: KIT, the main panel for
-// the whole kit (XY pad, chain, Chain amounts), which opens first; SEQ, the
-// sequencer; and VOICE, the selected sound's Source / FM / Voice FX / Envelope
-// pages. Above them: the voice buttons (select + audition; double-click to
-// rename; drag onto another to swap slots; right-click for a menu) with a
-// Mute and Solo button under each. Kept apart from the engine so a proper
+// Minimal demo UI (stock JUCE controls). Views: KIT, the main panel for the
+// whole kit (XY pad, chain, Chain amounts), which opens first; SEQ, the
+// sequencer; MOD, the modulators; VOICE, the selected sound's Source / FM /
+// Voice FX / Envelope / Vary pages; LIB, the library. ◀ name ▶ strips step
+// through the library for the kit (header), sound (VOICE) and pattern (SEQ).
+// Above them: the voice buttons (select + audition; double-click to rename;
+// drag onto another to swap slots; right-click for a menu) with a Mute and
+// Solo button under each. Kept apart from the engine so a proper
 // visual design can replace it later.
 class BatidaEditor final : public juce::AudioProcessorEditor,
                            public juce::FileDragAndDropTarget,
@@ -55,7 +58,7 @@ private:
     };
 
     void selectVoice (int voice);
-    enum class View { Kit, Seq, Mod, Voice };
+    enum class View { Kit, Seq, Mod, Voice, Lib };
     void showView (View view);
     int voiceAt (int x, int y) const;
     void timerCallback() override;
@@ -64,8 +67,11 @@ private:
     void renameVoice (int voice);
     void swapVoices (int from, int to);
     void voiceMenu (int voice);
+    void updateStrips();
+    void libraryChanged();
 
     BatidaProcessor& proc;
+    LibraryController library; // before the pages that use it
 
     juce::Label title, info;
     ParamControl midiMode, keysVoice, master;
@@ -73,11 +79,16 @@ private:
     std::array<juce::TextButton, batida::kNumVoices> muteButtons, soloButtons;
     std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>, batida::kNumVoices> muteAttachments,
         soloAttachments;
-    juce::TextButton kitViewButton { "KIT" }, seqViewButton { "SEQ" }, modViewButton { "MOD" }, voiceViewButton { "VOICE" };
+    juce::TextButton kitViewButton { "KIT" }, seqViewButton { "SEQ" }, modViewButton { "MOD" }, voiceViewButton { "VOICE" },
+        libViewButton { "LIB" };
+    BrowseStrip kitStrip, soundStrip;
+    juce::TextButton missingButton;
+    View currentView = View::Kit;
     juce::TextButton undoButton { "Undo" }, redoButton { "Redo" };
     KitPage kitPage;
     SeqPage seqPage;
     ModPage modPage;
+    LibraryPage libraryPage;
     juce::TabbedComponent tabs { juce::TabbedButtonBar::TabsAtTop };
     std::unique_ptr<juce::TextEditor> renameEditor;
 

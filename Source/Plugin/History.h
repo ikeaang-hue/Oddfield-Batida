@@ -20,6 +20,7 @@ struct HistorySnapshot
     std::array<juce::String, batida::kNumVoices> names;
     std::optional<std::vector<float>> parameters;                        // normalised, all parameters
     std::optional<std::array<juce::String, batida::kNumVoices>> samples; // paths
+    juce::String origins; // where the kit, sounds and patterns came from (XML)
 };
 
 class History

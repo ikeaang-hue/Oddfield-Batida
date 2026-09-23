@@ -1,6 +1,6 @@
 # Negative Space Batida: Design Spec
 
-*Version 1.6, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-voice Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys)*
+*Version 1.7, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-voice Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level)*
 
 ## 1. Identity
 
@@ -180,8 +180,11 @@ the other channels stay fully chromatic for the Keys Voice.
 
 **File levels**
 - **Sound:** one voice.
-- **Kit:** 8 voices, the kit chain, XY position and modulators.
-- **Pattern:** reusable sequences.
+- **Kit:** 8 voices, the kit chain, XY position, scenes and modulators (not the patterns, so kits
+  swap under a playing beat).
+- **Pattern:** one reusable sequence.
+- **Set:** everything (the kit, all 16 patterns, sequencer, MIDI and Master settings).
+- Every level has **Init**, **Load**, **Save** and **Save As**; all are undoable.
 
 **Samples**
 - Presets reference samples by path.
@@ -189,14 +192,16 @@ the other channels stay fully chromatic for the Keys Voice.
 - Missing samples trigger a **search/relink** prompt.
 
 **Library folder**
-- On disk, with *Factory* and *User* areas.
-- Files are in a readable format, so the user can manage them in Finder.
+- On disk (`~/Music/Negative Space/Batida/`), with *Factory* and *User* areas.
+- Files are readable XML (`.batida-sound`, `-kit`, `-pattern`, `-set`), so the user can manage
+  them in Finder.
 
 **Browser**
 - Categories: kick, snare, hat, perc, FX, bass, texture.
 - Character tags: warm, harsh, digital, metallic, organic.
 - Search and favourites.
-- Click to preview, and next/previous while a pattern plays.
+- Click to try it live (a run of tries is one undo step), and next/previous while a pattern
+  plays, from the LIB view or the ◀ name ▶ strips on other pages.
 
 **Getting samples in**
 - Drag from Finder onto a voice.

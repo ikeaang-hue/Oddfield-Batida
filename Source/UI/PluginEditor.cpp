@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 
+#include "Library/SampleLocator.h"
 #include "RenameField.h"
 
 using namespace batida;
@@ -8,8 +9,12 @@ namespace
 {
 bool isAudioFile (const juce::String& path)
 {
-    const auto ext = juce::File (path).getFileExtension().toLowerCase();
-    return ext == ".wav" || ext == ".aif" || ext == ".aiff" || ext == ".flac";
+    return isAudioFileName (path);
+}
+
+bool isPresetFile (const juce::String& path)
+{
+    return presetTypeOf (juce::File (path)).has_value();
 }
 
 juce::String drumNoteName (int voice)
@@ -100,8 +105,8 @@ void BatidaEditor::VoiceButton::itemDropped (const SourceDetails& d)
 }
 
 BatidaEditor::BatidaEditor (BatidaProcessor& p)
-    : AudioProcessorEditor (&p), proc (p), midiMode (p.getState()), keysVoice (p.getState()), master (p.getState()),
-      kitPage (p), seqPage (p), modPage (p)
+    : AudioProcessorEditor (&p), proc (p), library (p, *this), midiMode (p.getState()), keysVoice (p.getState()),
+      master (p.getState()), kitPage (p), seqPage (p), modPage (p), libraryPage (p, library)
 {
     title.setText ("BATIDA", juce::dontSendNotification);
     title.setFont (juce::FontOptions (26.0f, juce::Font::bold));
@@ -177,16 +182,39 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
     addChildComponent (seqPage);
     modPage.setComponentID ("modPage");
     addChildComponent (modPage);
+    libraryPage.setComponentID ("libraryPage");
+    addChildComponent (libraryPage);
+
+    // The library: ◀ name ▶ for the kit (here), the sound (VOICE view) and the pattern (SEQ).
+    auto wire = [this] (BrowseStrip& strip, PresetType type)
+    {
+        strip.onPrevious = [this, type] { library.step (type, -1); };
+        strip.onNext = [this, type] { library.step (type, 1); };
+        strip.onMenu = [this, &strip, type] { library.showMenu (type, strip); };
+    };
+    wire (kitStrip, PresetType::Kit);
+    wire (soundStrip, PresetType::Sound);
+    wire (seqPage.patternStrip, PresetType::Pattern);
+    kitStrip.setComponentID ("kitStrip");
+    soundStrip.setComponentID ("soundStrip");
+    addAndMakeVisible (kitStrip);
+    addChildComponent (soundStrip);
+    library.onChanged = [this] { libraryChanged(); };
+
+    missingButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff7a4a12));
+    missingButton.setTooltip ("Some samples weren't found where they were. Click to find them.");
+    missingButton.onClick = [this] { library.showRelink(); };
+    addChildComponent (missingButton);
 
     undoButton.setTooltip ("Undo pattern edits, names, Vary Keep, scene recall and slot swaps "
                            "(knob moves are undone in Logic)");
     redoButton.setTooltip ("Redo");
-    undoButton.onClick = [this] { proc.undo(); refreshVoiceButtons(); };
-    redoButton.onClick = [this] { proc.redo(); refreshVoiceButtons(); };
+    undoButton.onClick = [this] { proc.undo(); libraryChanged(); };
+    redoButton.onClick = [this] { proc.redo(); libraryChanged(); };
     addAndMakeVisible (undoButton);
     addAndMakeVisible (redoButton);
 
-    for (auto* b : { &kitViewButton, &seqViewButton, &modViewButton, &voiceViewButton })
+    for (auto* b : { &kitViewButton, &seqViewButton, &modViewButton, &voiceViewButton, &libViewButton })
     {
         b->setClickingTogglesState (false);
         b->setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffc0632a));
@@ -196,9 +224,12 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
     seqViewButton.onClick = [this] { showView (View::Seq); };
     modViewButton.onClick = [this] { showView (View::Mod); };
     voiceViewButton.onClick = [this] { showView (View::Voice); };
+    libViewButton.onClick = [this] { showView (View::Lib); };
+    libViewButton.setComponentID ("libView");
     showView (View::Kit); // the kit panel is the opening page
 
     selectVoice (juce::jlimit (0, kNumVoices - 1, proc.selectedVoice.load()));
+    updateStrips();
 
     setSize (980, 640);
     startTimerHz (10);
@@ -211,6 +242,10 @@ BatidaEditor::~BatidaEditor()
 
 void BatidaEditor::showView (View view)
 {
+    currentView = view;
+    libraryPage.setVisible (view == View::Lib);
+    libViewButton.setToggleState (view == View::Lib, juce::dontSendNotification);
+    soundStrip.setVisible (view == View::Voice);
     kitPage.setVisible (view == View::Kit);
     seqPage.setVisible (view == View::Seq);
     modPage.setVisible (view == View::Mod);
@@ -265,10 +300,41 @@ void BatidaEditor::updateInfo()
                   juce::dontSendNotification);
 }
 
+void BatidaEditor::updateStrips()
+{
+    const auto& o = proc.getOrigins();
+    kitStrip.setName (o.kitName, "Kit: " + o.kitName + (o.kitFile.existsAsFile() ? " (" + o.kitFile.getFileName() + ")" : juce::String())
+                                     + ". The arrows step through the library's kits; the name opens Init, Load, Save.");
+    soundStrip.setName (proc.getVoiceName (selected), "Sound on voice " + juce::String (selected + 1)
+                                                          + ". The arrows step through the library's sounds; the name opens Init, Load, Save.");
+    const auto pattern = proc.displayPattern();
+    seqPage.patternStrip.setName (proc.getPatternName (pattern), "Pattern " + juce::String (pattern + 1)
+                                                                   + ". The arrows step through the library's patterns; the name opens Init, Load, Save.");
+    const auto missing = proc.numMissingSamples();
+    if (missing > 0)
+        missingButton.setButtonText (juce::String (missing) + " sample" + (missing == 1 ? "" : "s") + " missing: Relink...");
+    if (missingButton.isVisible() != (missing > 0))
+    {
+        missingButton.setVisible (missing > 0);
+        resized();
+    }
+}
+
+void BatidaEditor::libraryChanged()
+{
+    // A load replaced sounds: the pages re-read the selected voice.
+    const auto v = selected;
+    selected = -1;
+    selectVoice (v);
+    refreshVoiceButtons();
+    updateStrips();
+}
+
 void BatidaEditor::timerCallback()
 {
     updateInfo();
     refreshVoiceButtons();
+    updateStrips();
     undoButton.setEnabled (proc.canUndo());
     redoButton.setEnabled (proc.canRedo());
 }
@@ -360,17 +426,18 @@ void BatidaEditor::resized()
     auto r = getLocalBounds().reduced (10);
     auto header = r.removeFromTop (ParamControl::kHeight);
 
-    auto titleArea = header.removeFromLeft (196);
+    auto titleArea = header.removeFromLeft (232);
     title.setBounds (titleArea.removeFromTop (30));
     auto views = titleArea.removeFromBottom (28).withTrimmedRight (6);
-    const auto bw = views.getWidth() / 4;
-    kitViewButton.setBounds (views.removeFromLeft (bw).withTrimmedRight (2));
-    seqViewButton.setBounds (views.removeFromLeft (bw).withTrimmedRight (2));
-    modViewButton.setBounds (views.removeFromLeft (bw).withTrimmedRight (2));
-    voiceViewButton.setBounds (views);
+    for (auto [b, w] : { std::pair { &kitViewButton, 42 }, { &seqViewButton, 44 }, { &modViewButton, 46 }, { &voiceViewButton, 56 } })
+        b->setBounds (views.removeFromLeft (w).withTrimmedRight (2));
+    libViewButton.setBounds (views);
     master.setBounds (header.removeFromRight (ParamControl::kWidth));
-    keysVoice.setBounds (header.removeFromRight (80));
-    midiMode.setBounds (header.removeFromRight (110));
+    auto menus = header.removeFromRight (190);
+    auto kitRow = menus.removeFromBottom (22);
+    keysVoice.setBounds (menus.removeFromRight (80));
+    midiMode.setBounds (menus);
+    kitStrip.setBounds (kitRow.withTrimmedRight (4));
     header.removeFromRight (10);
 
     auto buttons = header.removeFromTop (38);
@@ -385,6 +452,8 @@ void BatidaEditor::resized()
     }
     redoButton.setBounds (header.removeFromRight (52).reduced (2, 3));
     undoButton.setBounds (header.removeFromRight (52).reduced (2, 3));
+    if (missingButton.isVisible())
+        missingButton.setBounds (header.removeFromRight (190).reduced (2, 3));
     info.setBounds (header);
 
     r.removeFromTop (6);
@@ -392,6 +461,9 @@ void BatidaEditor::resized()
     kitPage.setBounds (r);
     seqPage.setBounds (r);
     modPage.setBounds (r);
+    libraryPage.setBounds (r);
+    soundStrip.setBounds (r.getRight() - 230, r.getY() + 3, 226, 24);
+    library.layoutOverlays();
 }
 
 int BatidaEditor::voiceAt (int x, int y) const
@@ -405,7 +477,7 @@ int BatidaEditor::voiceAt (int x, int y) const
 bool BatidaEditor::isInterestedInFileDrag (const juce::StringArray& files)
 {
     for (const auto& f : files)
-        if (isAudioFile (f))
+        if (isAudioFile (f) || isPresetFile (f))
             return true;
     return false;
 }
@@ -441,6 +513,20 @@ void BatidaEditor::filesDropped (const juce::StringArray& files, int x, int y)
 
     for (const auto& f : files)
     {
+        // A library file: a sound goes to the voice it's dropped on; the rest load whole.
+        if (isPresetFile (f))
+        {
+            juce::String error;
+            if (proc.loadPresetFile (juce::File (f), voice, proc.displayPattern(), BatidaProcessor::LoadMode::Step, &error))
+            {
+                if (presetTypeOf (juce::File (f)) == PresetType::Sound)
+                    selectVoice (voice);
+                libraryChanged();
+            }
+            else
+                juce::AlertWindow::showAsync (juce::MessageBoxOptions().withTitle ("Couldn't load").withMessage (error).withButton ("OK"), nullptr);
+            break;
+        }
         if (! isAudioFile (f))
             continue;
 

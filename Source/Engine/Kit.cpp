@@ -32,10 +32,71 @@ void Kit::reset()
     sequencer.reset();
     mods.reset();
     xyLocked = false;
+    switching = 0;
+    uiSwitching = 0;
+    deferred = {};
+}
+
+void Kit::noteOn (int voice, int key, float velocity, int slice)
+{
+    if ((switching >> voice) & 1u)
+    {
+        deferred[(size_t) voice] = { true, false, key, slice, velocity };
+        return;
+    }
+    voices[(size_t) voice].noteOn (key, velocity, slice);
+}
+
+void Kit::noteOff (int voice, int key)
+{
+    auto& d = deferred[(size_t) voice];
+    if (d.pending && d.key == key)
+        d.released = true;
+    voices[(size_t) voice].noteOff (key);
+}
+
+void Kit::finishSwitches()
+{
+    if (switching == 0)
+        return;
+    bool anySolo = false;
+    for (const auto& v : current.voices)
+        anySolo = anySolo || v.flag (vp::Solo);
+
+    for (int v = 0; v < kNumVoices; ++v)
+    {
+        const auto bit = 1u << v;
+        if ((switching & bit) == 0 || voices[(size_t) v].isActive())
+            continue;
+        switching &= ~bit;
+        voices[(size_t) v].setSampleData (slots[(size_t) v].acquire());
+        applyVoice (v, anySolo);
+        auto& d = deferred[(size_t) v];
+        if (d.pending)
+        {
+            voices[(size_t) v].noteOn (d.key, d.velocity, d.slice);
+            if (d.released)
+                voices[(size_t) v].noteOff (d.key);
+        }
+        d = {};
+    }
+    uiSwitching = switching;
 }
 
 void Kit::setParameters (const KitParams& params)
 {
+    // Sounds about to be replaced: sounding voices fade out on their old settings.
+    if (const auto requested = switchRequests.exchange (0); requested != 0)
+    {
+        for (int v = 0; v < kNumVoices; ++v)
+            if (((requested >> v) & 1u) != 0 && voices[(size_t) v].isActive())
+            {
+                voices[(size_t) v].choke();
+                switching |= 1u << v;
+            }
+        uiSwitching = switching;
+    }
+
     host = params;
     movementData = movement.acquire();
 
@@ -135,9 +196,8 @@ void Kit::applyParams (bool modulatedOnly)
     {
         if (modulatedOnly && ! voiceModulated[(size_t) v])
             continue;
-        const auto& p = current.voices[(size_t) v];
-        voices[(size_t) v].setAudible (! p.flag (vp::Mute) && (! anySolo || p.flag (vp::Solo)));
-        voices[(size_t) v].setParameters (p);
+        if (((switching >> v) & 1u) == 0) // a switching voice keeps its old sound until it has faded
+            applyVoice (v, anySolo);
     }
 
     if (modulatedOnly && ! globalsModulated)
@@ -146,6 +206,13 @@ void Kit::applyParams (bool modulatedOnly)
     masterTarget = db <= -60.0f ? 0.0f : std::pow (10.0f, db / 20.0f);
     globals = current.global;
     applyChainSettings();
+}
+
+void Kit::applyVoice (int v, bool anySolo)
+{
+    const auto& p = current.voices[(size_t) v];
+    voices[(size_t) v].setAudible (! p.flag (vp::Mute) && (! anySolo || p.flag (vp::Solo)));
+    voices[(size_t) v].setParameters (p);
 }
 
 void Kit::tick (int offset)
@@ -187,8 +254,8 @@ void Kit::handle (const SeqEvent& e)
 {
     switch (e.type)
     {
-        case SeqEvent::Type::NoteOn:    voices[(size_t) e.voice].noteOn (e.key, e.velocity, e.slice); mods.hit (e.voice); break;
-        case SeqEvent::Type::NoteOff:   voices[(size_t) e.voice].noteOff (e.key); break;
+        case SeqEvent::Type::NoteOn:    noteOn (e.voice, e.key, e.velocity, e.slice); mods.hit (e.voice); break;
+        case SeqEvent::Type::NoteOff:   noteOff (e.voice, e.key); break;
         case SeqEvent::Type::XyLock:    xyLocked = true; lockX = e.x; lockY = e.y; applyChainSettings(); break;
         case SeqEvent::Type::XyRelease: xyLocked = false; applyChainSettings(); break;
         case SeqEvent::Type::PatternStart: mods.patternStart(); break;
@@ -208,14 +275,13 @@ void Kit::handle (const juce::MidiMessage& message)
     if (! routeMidi (message, midiMode, keysVoice, e))
         return;
 
-    auto& voice = voices[(size_t) e.voice];
     if (e.isNoteOn)
     {
-        voice.noteOn (e.key, e.velocity);
+        noteOn (e.voice, e.key, e.velocity);
         mods.hit (e.voice);
     }
     else
-        voice.noteOff (e.key);
+        noteOff (e.voice, e.key);
 }
 
 namespace
@@ -294,7 +360,8 @@ void Kit::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& mid
         return;
 
     for (int v = 0; v < kNumVoices; ++v)
-        voices[(size_t) v].setSampleData (slots[(size_t) v].acquire());
+        if (((switching >> v) & 1u) == 0) // a switching voice finishes on its old sample
+            voices[(size_t) v].setSampleData (slots[(size_t) v].acquire());
 
     const auto total = buffer.getNumSamples();
 
@@ -340,6 +407,7 @@ void Kit::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& mid
         {
             if (controlCountdown <= 0)
             {
+                finishSwitches();
                 tick (cursor);
                 controlCountdown = kControlSamples;
             }

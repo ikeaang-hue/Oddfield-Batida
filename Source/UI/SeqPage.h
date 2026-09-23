@@ -1,5 +1,6 @@
 #pragma once
 
+#include "BrowseStrip.h"
 #include "DraggableNumber.h"
 #include "PatternGrid.h"
 
@@ -14,6 +15,8 @@ public:
 
     void paint (juce::Graphics& g) override;
     void resized() override;
+
+    BrowseStrip patternStrip; // the editor wires it to the library
 
 private:
     void timerCallback() override;

@@ -115,7 +115,7 @@ SeqPage::SeqPage (BatidaProcessor& p)
                                 (juce::Component*) &playButton, (juce::Component*) &syncButton, (juce::Component*) &tempoLabel,
                                 (juce::Component*) &tempo, (juce::Component*) &swingLabel, (juce::Component*) &swing,
                                 (juce::Component*) &copyButton, (juce::Component*) &pasteButton, (juce::Component*) &clearButton,
-                                (juce::Component*) &laneLabel, (juce::Component*) &pageMap, (juce::Component*) &grid,
+                                (juce::Component*) &laneLabel, (juce::Component*) &pageMap, (juce::Component*) &grid, (juce::Component*) &patternStrip,
                                 (juce::Component*) &hint })
         addAndMakeVisible (c);
 
@@ -176,9 +176,10 @@ void SeqPage::resized()
     for (auto& b : laneButtons)
         place (rowB, b, 64, 2);
     rowB.removeFromLeft (10);
-    place (rowB, pageMap, 290, 10);
+    place (rowB, pageMap, 160, 8);
+    place (rowB, patternStrip, 118, 6);
     place (rowB, swingLabel, 42, 2);
-    place (rowB, swing, 62, 10);
+    place (rowB, swing, 54, 8);
     place (rowB, copyButton, 52, 2);
     place (rowB, pasteButton, 52, 2);
     place (rowB, clearButton, 52, 2);

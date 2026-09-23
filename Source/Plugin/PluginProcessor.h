@@ -3,6 +3,7 @@
 #include "Engine/Kit.h"
 #include "Engine/Movement/Vary.h"
 #include "History.h"
+#include "Library/Library.h"
 
 #include <map>
 
@@ -65,6 +66,64 @@ public:
     // Swaps two slots: every setting, the sample, the name, mute/solo and the
     // track in all 16 patterns move together; each slot keeps its MIDI note.
     void swapVoices (int a, int b);
+
+    // Library ------------------------------------------------------------------
+    // The library is shared by every Batida; call library().prepare() before
+    // showing it (installs the factory files once).
+    batida::Library& library() const { return *sharedLibrary; }
+
+    // Browse: a run of loads of the same kind into the same place is one undo
+    // step, so trying 30 sounds and pressing Undo returns to where you started.
+    enum class LoadMode { Step, Browse };
+
+    batida::SoundPreset captureSound (int voice) const;
+    batida::KitPreset captureKit() const;
+    batida::PatternPreset capturePattern (int pattern) const;
+    batida::SetPreset captureSet() const;
+
+    // Loading keeps the slot's Pan, Mute and Solo for a sound, Mute and Solo
+    // for a kit; a set brings everything. `from` is remembered for Save.
+    void applySound (int voice, const batida::SoundPreset& sound, const juce::File& from, LoadMode mode = LoadMode::Step);
+    void applyKit (const batida::KitPreset& kit, const juce::File& from, LoadMode mode = LoadMode::Step);
+    void applyPattern (int pattern, const batida::PatternPreset& preset, const juce::File& from, LoadMode mode = LoadMode::Step);
+    void applySet (const batida::SetPreset& set, const juce::File& from, LoadMode mode = LoadMode::Step);
+
+    // Any library file: a sound goes to `voice`, a pattern to `pattern`.
+    bool loadPresetFile (const juce::File& file, int voice, int pattern, LoadMode mode, juce::String* error = nullptr);
+    bool browseSample (int voice, const juce::File& file); // from the browser: merged undo
+
+    void initSound (int voice); // a plain starting sound
+    void initKit();             // the default kit
+    void initPattern (int pattern);
+    void initAll();             // like a new Batida
+
+    // Writes the file and remembers it (Save then writes there again). With
+    // collectSamples, the samples are copied into "<name> Samples" next to it.
+    bool saveSound (int voice, const juce::File& file, const batida::PresetInfo& info, bool collectSamples, juce::String* error = nullptr);
+    bool saveKit (const juce::File& file, const batida::PresetInfo& info, bool collectSamples, juce::String* error = nullptr);
+    bool savePattern (int pattern, const juce::File& file, const batida::PresetInfo& info, juce::String* error = nullptr);
+    bool saveSet (const juce::File& file, const batida::PresetInfo& info, bool collectSamples, juce::String* error = nullptr);
+
+    // Where the current kit, sounds and patterns came from (saved with the project).
+    struct Origins
+    {
+        juce::String kitName { "Neutral" }, setName;
+        juce::File kitFile, setFile;
+        std::array<juce::File, batida::kNumVoices> soundFiles;
+        std::array<juce::String, batida::kNumPatterns> patternNames;
+        std::array<juce::File, batida::kNumPatterns> patternFiles;
+    };
+    const Origins& getOrigins() const { return origins; }
+    int getOriginsVersion() const { return originsVersion; }
+    juce::String getPatternName (int pattern) const; // its file's name, or "Pattern 3"
+
+    // Missing samples.
+    int numMissingSamples() const;
+    bool relinkSample (int voice, const juce::File& file);                 // one undo step
+    int relinkFound (const std::vector<std::pair<int, juce::File>>& found); // one undo step for all
+    int autoRelink();                                                      // searches the known folders
+    juce::int64 missingSampleBytes (int voice) const { return sampleBytes[(size_t) voice]; }
+    bool collectSamples (const juce::File& folder, juce::String* error = nullptr); // the project's samples
 
     // Undo/redo (patterns, names, big actions). Call beginUndoStep before a
     // change; withParameters/withSamples for actions that change those too.
@@ -131,6 +190,23 @@ private:
     void restore (const HistorySnapshot& s);
     juce::int64 historyStamp() const;
     void writeVoiceParameters (int voice, const batida::VoiceParams& values);
+    void writeGlobalParameter (int param, float value);
+    void setSample (int voice, const batida::SampleRef& ref);
+    batida::SampleRef sampleRefFor (int voice) const;
+    void setNameQuietly (int voice, const juce::String& name);
+    void beginLoadStep (const juce::String& key, LoadMode mode);
+    void endLoadStep (const juce::String& key, LoadMode mode);
+    std::unique_ptr<juce::XmlElement> originsToXml() const;
+    void originsFromXml (const juce::XmlElement* xml);
+    bool collectInto (batida::SampleRef& ref, const juce::File& presetFile, const juce::String& name, juce::String* error);
+    void presetSaved (const juce::File& file);
+
+    juce::SharedResourcePointer<batida::Library> sharedLibrary;
+    Origins origins;
+    int originsVersion = 0;
+    std::array<juce::int64, batida::kNumVoices> sampleBytes {}; // sizes of the samples, for finding them again
+    juce::String browseKey;
+    juce::int64 browseStamp = 0;
     History history;
     int actionCounter = 0;
     std::map<juce::String, ParamRef> paramRefs;
