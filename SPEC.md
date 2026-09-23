@@ -1,6 +1,6 @@
 # Negative Space Batida: Design Spec
 
-*Version 1, agreed 2026-09-24*
+*Version 1.1, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host)*
 
 ## 1. Identity
 
@@ -51,7 +51,9 @@ The eight voices are identical, general-purpose slots. Any slot can hold any sou
   - *Brightness decay:* how fast the brightness fades.
   - *Grit:* feedback.
 
-  The macros visibly move the real parameters, so the user learns FM by watching.
+  Each macro is an automatable host parameter, applied as an offset on top of the operator
+  settings. Each operator knob shows a second marker at its effective value, so the user sees
+  the macros move the real parameters and learns FM by watching.
 
 **Layer**
 - Sample and FM together, with a balance control (e.g. a sampled transient over an FM body).
@@ -126,8 +128,9 @@ Reverb, delay and stereo/spatial effects are left to the DAW.
 
 ## 9. MIDI
 
-- **Omni / channel 10:** GM drum map triggers voices (36 = voice 1, and so on).
-- **Channels 1–8:** play voices 1–8 chromatically.
+A **MIDI mode** switch chooses between:
+- **Drum map, any channel** (default): GM notes 36–43 trigger voices 1–8 on every channel.
+- **Split:** channel 10 uses the drum map; channels 1–8 play voices 1–8 chromatically.
 
 ## 10. Library and presets
 
@@ -182,6 +185,7 @@ Reverb, delay and stereo/spatial effects are left to the DAW.
   - **AU:** the primary format. Everything is built and tested as AU first.
   - **VST3 (macOS):** added once everything else is done.
   - No standalone app.
+- **Test host:** Logic Pro.
 
 ## 14. Build order
 
