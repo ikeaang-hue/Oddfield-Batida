@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Batida VERSION 0.1.0)
+project(Batida VERSION 0.2.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,11 +26,15 @@ target_sources(BatidaEngine
         Source/Engine/Processors.cpp
         Source/Engine/Voice.cpp
         Source/Engine/MidiRouter.cpp
-        Source/Engine/Kit.cpp)
+        Source/Engine/Kit.cpp
+        Source/Engine/Chain/ChainSettings.cpp
+        Source/Engine/Chain/Compressor.cpp
+        Source/Engine/Chain/Saturator.cpp
+        Source/Engine/Chain/KitChain.cpp)
 
 target_include_directories(BatidaEngine INTERFACE Source)
 
-target_link_libraries(BatidaEngine INTERFACE juce::juce_audio_formats)
+target_link_libraries(BatidaEngine INTERFACE juce::juce_audio_formats juce::juce_dsp)
 
 set(BATIDA_DEFINITIONS
     JUCE_WEB_BROWSER=0
@@ -63,7 +67,8 @@ target_sources(Batida
         Source/UI/PluginEditor.cpp
         Source/UI/ParamControl.cpp
         Source/UI/VoicePages.cpp
-        Source/UI/FmPage.cpp)
+        Source/UI/FmPage.cpp
+        Source/UI/KitPage.cpp)
 
 target_compile_definitions(Batida PUBLIC ${BATIDA_DEFINITIONS})
 
@@ -85,6 +90,7 @@ target_sources(BatidaTests
     PRIVATE
         tests/TestMain.cpp
         tests/EngineTests.cpp
+        tests/ChainTests.cpp
         tests/Tools.cpp)
 
 target_compile_definitions(BatidaTests PRIVATE ${BATIDA_DEFINITIONS})
@@ -108,7 +114,8 @@ target_sources(BatidaSnapshot
         Source/UI/PluginEditor.cpp
         Source/UI/ParamControl.cpp
         Source/UI/VoicePages.cpp
-        Source/UI/FmPage.cpp)
+        Source/UI/FmPage.cpp
+        Source/UI/KitPage.cpp)
 
 target_compile_definitions(BatidaSnapshot PRIVATE ${BATIDA_DEFINITIONS} JucePlugin_Name="Batida")
 

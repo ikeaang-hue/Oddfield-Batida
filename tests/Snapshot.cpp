@@ -19,25 +19,38 @@ int main (int argc, char* argv[])
     if (argc > 2)
         proc.loadSample (0, cwd.getChildFile (argv[2]));
 
-    // Turn two macros so the effective-value markers show on the FM page.
+    // Turn two macros and move the pad, so the effective-value markers show.
     auto& state = proc.getState();
     state.getParameter ("v1_fm_bright")->setValueNotifyingHost (0.75f);
     state.getParameter ("v1_fm_harm")->setValueNotifyingHost (0.7f);
+    state.getParameter ("xy_x")->setValueNotifyingHost (0.7f);
+    state.getParameter ("xy_y")->setValueNotifyingHost (0.55f);
+    state.getParameter ("dist_drive")->setValueNotifyingHost (0.1f);
 
     std::unique_ptr<juce::AudioProcessorEditor> editor (proc.createEditor());
     auto* tabs = dynamic_cast<juce::TabbedComponent*> (editor->findChildWithID ("tabs"));
-    if (tabs == nullptr)
+    auto* kit = editor->findChildWithID ("kitPage");
+    if (tabs == nullptr || kit == nullptr)
         return 1;
 
-    for (int i = 0; i < tabs->getNumTabs(); ++i)
+    auto save = [&] (const juce::String& name)
     {
-        tabs->setCurrentTabIndex (i);
         const auto image = editor->createComponentSnapshot (editor->getLocalBounds(), true, 1.0f);
-        const auto file = outDir.getChildFile (juce::String (i + 1) + "-" + tabs->getTabNames()[i].replace (" ", "").replace ("&", "") + ".png");
+        const auto file = outDir.getChildFile (name + ".png");
         file.deleteFile();
         juce::FileOutputStream out (file);
         juce::PNGImageFormat().writeImageToStream (image, out);
         std::printf ("%s\n", file.getFullPathName().toRawUTF8());
+    };
+
+    save ("0-Kit"); // the opening page
+
+    kit->setVisible (false);
+    tabs->setVisible (true);
+    for (int i = 0; i < tabs->getNumTabs(); ++i)
+    {
+        tabs->setCurrentTabIndex (i);
+        save (juce::String (i + 1) + "-" + tabs->getTabNames()[i].replace (" ", "").replace ("&", ""));
     }
 
     editor.reset();

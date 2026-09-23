@@ -24,20 +24,40 @@ int VoicePage::addSection (const juce::String& title)
     return (int) sections.size() - 1;
 }
 
-ParamControl& VoicePage::add (int section, int param, const juce::String& label)
+ParamControl& VoicePage::addControl (int section, const juce::String& label)
 {
-    auto control = std::make_unique<ParamControl> (proc.getState(), label);
-    auto& ref = *control;
+    owned.push_back (std::make_unique<ParamControl> (proc.getState(), label));
+    auto& ref = *owned.back();
     addAndMakeVisible (ref);
     sections[(size_t) section].controls.push_back (&ref);
-    controls.emplace_back (std::move (control), param);
     return ref;
+}
+
+ParamControl& VoicePage::add (int section, int param, const juce::String& label)
+{
+    auto& c = addControl (section, label);
+    selectedVoiceControls.emplace_back (&c, param);
+    return c;
+}
+
+ParamControl& VoicePage::addGlobal (int section, int param, const juce::String& label)
+{
+    auto& c = addControl (section, label);
+    c.bind (globalParamID (param));
+    return c;
+}
+
+ParamControl& VoicePage::addFixedVoice (int section, int fixedVoice, int param, const juce::String& label)
+{
+    auto& c = addControl (section, label);
+    c.bind (voiceParamID (fixedVoice, param));
+    return c;
 }
 
 void VoicePage::bindVoice (int newVoice)
 {
     voice = newVoice;
-    for (auto& [control, param] : controls)
+    for (auto& [control, param] : selectedVoiceControls)
         control->bind (voiceParamID (voice, param));
 }
 
@@ -177,6 +197,7 @@ SourcePage::SourcePage (BatidaProcessor& p) : VoicePage (p), waveform (p)
     add (voiceSection, vp::Level);
     add (voiceSection, vp::Pan);
     add (voiceSection, vp::VelSens);
+    add (voiceSection, vp::ChainAmt, "Chain Amount");
 
     sampleSection = addSection ("Sample");
     add (sampleSection, vp::SmpTune, "Tune");
@@ -308,9 +329,9 @@ ChainPage::ChainPage (BatidaProcessor& p) : VoicePage (p)
     add (filterSection, vp::FltCutoff);
     add (filterSection, vp::FltRes);
 
-    styleNote (note, "Signal flow: source > amp envelope > punch > drive > filter > level/pan.\n"
-                     "Punch adds attack and tightens the tail. The kit chain (dynamics, distortion, EQ) "
-                     "and the per-voice Clean toggle arrive in phase 3.");
+    styleNote (note, "This voice's own processing: source > amp envelope > punch > drive > filter > level/pan.\n"
+                     "Punch adds attack and tightens the tail. After level/pan, the voice's Chain Amount "
+                     "(Source tab, or the Kit page) sends it into the kit chain.");
     addAndMakeVisible (note);
 }
 

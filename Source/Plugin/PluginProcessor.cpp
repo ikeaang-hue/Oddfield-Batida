@@ -36,6 +36,16 @@ juce::String formatValue (const ParamSpec& spec, float v)
                                      : (v < 0.0f ? "L" : "R") + juce::String (juce::roundToInt (std::abs (v) * 100.0f));
     if (u == "x")
         return juce::String (v, 3);
+    if (u == "dist")
+    {
+        static const char* names[] = { "Tape", "Tube", "Clip", "Fold", "Crush" };
+        const auto m = v * 4.0f;
+        const auto i = std::min ((int) m, 3);
+        const auto t = m - (float) i;
+        if (t < 0.02f) return names[i];
+        if (t > 0.98f) return names[i + 1];
+        return juce::String (names[i]) + ">" + names[i + 1] + " " + juce::String (juce::roundToInt (t * 100.0f)) + "%";
+    }
     if (u == "wave")
     {
         static const char* names[] = { "Sine", "Tri", "Saw", "Square", "Noise" };
@@ -129,7 +139,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout BatidaProcessor::createLayou
 }
 
 BatidaProcessor::BatidaProcessor()
-    : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
+    : AudioProcessor (BusesProperties()
+                          .withInput ("Sidechain", juce::AudioChannelSet::stereo(), false)
+                          .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       state (*this, nullptr, "BATIDA", createLayout())
 {
     formats.registerBasicFormats();
@@ -152,12 +164,17 @@ BatidaProcessor::~BatidaProcessor()
 void BatidaProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     kit.prepare (sampleRate, samplesPerBlock);
+    sidechainCopy.setSize (2, std::max (1, samplesPerBlock));
+    setLatencySamples (kit.getLatencySamples());
 }
 
 bool BatidaProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
     const auto out = layouts.getMainOutputChannelSet();
-    return out == juce::AudioChannelSet::stereo() || out == juce::AudioChannelSet::mono();
+    const auto in = layouts.getMainInputChannelSet(); // the sidechain
+    const auto okOut = out == juce::AudioChannelSet::stereo() || out == juce::AudioChannelSet::mono();
+    const auto okIn = in.isDisabled() || in == juce::AudioChannelSet::stereo() || in == juce::AudioChannelSet::mono();
+    return okOut && okIn;
 }
 
 void BatidaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
@@ -185,7 +202,21 @@ void BatidaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
             kit.noteOff (v, Voice::kBaseKey);
     }
 
-    kit.process (buffer, midi);
+    // The sidechain arrives in the same buffer the output is written to, so
+    // copy it out first.
+    const juce::AudioBuffer<float>* sidechain = nullptr;
+    if (auto* bus = getBus (true, 0); bus != nullptr && bus->isEnabled() && bus->getNumberOfChannels() > 0)
+    {
+        const auto in = getBusBuffer (buffer, true, 0);
+        const auto n = buffer.getNumSamples();
+        if (sidechainCopy.getNumSamples() < n)
+            sidechainCopy.setSize (2, n, false, false, true); // only if the host exceeds its block size
+        for (int ch = 0; ch < 2; ++ch)
+            sidechainCopy.copyFrom (ch, 0, in, std::min (ch, in.getNumChannels() - 1), 0, n);
+        sidechain = &sidechainCopy;
+    }
+
+    kit.process (buffer, midi, sidechain);
 }
 
 void BatidaProcessor::audition (int voice, bool on)
@@ -199,6 +230,14 @@ void BatidaProcessor::setKeysVoice (int voice)
     const auto value = keys->convertTo0to1 ((float) voice);
     if (keys->getValue() != value)
         keys->setValueNotifyingHost (value);
+}
+
+std::array<float, kNumGlobalParams> BatidaProcessor::readGlobalParams() const
+{
+    std::array<float, kNumGlobalParams> g {};
+    for (int i = 0; i < kNumGlobalParams; ++i)
+        g[(size_t) i] = globalRaw[(size_t) i]->load (std::memory_order_relaxed);
+    return g;
 }
 
 VoiceParams BatidaProcessor::readVoiceParams (int voice) const

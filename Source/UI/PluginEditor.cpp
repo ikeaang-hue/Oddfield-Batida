@@ -31,7 +31,8 @@ void BatidaEditor::VoiceButton::mouseUp (const juce::MouseEvent& e)
 }
 
 BatidaEditor::BatidaEditor (BatidaProcessor& p)
-    : AudioProcessorEditor (&p), proc (p), midiMode (p.getState()), keysVoice (p.getState()), master (p.getState())
+    : AudioProcessorEditor (&p), proc (p), midiMode (p.getState()), keysVoice (p.getState()), master (p.getState()),
+      kitPage (p)
 {
     title.setText ("BATIDA", juce::dontSendNotification);
     title.setFont (juce::FontOptions (26.0f, juce::Font::bold));
@@ -68,12 +69,25 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
     const auto tabColour = juce::Colour (0xff2a2d31);
     tabs.addTab ("Source", tabColour, sourcePage = new SourcePage (p), true);
     tabs.addTab ("FM", tabColour, fmPage = new FmPage (p), true);
-    tabs.addTab ("Chain", tabColour, chainPage = new ChainPage (p), true);
+    tabs.addTab ("Voice FX", tabColour, chainPage = new ChainPage (p), true);
     tabs.addTab ("Envelopes & Play", tabColour, envelopePage = new EnvelopePage (p), true);
     tabs.setTabBarDepth (30);
     tabs.setComponentID ("tabs");
     tabs.setCurrentTabIndex (1);
-    addAndMakeVisible (tabs);
+    addChildComponent (tabs);
+
+    kitPage.setComponentID ("kitPage");
+    addAndMakeVisible (kitPage);
+
+    for (auto* b : { &kitViewButton, &voiceViewButton })
+    {
+        b->setClickingTogglesState (false);
+        b->setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffc0632a));
+        addAndMakeVisible (*b);
+    }
+    kitViewButton.onClick = [this] { showView (true); };
+    voiceViewButton.onClick = [this] { showView (false); };
+    showView (true); // the kit panel is the opening page
 
     selectVoice (juce::jlimit (0, kNumVoices - 1, proc.selectedVoice.load()));
 
@@ -84,6 +98,14 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
 BatidaEditor::~BatidaEditor()
 {
     stopTimer();
+}
+
+void BatidaEditor::showView (bool kit)
+{
+    kitPage.setVisible (kit);
+    tabs.setVisible (! kit);
+    kitViewButton.setToggleState (kit, juce::dontSendNotification);
+    voiceViewButton.setToggleState (! kit, juce::dontSendNotification);
 }
 
 void BatidaEditor::selectVoice (int voice)
@@ -168,7 +190,11 @@ void BatidaEditor::resized()
     auto r = getLocalBounds().reduced (10);
     auto header = r.removeFromTop (ParamControl::kHeight);
 
-    title.setBounds (header.removeFromLeft (150).removeFromTop (30));
+    auto titleArea = header.removeFromLeft (150);
+    title.setBounds (titleArea.removeFromTop (30));
+    auto views = titleArea.removeFromBottom (28).withTrimmedRight (10);
+    kitViewButton.setBounds (views.removeFromLeft (views.getWidth() / 2).withTrimmedRight (3));
+    voiceViewButton.setBounds (views.withTrimmedLeft (3));
     master.setBounds (header.removeFromRight (ParamControl::kWidth));
     keysVoice.setBounds (header.removeFromRight (80));
     midiMode.setBounds (header.removeFromRight (110));
@@ -182,6 +208,7 @@ void BatidaEditor::resized()
 
     r.removeFromTop (6);
     tabs.setBounds (r);
+    kitPage.setBounds (r);
 }
 
 int BatidaEditor::voiceAt (int x, int y) const
@@ -238,6 +265,7 @@ void BatidaEditor::filesDropped (const juce::StringArray& files, int x, int y)
         selectVoice (voice);
         sourcePage->bindVoice (voice);
         tabs.setCurrentTabIndex (0);
+        showView (false);
         break;
     }
 }
