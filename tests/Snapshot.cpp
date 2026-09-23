@@ -122,6 +122,35 @@ int main (int argc, char* argv[])
         gesture (tempo, fracPart, { fracPart.translated (0, -15) });
         check (std::abs (bpm() - (t0 + 2.03f)) < 1.0e-3f, "tempo: dragging the decimals moves by 0.01 per step");
         std::printf ("  tempo now %.2f (was %.2f)\n", bpm(), t0);
+
+        // Rename and swap.
+        proc.setVoiceName (2, "Crack");
+        check (proc.getVoiceName (2) == "Crack", "rename a voice");
+        auto pitchOf = [&] (int v) { auto* q = proc.getState().getParameter (batida::voiceParamID (v, batida::vp::FmPitch)); return q->convertFrom0to1 (q->getValue()); };
+        const auto p0 = pitchOf (0), p2 = pitchOf (2);
+        const auto kickTrack = proc.patterns().get().patterns[0].tracks[0].steps;
+        const auto snareTrack = proc.patterns().get().patterns[0].tracks[2].steps;
+        auto sameSteps = [] (const auto& a, const auto& b)
+        {
+            for (size_t i = 0; i < a.size(); ++i)
+                if (a[i].gate != b[i].gate || a[i].velocity != b[i].velocity) return false;
+            return true;
+        };
+        proc.swapVoices (0, 2);
+        check (std::abs (pitchOf (0) - p2) < 1.0e-3f && std::abs (pitchOf (2) - p0) < 1.0e-3f, "swap moves the sounds' settings");
+        check (proc.getVoiceName (0) == "Crack" && proc.getVoiceName (2) == "Kick", "swap moves the names");
+        check (sameSteps (proc.patterns().get().patterns[0].tracks[0].steps, snareTrack)
+                   && sameSteps (proc.patterns().get().patterns[0].tracks[2].steps, kickTrack),
+               "swap moves the pattern tracks");
+        proc.swapVoices (0, 2);
+        check (std::abs (pitchOf (0) - p0) < 1.0e-3f && proc.getVoiceName (2) == "Crack", "swapping back restores them");
+
+        // State keeps names.
+        juce::MemoryBlock saved;
+        proc.getStateInformation (saved);
+        BatidaProcessor other;
+        other.setStateInformation (saved.getData(), (int) saved.getSize());
+        check (other.getVoiceName (2) == "Crack" && other.getVoiceName (1) == "Rim", "names are saved with the project");
         std::printf ("%s\n", failures == 0 ? "GESTURES PASS" : "GESTURES FAIL");
     }
 

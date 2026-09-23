@@ -45,6 +45,7 @@ enum : int
     SmpSliceMode, SmpSlices, SmpSliceSens,
     Punch, Drive, DriveType, FltType, FltCutoff, FltRes,
     ChainAmt, // dry/wet into the kit chain
+    Mute, Solo,
     OpBase
 };
 }

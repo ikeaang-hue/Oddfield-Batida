@@ -15,7 +15,8 @@
 //   XY row:      tap locks the step to the pad's position (tap again clears);
 //                drag moves the lock: up/down = heat, left/right = character.
 //   Option-click a step: that track's length ends there (polymeter).
-//   Right-click a track name: copy, paste, clear, fill.
+//   Track names: double-click to rename; right-click for rename, swap,
+//   copy, paste, clear, fill. M / S under each name mute and solo the voice.
 class PatternGrid final : public juce::Component, private juce::Timer
 {
 public:
@@ -33,6 +34,8 @@ public:
     void mouseDown (const juce::MouseEvent& e) override;
     void mouseDrag (const juce::MouseEvent& e) override;
     void mouseUp (const juce::MouseEvent& e) override;
+    void mouseDoubleClick (const juce::MouseEvent& e) override;
+    void resized() override;
 
     static constexpr int kStepsPerPage = 16;
     static constexpr int kPages = batida::kMaxSteps / kStepsPerPage;
@@ -58,7 +61,13 @@ private:
     batida::XyLock startLock;
     int lastPaintStep = -1;
 
-    int shownVersion = -1, shownPattern = -1;
+    std::array<juce::TextButton, batida::kNumTracks> muteButtons, soloButtons;
+    std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>, batida::kNumTracks> muteAttachments,
+        soloAttachments;
+    std::unique_ptr<juce::TextEditor> renameEditor;
+    void renameTrack (int track);
+
+    int shownVersion = -1, shownPattern = -1, shownNames = -1;
     std::array<int, batida::kNumTracks + 1> shownSteps {};
 };
 

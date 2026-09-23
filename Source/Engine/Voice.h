@@ -23,6 +23,10 @@ public:
     void setParameters (const VoiceParams& p);
     void setSampleData (const SampleData* data) { sampleSource.setData (data); }
 
+    // Mute/solo, decided by the kit: fades the voice out (or back in) over a
+    // few ms. A muted voice still plays underneath, so unmuting mid-note works.
+    void setAudible (bool audible) { audibleTarget = audible ? 1.0f : 0.0f; }
+
     void noteOn (int key, float velocity, int slice = -1); // velocity 0..1; slice for sliced samples
     void noteOff (int key);
     void allNotesOff();                    // release, or hard stop if reset
@@ -53,7 +57,8 @@ private:
     Drive drive;
     SvfFilter filter;
 
-    Smoother gainL, gainR, logCutoff, chainAmt;
+    Smoother gainL, gainR, logCutoff, chainAmt, audibleGain;
+    float audibleTarget = 1.0f;
     std::array<float, 2> gainTargets { 1.0f, 1.0f };
     float cutoffTarget = 14.29f; // log2 Hz
     float cutoffHz = 20000.0f;

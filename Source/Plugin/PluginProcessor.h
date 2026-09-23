@@ -52,6 +52,15 @@ public:
     void clearSample (int voice);
 
     void audition (int voice, bool on);
+
+    // Voice names (saved with the project; empty = the default name).
+    juce::String getVoiceName (int voice) const;
+    void setVoiceName (int voice, const juce::String& name);
+    int getNamesVersion() const { return namesVersion.load(); }
+
+    // Swaps two slots: every setting, the sample, the name, mute/solo and the
+    // track in all 16 patterns move together; each slot keeps its MIDI note.
+    void swapVoices (int a, int b);
     void setKeysVoice (int voice); // what Chromatic mode plays; follows the editor selection
     batida::VoiceParams readVoiceParams (int voice) const;
     std::array<float, batida::kNumGlobalParams> readGlobalParams() const;
@@ -72,6 +81,8 @@ private:
     std::array<std::array<std::atomic<float>*, batida::kNumVoiceParams>, batida::kNumVoices> voiceRaw {};
     std::array<std::atomic<float>*, batida::kNumGlobalParams> globalRaw {};
     std::atomic<uint32_t> auditionOn { 0 }, auditionOff { 0 };
+    std::array<juce::String, batida::kNumVoices> voiceNames;
+    std::atomic<int> namesVersion { 0 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BatidaProcessor)
 };

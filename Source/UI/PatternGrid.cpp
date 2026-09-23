@@ -1,5 +1,7 @@
 #include "PatternGrid.h"
 
+#include "RenameField.h"
+
 using namespace batida;
 
 namespace
@@ -43,6 +45,25 @@ float laneValue (const Step& s, PatternGrid::Lane lane)
 
 PatternGrid::PatternGrid (BatidaProcessor& p) : proc (p)
 {
+    for (int t = 0; t < kNumTracks; ++t)
+    {
+        auto& m = muteButtons[(size_t) t];
+        auto& so = soloButtons[(size_t) t];
+        m.setButtonText ("M");
+        so.setButtonText ("S");
+        m.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffd9534f));
+        so.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffe0b84a));
+        so.setColour (juce::TextButton::textColourOnId, juce::Colours::black);
+        for (auto* b : { &m, &so })
+        {
+            b->setClickingTogglesState (true);
+            addAndMakeVisible (*b);
+        }
+        muteAttachments[(size_t) t] = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+            proc.getState(), voiceParamID (t, vp::Mute), m);
+        soloAttachments[(size_t) t] = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+            proc.getState(), voiceParamID (t, vp::Solo), so);
+    }
     shownSteps.fill (-2);
     startTimerHz (30);
 }
@@ -76,7 +97,8 @@ void PatternGrid::timerCallback()
     const auto& seq = proc.sequencer();
     const auto version = proc.patterns().getVersion();
     const auto pattern = proc.displayPattern();
-    bool changed = version != shownVersion || pattern != shownPattern;
+    bool changed = version != shownVersion || pattern != shownPattern || proc.getNamesVersion() != shownNames;
+    shownNames = proc.getNamesVersion();
 
     for (int t = 0; t < kNumTracks; ++t)
     {
@@ -92,6 +114,35 @@ void PatternGrid::timerCallback()
     shownPattern = pattern;
     if (changed)
         repaint();
+}
+
+void PatternGrid::resized()
+{
+    const auto rh = rowHeight();
+    for (int t = 0; t < kNumTracks; ++t)
+    {
+        const auto y = t * rh + rh - 20;
+        muteButtons[(size_t) t].setBounds (6, y, 24, 17);
+        soloButtons[(size_t) t].setBounds (32, y, 24, 17);
+    }
+}
+
+void PatternGrid::renameTrack (int track)
+{
+    const auto rh = rowHeight();
+    startRename (renameEditor, *this, { 4, track * rh + 2, kHeaderWidth - 8, std::min (26, rh - 4) }, proc.getVoiceName (track),
+                 [this, track] (const juce::String& text)
+                 {
+                     proc.setVoiceName (track, text);
+                     repaint();
+                 });
+}
+
+void PatternGrid::mouseDoubleClick (const juce::MouseEvent& e)
+{
+    const auto row = e.y / std::max (1, rowHeight());
+    if (e.x < kHeaderWidth && row < kNumTracks)
+        renameTrack (row);
 }
 
 juce::Rectangle<int> PatternGrid::cellBounds (int row, int step) const
@@ -130,11 +181,12 @@ void PatternGrid::paint (juce::Graphics& g)
         else
         {
             const auto& tr = pat.tracks[(size_t) row];
-            g.drawFittedText (juce::String (row + 1) + " " + defaultVoiceName (row), header.withTrimmedRight (30),
+            const auto top = header.withHeight (std::max (14, header.getHeight() - 20));
+            g.drawFittedText (juce::String (row + 1) + " " + proc.getVoiceName (row), top.withTrimmedRight (26),
                               juce::Justification::centredLeft, 1, 0.7f);
             g.setFont (juce::FontOptions (12.0f));
             g.setColour (juce::Colours::grey);
-            g.drawText (juce::String (std::min (tr.length, pat.length)), header, juce::Justification::centredRight);
+            g.drawText (juce::String (std::min (tr.length, pat.length)), top, juce::Justification::centredRight);
         }
 
         const auto trackLen = xyRow ? pat.length : std::min (pat.tracks[(size_t) row].length, pat.length);
@@ -215,10 +267,18 @@ void PatternGrid::trackMenu (int track)
 {
     const auto pi = patternIndex();
     juce::PopupMenu m;
-    m.addSectionHeader ("Track " + juce::String (track + 1));
-    m.addItem (1, "Copy");
-    m.addItem (2, "Paste", trackClipboard.has_value());
-    m.addItem (3, "Clear");
+    juce::PopupMenu swapMenu;
+    for (int v = 0; v < kNumTracks; ++v)
+        if (v != track)
+            swapMenu.addItem (100 + v, juce::String (v + 1) + " " + proc.getVoiceName (v));
+
+    m.addSectionHeader (juce::String (track + 1) + " " + proc.getVoiceName (track));
+    m.addItem (7, "Rename...");
+    m.addSubMenu ("Swap voice with", swapMenu);
+    m.addSeparator();
+    m.addItem (1, "Copy track");
+    m.addItem (2, "Paste track", trackClipboard.has_value());
+    m.addItem (3, "Clear track");
     m.addSeparator();
     m.addItem (4, "Fill every step");
     m.addItem (5, "Fill every 2nd step");
@@ -228,6 +288,17 @@ void PatternGrid::trackMenu (int track)
     {
         if (choice == 0)
             return;
+        if (choice == 7)
+        {
+            renameTrack (track);
+            return;
+        }
+        if (choice >= 100)
+        {
+            proc.swapVoices (track, choice - 100);
+            repaint();
+            return;
+        }
         proc.patterns().edit ([&] (PatternBank& b)
         {
             auto& tr = b.patterns[(size_t) pi].tracks[(size_t) track];

@@ -97,6 +97,8 @@ std::vector<ParamSpec> buildVoiceSpecs()
     s[vp::FltRes]    = flt ("flt_res", "Resonance", 0.0f, 1.0f, 0.0f, "%");
 
     s[vp::ChainAmt] = flt ("chain_amt", "Chain", 0.0f, 1.0f, 1.0f, "%");
+    s[vp::Mute]     = toggle ("mute", "Mute");
+    s[vp::Solo]     = toggle ("solo", "Solo");
 
     for (int o = 0; o < kNumOps; ++o)
     {

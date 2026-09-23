@@ -167,8 +167,7 @@ KitPage::KitPage (BatidaProcessor& p) : VoicePage (p), pad (p.getState())
 
     chainSection = addSection ("Chain amount per voice (0% = dry)");
     for (int v = 0; v < kNumVoices; ++v)
-        addFixedVoice (chainSection, v, vp::ChainAmt,
-                       juce::String (v + 1) + " " + juce::MidiMessage::getMidiNoteName (kDrumMapFirstNote + v, true, true, 3));
+        chainControls[(size_t) v] = &addFixedVoice (chainSection, v, vp::ChainAmt, juce::String (v + 1));
 
     xyRecButton.setTooltip ("While a pattern plays, moving the pad records XY locks into its steps (see SEQ).");
     addAndMakeVisible (xyRecButton);
@@ -222,6 +221,13 @@ void KitPage::timerCallback()
     exciter->setMarker (marker (e.excAmount, base[gp::ExcAmount]));
     tone->setMarker (marker (e.excToneHz, base[gp::ExcTone]));
     eqHigh->setMarker (marker (e.highDb, base[gp::EqHigh]));
+
+    if (proc.getNamesVersion() != shownNames)
+    {
+        shownNames = proc.getNamesVersion();
+        for (int v = 0; v < kNumVoices; ++v)
+            chainControls[(size_t) v]->setLabelText (juce::String (v + 1) + " " + proc.getVoiceName (v));
+    }
 
     const auto gr = proc.getGainReductionDb();
     setSectionTitle (dynamicsSection, gr < -0.1f ? "Dynamics   GR " + juce::String (gr, 1) + " dB" : juce::String ("Dynamics"));

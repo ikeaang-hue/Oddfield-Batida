@@ -59,7 +59,12 @@ page (pad and chain); **SEQ** is the sequencer; **VOICE** edits the selected sou
 - **MIDI mode: Chromatic.** Every channel except 10 plays the **Keys Voice** like a mono synth,
   with C3 (60) at the voice's own pitch. Channel 10 still plays the drum map, so one instance
   can take a drum track and a bass line. Clicking a voice button also makes it the Keys Voice.
-- **Voice buttons** select a voice and play it while held.
+- **Voice buttons** select a voice and play it while held. **Double-click** to rename it;
+  **drag one onto another** to swap the two slots (the sound, sample, name, mute/solo and its
+  track in every pattern move together; each slot keeps its MIDI note); **right-click** for
+  Rename and Swap with. The same works on the track names on the SEQ page.
+- **M / S** under each voice (and on each SEQ track) mute and solo it. While any voice is
+  soloed, only soloed voices sound. Both are automatable.
 - **Samples:** drop a WAV/AIFF/FLAC onto a voice button (or the window), or use *Load...*.
   A voice on FM switches to Sample when you load one.
 - **Orange dots** on the FM operator knobs show where the macros have moved that operator.

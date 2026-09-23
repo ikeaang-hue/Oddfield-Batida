@@ -31,8 +31,17 @@ void Kit::reset()
 
 void Kit::setParameters (const KitParams& params)
 {
+    // Solo wins: while any voice is soloed, only soloed voices sound.
+    bool anySolo = false;
+    for (const auto& v : params.voices)
+        anySolo = anySolo || v.flag (vp::Solo);
+
     for (int v = 0; v < kNumVoices; ++v)
-        voices[(size_t) v].setParameters (params.voices[(size_t) v]);
+    {
+        const auto& p = params.voices[(size_t) v];
+        voices[(size_t) v].setAudible (! p.flag (vp::Mute) && (! anySolo || p.flag (vp::Solo)));
+        voices[(size_t) v].setParameters (p);
+    }
 
     const auto mode = (MidiMode) std::clamp ((int) (params.global[gp::MidiMode] + 0.5f), 0, 1);
     const auto keys = std::clamp ((int) (params.global[gp::KeysVoice] + 0.5f), 0, kNumVoices - 1);

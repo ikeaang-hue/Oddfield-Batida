@@ -24,6 +24,8 @@ void Voice::prepare (double newSampleRate)
     gainR.setTime (5.0f, sampleRate);
     logCutoff.setTime (10.0f, sampleRate);
     chainAmt.setTime (10.0f, sampleRate);
+    audibleGain.setTime (3.0f, sampleRate);
+    audibleGain.snap (audibleTarget);
     stealStep = (float) (1.0 / (0.0015 * sampleRate));
     reset();
 }
@@ -75,6 +77,7 @@ void Voice::setParameters (const VoiceParams& p)
         gainR.snap (targetR);
         logCutoff.snap (targetCutoff);
         chainAmt.snap (std::clamp (p[vp::ChainAmt], 0.0f, 1.0f));
+        audibleGain.snap (audibleTarget);
         cutoffHz = std::exp2 (targetCutoff);
     }
     gainTargets[0] = targetL;
@@ -269,8 +272,11 @@ void Voice::render (float* dryL, float* dryR, float* wetL, float* wetR, int numS
         if (filterType != FilterType::LowPass || cutoffHz < 19900.0f)
             filter.process (l, r, cutoffHz, resonance, filterType);
 
-        l *= gainL.next (gainTargets[0]);
-        r *= gainR.next (gainTargets[1]);
+        auto audible = audibleGain.next (audibleTarget);
+        if (audibleTarget == 0.0f && audible < 1.0e-5f) // fully muted: true silence
+            audible = audibleGain.value = 0.0f;
+        l *= gainL.next (gainTargets[0]) * audible;
+        r *= gainR.next (gainTargets[1]) * audible;
         const auto a = chainAmt.next (chainTarget);
         dryL[i] += l * (1.0f - a);
         dryR[i] += r * (1.0f - a);

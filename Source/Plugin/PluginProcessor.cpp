@@ -9,6 +9,9 @@ const juce::Identifier kSampleTag ("SAMPLE");
 const juce::Identifier kVoiceAttr ("voice");
 const juce::Identifier kPathAttr ("path");
 const juce::Identifier kPatternsTag ("PATTERNS");
+const juce::Identifier kNamesTag ("NAMES");
+const juce::Identifier kNameTag ("NAME");
+const juce::Identifier kTextAttr ("text");
 
 juce::String formatValue (const ParamSpec& spec, float v)
 {
@@ -245,6 +248,81 @@ int BatidaProcessor::displayPattern() const
     return juce::roundToInt (globalRaw[(size_t) gp::SeqPattern]->load());
 }
 
+juce::String BatidaProcessor::getVoiceName (int voice) const
+{
+    const auto& n = voiceNames[(size_t) voice];
+    return n.isNotEmpty() ? n : juce::String (defaultVoiceName (voice));
+}
+
+void BatidaProcessor::setVoiceName (int voice, const juce::String& name)
+{
+    auto clean = name.trim().substring (0, 24);
+    if (clean == defaultVoiceName (voice))
+        clean = {};
+    voiceNames[(size_t) voice] = clean;
+    ++namesVersion;
+}
+
+void BatidaProcessor::swapVoices (int a, int b)
+{
+    if (a == b || a < 0 || b < 0 || a >= kNumVoices || b >= kNumVoices)
+        return;
+
+    // Settings (host parameters, so the host sees the change).
+    for (int p = 0; p < kNumVoiceParams; ++p)
+    {
+        auto* pa = state.getParameter (voiceParamID (a, p));
+        auto* pb = state.getParameter (voiceParamID (b, p));
+        const auto va = pa->getValue(), vb = pb->getValue();
+        for (auto [param, value] : { std::pair { pa, vb }, std::pair { pb, va } })
+        {
+            param->beginChangeGesture();
+            param->setValueNotifyingHost (value);
+            param->endChangeGesture();
+        }
+    }
+
+    // Samples: each slot reloads the other's file (or its missing path).
+    struct Held { SampleSlot::Status status; juce::String path; };
+    const Held ha { kit.sampleSlot (a).getStatus(), kit.sampleSlot (a).getPath() };
+    const Held hb { kit.sampleSlot (b).getStatus(), kit.sampleSlot (b).getPath() };
+    auto takeOver = [this] (int voice, const Held& h)
+    {
+        auto& slot = kit.sampleSlot (voice);
+        if (h.status == SampleSlot::Status::Loaded && slot.load (juce::File (h.path), formats))
+            return;
+        if (h.path.isNotEmpty())
+            slot.markMissing (h.path);
+        else
+            slot.clear();
+    };
+    takeOver (a, hb);
+    takeOver (b, ha);
+
+    // Names (an unnamed slot keeps showing its sound's default name).
+    const auto na = getVoiceName (a), nb = getVoiceName (b);
+    voiceNames[(size_t) a] = nb == defaultVoiceName (a) ? juce::String() : nb;
+    voiceNames[(size_t) b] = na == defaultVoiceName (b) ? juce::String() : na;
+    ++namesVersion;
+
+    // The tracks in every pattern.
+    kit.patternStore().edit ([&] (PatternBank& bank)
+    {
+        for (auto& pat : bank.patterns)
+            std::swap (pat.tracks[(size_t) a], pat.tracks[(size_t) b]);
+    });
+
+    // Keys Voice follows its sound.
+    auto* keys = state.getParameter (globalParamID (gp::KeysVoice));
+    const auto k = juce::roundToInt (keys->convertFrom0to1 (keys->getValue()));
+    if (k == a || k == b)
+    {
+        keys->beginChangeGesture();
+        keys->setValueNotifyingHost (keys->convertTo0to1 ((float) (k == a ? b : a)));
+        keys->endChangeGesture();
+    }
+}
+
 void BatidaProcessor::setPatternParameter (int pattern)
 {
     auto* p = state.getParameter (globalParamID (gp::SeqPattern));
@@ -314,6 +392,13 @@ void BatidaProcessor::getStateInformation (juce::MemoryBlock& destData)
     if (const auto patternXml = kit.patternStore().get().toXml())
         tree.appendChild (juce::ValueTree::fromXml (*patternXml), nullptr);
 
+    tree.removeChild (tree.getChildWithName (kNamesTag), nullptr);
+    juce::ValueTree names (kNamesTag);
+    for (int v = 0; v < kNumVoices; ++v)
+        if (voiceNames[(size_t) v].isNotEmpty())
+            names.appendChild (juce::ValueTree (kNameTag, { { kVoiceAttr, v }, { kTextAttr, voiceNames[(size_t) v] } }), nullptr);
+    tree.appendChild (names, nullptr);
+
     juce::ValueTree samples (kSamplesTag);
     for (int v = 0; v < kNumVoices; ++v)
     {
@@ -338,7 +423,19 @@ void BatidaProcessor::setStateInformation (const void* data, int sizeInBytes)
     tree.removeChild (samples, nullptr);
     const auto patternTree = tree.getChildWithName (kPatternsTag);
     tree.removeChild (patternTree, nullptr);
+    const auto namesTree = tree.getChildWithName (kNamesTag);
+    tree.removeChild (namesTree, nullptr);
     state.replaceState (tree);
+
+    for (auto& n : voiceNames)
+        n = {};
+    for (const auto& n : namesTree)
+    {
+        const auto v = (int) n.getProperty (kVoiceAttr, -1);
+        if (v >= 0 && v < kNumVoices)
+            voiceNames[(size_t) v] = n.getProperty (kTextAttr).toString();
+    }
+    ++namesVersion;
 
     // Projects from before phase 3 have no patterns: keep the defaults.
     if (patternTree.isValid())

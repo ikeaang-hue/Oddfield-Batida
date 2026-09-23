@@ -49,4 +49,6 @@ private:
     juce::ToggleButton xyRecButton { "XY Rec" };
     int dynamicsSection, distortionSection, eqSection, outputSection, chainSection;
     ParamControl *compAmount, *compAttack, *drive, *type, *lowKeep, *exciter, *tone, *eqHigh;
+    std::array<ParamControl*, batida::kNumVoices> chainControls {};
+    int shownNames = -1;
 };
