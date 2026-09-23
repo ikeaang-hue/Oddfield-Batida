@@ -28,7 +28,16 @@ void Kit::setParameters (const KitParams& params)
     for (int v = 0; v < kNumVoices; ++v)
         voices[(size_t) v].setParameters (params.voices[(size_t) v]);
 
-    midiMode = (MidiMode) std::clamp ((int) (params.global[gp::MidiMode] + 0.5f), 0, 1);
+    const auto mode = (MidiMode) std::clamp ((int) (params.global[gp::MidiMode] + 0.5f), 0, 1);
+    const auto keys = std::clamp ((int) (params.global[gp::KeysVoice] + 0.5f), 0, kNumVoices - 1);
+
+    // Held notes would otherwise get their note-offs routed to another voice.
+    if (mode != midiMode || keys != keysVoice)
+        for (auto& v : voices)
+            v.allNotesOff();
+
+    midiMode = mode;
+    keysVoice = keys;
     const auto db = params.global[gp::Master];
     masterTarget = db <= -60.0f ? 0.0f : std::pow (10.0f, db / 20.0f);
 }
@@ -43,7 +52,7 @@ void Kit::handle (const juce::MidiMessage& message)
     }
 
     VoiceEvent e;
-    if (! routeMidi (message, midiMode, e))
+    if (! routeMidi (message, midiMode, keysVoice, e))
         return;
 
     auto& voice = voices[(size_t) e.voice];

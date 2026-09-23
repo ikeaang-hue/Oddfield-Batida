@@ -40,7 +40,7 @@ private:
     BatidaProcessor& proc;
 
     juce::Label title, info;
-    ParamControl midiMode, master;
+    ParamControl midiMode, keysVoice, master;
     std::array<VoiceButton, batida::kNumVoices> voiceButtons;
     juce::TabbedComponent tabs { juce::TabbedButtonBar::TabsAtTop };
 

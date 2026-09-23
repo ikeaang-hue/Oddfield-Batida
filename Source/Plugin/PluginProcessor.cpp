@@ -193,6 +193,14 @@ void BatidaProcessor::audition (int voice, bool on)
     (on ? auditionOn : auditionOff).fetch_or (1u << voice);
 }
 
+void BatidaProcessor::setKeysVoice (int voice)
+{
+    auto* keys = state.getParameter (globalParamID (gp::KeysVoice));
+    const auto value = keys->convertTo0to1 ((float) voice);
+    if (keys->getValue() != value)
+        keys->setValueNotifyingHost (value);
+}
+
 VoiceParams BatidaProcessor::readVoiceParams (int voice) const
 {
     VoiceParams p;

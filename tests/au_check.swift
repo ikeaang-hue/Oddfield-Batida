@@ -3,7 +3,7 @@
 //   swiftc -O -o build/au_check tests/au_check.swift && build/au_check
 //
 // Run `killall -9 AudioComponentRegistrar` first after rebuilding the AU.
-// Host parameters are normalised 0..1 (JUCE AU), not in real units.
+// Host values: knobs are normalised 0..1; menus (choice parameters) are indexes 0..N-1.
 
 import AVFoundation
 import AudioToolbox
@@ -139,26 +139,29 @@ do {
     }
 }
 
-print("MIDI mode (host parameter, normalised):")
+print("MIDI mode (host parameters):")
 do {
     let r = Renderer(instantiate())
     r.silence(seconds: 0.2)
     check(peakDb(r.play(channel: 2, note: 64)) < -100, "drum map: channel 2 note 64 is silent")
-    r.param("MIDI Mode").value = 1.0 // Split
+    r.param("MIDI Mode").value = 1.0 // Chromatic
+    r.param("Keys Voice").value = 1 // voice 2 (menus are indexes)
     r.silence(seconds: 0.1)
     let rim = r.play(channel: 2, note: 64)
-    check(peakDb(rim) > -30, String(format: "split: channel 2 note 64 plays voice 2 (%.1f dB)", peakDb(rim)))
-    check(peakDb(r.play(channel: 10, note: 36)) > -30, "split: channel 10 note 36 plays the kick")
-    check(peakDb(r.play(channel: 11, note: 60)) < -100, "split: channel 11 is ignored")
+    check(peakDb(rim) > -30, String(format: "chromatic: channel 2 note 64 plays the keys voice (%.1f dB)", peakDb(rim)))
+    check(peakDb(r.play(channel: 11, note: 50)) > -30, "chromatic: any channel plays the keys voice")
+    check(peakDb(r.play(channel: 10, note: 36)) > -30, "chromatic: channel 10 note 36 still plays the kick")
+    check(peakDb(r.play(channel: 10, note: 60)) < -100, "chromatic: channel 10 outside the drum map is silent")
 }
 
-print("Chromatic play (split mode, voice 6 bass on channel 6):")
+print("Chromatic play (keys voice 6 = bass, channel 1):")
 do {
     let r = Renderer(instantiate())
     r.param("MIDI Mode").value = 1.0
-    let low = zeroCrossingHz(Array(r.play(channel: 6, note: 60, seconds: 0.6, noteSeconds: 0.5)[4800..<19200]))
+    r.param("Keys Voice").value = 5
+    let low = zeroCrossingHz(Array(r.play(channel: 1, note: 60, seconds: 0.6, noteSeconds: 0.5)[4800..<19200]))
     r.silence(seconds: 0.3)
-    let high = zeroCrossingHz(Array(r.play(channel: 6, note: 72, seconds: 0.6, noteSeconds: 0.5)[4800..<19200]))
+    let high = zeroCrossingHz(Array(r.play(channel: 1, note: 72, seconds: 0.6, noteSeconds: 0.5)[4800..<19200]))
     check(abs(high / low - 2.0) < 0.1, String(format: "an octave up doubles the pitch (%.0f Hz → %.0f Hz)", low, high))
 }
 

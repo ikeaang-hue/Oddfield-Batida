@@ -36,6 +36,7 @@ private:
     std::array<SampleSlot, kNumVoices> slots;
     juce::AudioBuffer<float> scratch;
     MidiMode midiMode = MidiMode::DrumMap;
+    int keysVoice = 0;
     Smoother master;
     float masterTarget = 1.0f;
 };

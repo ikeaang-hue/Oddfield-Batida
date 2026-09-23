@@ -119,8 +119,9 @@ std::vector<ParamSpec> buildVoiceSpecs()
 std::vector<ParamSpec> buildGlobalSpecs()
 {
     std::vector<ParamSpec> s (kNumGlobalParams);
-    s[gp::MidiMode] = choice ("midi_mode", "MIDI Mode", { "Drum map", "Split" });
+    s[gp::MidiMode] = choice ("midi_mode", "MIDI Mode", { "Drum map", "Chromatic" });
     s[gp::Master]   = flt ("master", "Master", -60.0f, 6.0f, 0.0f, "dB", -12.0f, 0.1f);
+    s[gp::KeysVoice] = choice ("keys_voice", "Keys Voice", { "1", "2", "3", "4", "5", "6", "7", "8" });
     return s;
 }
 } // namespace

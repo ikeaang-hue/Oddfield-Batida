@@ -31,7 +31,7 @@ void BatidaEditor::VoiceButton::mouseUp (const juce::MouseEvent& e)
 }
 
 BatidaEditor::BatidaEditor (BatidaProcessor& p)
-    : AudioProcessorEditor (&p), proc (p), midiMode (p.getState()), master (p.getState())
+    : AudioProcessorEditor (&p), proc (p), midiMode (p.getState()), keysVoice (p.getState()), master (p.getState())
 {
     title.setText ("BATIDA", juce::dontSendNotification);
     title.setFont (juce::FontOptions (26.0f, juce::Font::bold));
@@ -42,8 +42,10 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
     addAndMakeVisible (info);
 
     midiMode.bind (globalParamID (gp::MidiMode));
+    keysVoice.bind (globalParamID (gp::KeysVoice));
     master.bind (globalParamID (gp::Master));
     addAndMakeVisible (midiMode);
+    addAndMakeVisible (keysVoice);
     addAndMakeVisible (master);
 
     for (int v = 0; v < kNumVoices; ++v)
@@ -56,6 +58,7 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
         b.onPress = [this, v]
         {
             selectVoice (v);
+            proc.setKeysVoice (v); // only on a click, so opening the editor never changes it
             proc.audition (v, true);
         };
         b.onRelease = [this, v] { proc.audition (v, false); };
@@ -114,10 +117,15 @@ void BatidaEditor::updateInfo()
     else if (slot.getStatus() == SampleSlot::Status::Missing)
         sample = "sample missing";
 
-    info.setText ("Voice " + juce::String (selected + 1) + "  |  drum-map note " + drumNoteName (selected)
-                      + " (" + juce::String (kDrumMapFirstNote + selected) + "), Split mode: MIDI channel "
-                      + juce::String (selected + 1) + "  |  " + source + ", " + sample
-                      + "  |  default sound: " + defaultVoiceName (selected),
+    const auto chromatic = (MidiMode) juce::roundToInt (proc.getState().getRawParameterValue (globalParamID (gp::MidiMode))->load())
+                           == MidiMode::Chromatic;
+    const auto keys = juce::roundToInt (proc.getState().getRawParameterValue (globalParamID (gp::KeysVoice))->load());
+    const auto keysText = chromatic ? "keys play voice " + juce::String (keys + 1) + " (drum map on ch 10)"
+                                    : juce::String ("keys: drum map");
+
+    info.setText ("Voice " + juce::String (selected + 1) + "  |  note " + drumNoteName (selected)
+                      + " (" + juce::String (kDrumMapFirstNote + selected) + ")  |  " + source + ", " + sample
+                      + "  |  default: " + defaultVoiceName (selected) + "  |  " + keysText,
                   juce::dontSendNotification);
 }
 
@@ -162,6 +170,7 @@ void BatidaEditor::resized()
 
     title.setBounds (header.removeFromLeft (150).removeFromTop (30));
     master.setBounds (header.removeFromRight (ParamControl::kWidth));
+    keysVoice.setBounds (header.removeFromRight (80));
     midiMode.setBounds (header.removeFromRight (110));
     header.removeFromRight (10);
 

@@ -1,6 +1,6 @@
 # Negative Space Batida: Design Spec
 
-*Version 1.1, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host)*
+*Version 1.2, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split)*
 
 ## 1. Identity
 
@@ -130,7 +130,9 @@ Reverb, delay and stereo/spatial effects are left to the DAW.
 
 A **MIDI mode** switch chooses between:
 - **Drum map, any channel** (default): GM notes 36–43 trigger voices 1–8 on every channel.
-- **Split:** channel 10 uses the drum map; channels 1–8 play voices 1–8 chromatically.
+- **Chromatic:** every channel except 10 plays one chosen voice, the **Keys Voice**, like a mono
+  synth. Channel 10 still uses the drum map. Keys Voice is an automatable parameter that also
+  follows the voice selected in the editor.
 
 ## 10. Library and presets
 

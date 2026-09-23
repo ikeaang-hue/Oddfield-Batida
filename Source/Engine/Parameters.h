@@ -54,7 +54,7 @@ constexpr int kNumVoiceParams = vp::OpBase + kNumOps * kNumOpFields;
 
 namespace gp
 {
-enum : int { MidiMode, Master, Count };
+enum : int { MidiMode, Master, KeysVoice, Count };
 }
 constexpr int kNumGlobalParams = gp::Count;
 
@@ -62,7 +62,7 @@ enum class SourceMode { FM, Sample, Layer };
 enum class PlayMode { OneShot, Gate };
 enum class DriveType { Soft, Hard, Fold, Crush };
 enum class FilterType { LowPass, HighPass, BandPass };
-enum class MidiMode { DrumMap, Split };
+enum class MidiMode { DrumMap, Chromatic };
 
 const std::vector<ParamSpec>& voiceParamSpecs();  // kNumVoiceParams entries, in index order
 const std::vector<ParamSpec>& globalParamSpecs(); // kNumGlobalParams entries

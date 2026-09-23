@@ -1,9 +1,11 @@
 #include "MidiRouter.h"
 
+#include <algorithm>
+
 namespace batida
 {
 
-bool routeMidi (const juce::MidiMessage& message, MidiMode mode, VoiceEvent& out)
+bool routeMidi (const juce::MidiMessage& message, MidiMode mode, int keysVoice, VoiceEvent& out)
 {
     const bool on = message.isNoteOn();
     if (! on && ! message.isNoteOff())
@@ -27,10 +29,7 @@ bool routeMidi (const juce::MidiMessage& message, MidiMode mode, VoiceEvent& out
         return true;
     }
 
-    if (channel < 1 || channel > kNumVoices)
-        return false;
-
-    out.voice = channel - 1;
+    out.voice = std::clamp (keysVoice, 0, kNumVoices - 1);
     out.key = note;
     return true;
 }

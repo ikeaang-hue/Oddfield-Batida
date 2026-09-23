@@ -173,29 +173,54 @@ public:
         VoiceEvent e;
 
         beginTest ("Drum map: notes 36-43 on any channel");
-        expect (routeMidi (juce::MidiMessage::noteOn (3, 38, 0.5f), MidiMode::DrumMap, e));
+        expect (routeMidi (juce::MidiMessage::noteOn (3, 38, 0.5f), MidiMode::DrumMap, 0, e));
         expectEquals (e.voice, 2);
         expectEquals (e.key, 60);
         expect (e.isNoteOn);
-        expect (! routeMidi (juce::MidiMessage::noteOn (1, 44, 0.5f), MidiMode::DrumMap, e));
-        expect (! routeMidi (juce::MidiMessage::noteOn (1, 35, 0.5f), MidiMode::DrumMap, e));
-        expect (routeMidi (juce::MidiMessage::noteOff (5, 43), MidiMode::DrumMap, e));
+        expect (! routeMidi (juce::MidiMessage::noteOn (1, 44, 0.5f), MidiMode::DrumMap, 0, e));
+        expect (! routeMidi (juce::MidiMessage::noteOn (1, 35, 0.5f), MidiMode::DrumMap, 0, e));
+        expect (routeMidi (juce::MidiMessage::noteOff (5, 43), MidiMode::DrumMap, 0, e));
         expectEquals (e.voice, 7);
         expect (! e.isNoteOn);
 
-        beginTest ("Split: channel 10 drum map, channels 1-8 chromatic");
-        expect (routeMidi (juce::MidiMessage::noteOn (10, 36, 1.0f), MidiMode::Split, e));
+        beginTest ("Chromatic: channel 10 drum map, every other channel plays the keys voice");
+        expect (routeMidi (juce::MidiMessage::noteOn (10, 36, 1.0f), MidiMode::Chromatic, 5, e));
         expectEquals (e.voice, 0);
         expectEquals (e.key, 60);
-        expect (routeMidi (juce::MidiMessage::noteOn (2, 64, 1.0f), MidiMode::Split, e));
-        expectEquals (e.voice, 1);
+        expect (routeMidi (juce::MidiMessage::noteOn (2, 64, 1.0f), MidiMode::Chromatic, 5, e));
+        expectEquals (e.voice, 5);
         expectEquals (e.key, 64);
-        expect (routeMidi (juce::MidiMessage::noteOn (8, 30, 1.0f), MidiMode::Split, e));
-        expectEquals (e.voice, 7);
-        expect (! routeMidi (juce::MidiMessage::noteOn (11, 60, 1.0f), MidiMode::Split, e));
+        expect (routeMidi (juce::MidiMessage::noteOn (16, 30, 1.0f), MidiMode::Chromatic, 5, e));
+        expectEquals (e.voice, 5);
+        expectEquals (e.key, 30);
+        expect (! routeMidi (juce::MidiMessage::noteOn (10, 60, 1.0f), MidiMode::Chromatic, 5, e));
+
+        beginTest ("Changing the keys voice releases held notes");
+        {
+            auto params = defaultKitParams();
+            params.global[gp::MidiMode] = 1.0f;
+            params.global[gp::KeysVoice] = 5.0f; // bass, Gate mode
+            Kit kit;
+            kit.prepare (48000.0, 128);
+            kit.setParameters (params);
+            juce::AudioBuffer<float> buf (2, 128);
+            juce::MidiBuffer midi;
+            midi.addEvent (juce::MidiMessage::noteOn (1, 48, 1.0f), 0);
+            kit.process (buf, midi);
+            expect (kit.getVoice (5).isActive());
+
+            params.global[gp::KeysVoice] = 0.0f;
+            midi.clear();
+            for (int i = 0; i < 100; ++i) // ~0.27 s: the bass releases (120 ms)
+            {
+                kit.setParameters (params);
+                kit.process (buf, midi);
+            }
+            expect (! kit.getVoice (5).isActive(), "bass should have been released");
+        }
 
         beginTest ("Velocity 0 note-on is a note-off");
-        expect (routeMidi (juce::MidiMessage::noteOn (1, 36, (juce::uint8) 0), MidiMode::DrumMap, e));
+        expect (routeMidi (juce::MidiMessage::noteOn (1, 36, (juce::uint8) 0), MidiMode::DrumMap, 0, e));
         expect (! e.isNoteOn);
     }
 };

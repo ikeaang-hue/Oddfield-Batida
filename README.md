@@ -33,15 +33,16 @@ build/BatidaSnapshot_artefacts/Release/BatidaSnapshot build/snapshots  # editor 
 
 `au_check` loads the installed AU like a host does. It renders each voice, checks both MIDI
 modes and chromatic pitch, and round-trips saved state, including sample paths and missing
-files. Host parameters are normalised 0–1.
+files. Host values: knobs are normalised 0–1, menus are indexes (0 = first entry).
 
 ## Playing it in Logic
 
 Insert it as an instrument: *AU Instruments → Negative Space → Batida*.
 
 - **MIDI mode: Drum map** (default). Notes 36–43 (C1–G1) play voices 1–8 on any channel.
-- **MIDI mode: Split.** Channel 10 is the drum map; channels 1–8 play voices 1–8 chromatically,
-  with C3 (60) at the voice's own pitch.
+- **MIDI mode: Chromatic.** Every channel except 10 plays the **Keys Voice** like a mono synth,
+  with C3 (60) at the voice's own pitch. Channel 10 still plays the drum map, so one instance
+  can take a drum track and a bass line. Clicking a voice button also makes it the Keys Voice.
 - **Voice buttons** select a voice and play it while held.
 - **Samples:** drop a WAV/AIFF/FLAC onto a voice button (or the window), or use *Load...*.
   A voice on FM switches to Sample when you load one.

@@ -10,8 +10,9 @@ namespace batida
 // Where an incoming MIDI note goes.
 //   Drum map (default): notes 36-43 play voices 1-8 on any channel, at the
 //                       voice's own pitch.
-//   Split:              channel 10 is the drum map; channels 1-8 play voices
-//                       1-8 chromatically (note 60 = the voice's own pitch).
+//   Chromatic:          channel 10 is still the drum map; every other channel
+//                       plays the Keys Voice like a mono synth (note 60 = the
+//                       voice's own pitch).
 struct VoiceEvent
 {
     int voice = 0;
@@ -23,6 +24,6 @@ struct VoiceEvent
 constexpr int kDrumMapFirstNote = 36;
 constexpr int kDrumChannel = 10;
 
-bool routeMidi (const juce::MidiMessage& message, MidiMode mode, VoiceEvent& out);
+bool routeMidi (const juce::MidiMessage& message, MidiMode mode, int keysVoice, VoiceEvent& out);
 
 } // namespace batida

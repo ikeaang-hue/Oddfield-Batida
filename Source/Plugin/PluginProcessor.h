@@ -45,6 +45,7 @@ public:
     void clearSample (int voice);
 
     void audition (int voice, bool on);
+    void setKeysVoice (int voice); // what Chromatic mode plays; follows the editor selection
     batida::VoiceParams readVoiceParams (int voice) const;
 
     std::atomic<int> selectedVoice { 0 };
