@@ -55,6 +55,10 @@ enum OpField : int { Ratio, Fixed, Freq, OpLevel, Wave, Fold, OpA, OpD, OpS, OpR
 constexpr int opParam (int op, int field) { return vp::OpBase + op * kNumOpFields + field; }
 constexpr int kNumVoiceParams = vp::OpBase + kNumOps * kNumOpFields;
 
+// Per-modulator host parameters (phase 4), repeated for each modulator.
+enum ModField : int { ModMode, ModRate, ModHz, ModPolarity, ModSmooth, ModHuman, ModAmount, ModTrigger, kNumModFields };
+constexpr int kNumMods = 2;
+
 namespace gp
 {
 enum : int
@@ -69,6 +73,9 @@ enum : int
     // Sequencer (phase 3)
     SeqPattern, SeqRun, SeqPlay, SeqTempo, SeqSwing, SeqQuantise, SeqLatch,
     SeqSync,
+    // Movement (phase 4)
+    ModBase,
+    SceneA = ModBase + kNumMods * kNumModFields, SceneB, SceneMorph, SceneMorphOn,
     Count
 };
 }
@@ -89,6 +96,7 @@ std::string voiceParamID (int voice, int param);   // "v1_amp_decay" (voice is 0
 std::string voiceParamName (int voice, int param); // "V1 Amp Decay"
 std::string globalParamID (int param);             // "midi_mode"
 int findVoiceParam (const std::string& key);       // index for a key, or -1
+constexpr int modParam (int mod, int field) { return gp::ModBase + mod * kNumModFields + field; }
 
 struct VoiceParams
 {

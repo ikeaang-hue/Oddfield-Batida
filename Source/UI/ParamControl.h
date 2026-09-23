@@ -11,21 +11,32 @@ class MarkedSlider final : public juce::Slider
 {
 public:
     void setMarker (std::optional<double> value);
+
+    // Modulation: the range the modulators can reach (green arc) and where it
+    // is now (green dot). Values in the knob's units.
+    struct Modulation { double live, low, high; bool operator!= (const Modulation& o) const { return live != o.live || low != o.low || high != o.high; } };
+    void setModulation (std::optional<Modulation> m);
+
+    std::function<void()> onRightClick;
+
     void paintOverChildren (juce::Graphics& g) override;
+    void mouseDown (const juce::MouseEvent& e) override;
 
 private:
     std::optional<double> marker;
+    std::optional<Modulation> modulation;
 };
 
 // Label + the stock widget for one host parameter: a knob for floats, a combo
 // box for choices, a toggle for bools. bind() re-attaches it to another
 // parameter of the same shape (used when the selected voice changes).
-class ParamControl final : public juce::Component
+class ParamControl final : public juce::Component, private juce::Timer
 {
 public:
     explicit ParamControl (juce::AudioProcessorValueTreeState& state, juce::String labelText = {});
 
     void bind (const juce::String& paramID);
+    ~ParamControl() override;
     void resized() override;
 
     void setMarker (std::optional<double> value) { slider.setMarker (value); }
@@ -41,8 +52,11 @@ public:
 private:
     enum class Type { None, Knob, Choice, Toggle };
 
+    void timerCallback() override;
+    void showModulationMenu();
+
     juce::AudioProcessorValueTreeState& state;
-    juce::String fixedLabel;
+    juce::String fixedLabel, boundID;
     Type type = Type::None;
     int preferredWidth = kWidth;
 

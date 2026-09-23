@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Batida VERSION 0.3.2)
+project(Batida VERSION 0.4.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -18,6 +18,7 @@ add_library(BatidaEngine INTERFACE)
 target_sources(BatidaEngine
     INTERFACE
         Source/Engine/Parameters.cpp
+        Source/Engine/ParamRange.cpp
         Source/Engine/DefaultKit.cpp
         Source/Engine/Envelope.cpp
         Source/Engine/FmSource.cpp
@@ -32,8 +33,10 @@ target_sources(BatidaEngine
         Source/Engine/Chain/Saturator.cpp
         Source/Engine/Chain/KitChain.cpp
         Source/Engine/Sequencer/Pattern.cpp
-        Source/Engine/Sequencer/PatternStore.cpp
-        Source/Engine/Sequencer/Sequencer.cpp)
+        Source/Engine/Sequencer/Sequencer.cpp
+        Source/Engine/Movement/Movement.cpp
+        Source/Engine/Movement/Modulators.cpp
+        Source/Engine/Movement/Vary.cpp)
 
 target_include_directories(BatidaEngine INTERFACE Source)
 
@@ -74,7 +77,9 @@ target_sources(Batida
         Source/UI/KitPage.cpp
         Source/UI/PatternGrid.cpp
         Source/UI/SeqPage.cpp
-        Source/UI/DraggableNumber.cpp)
+        Source/UI/DraggableNumber.cpp
+        Source/UI/ModPage.cpp
+        Source/UI/VaryPage.cpp)
 
 target_compile_definitions(Batida PUBLIC ${BATIDA_DEFINITIONS})
 
@@ -98,6 +103,7 @@ target_sources(BatidaTests
         tests/EngineTests.cpp
         tests/ChainTests.cpp
         tests/SequencerTests.cpp
+        tests/MovementTests.cpp
         tests/Tools.cpp)
 
 target_compile_definitions(BatidaTests PRIVATE ${BATIDA_DEFINITIONS})
@@ -125,9 +131,11 @@ target_sources(BatidaSnapshot
         Source/UI/KitPage.cpp
         Source/UI/PatternGrid.cpp
         Source/UI/SeqPage.cpp
-        Source/UI/DraggableNumber.cpp)
+        Source/UI/DraggableNumber.cpp
+        Source/UI/ModPage.cpp
+        Source/UI/VaryPage.cpp)
 
-target_compile_definitions(BatidaSnapshot PRIVATE ${BATIDA_DEFINITIONS} JucePlugin_Name="Batida")
+target_compile_definitions(BatidaSnapshot PRIVATE ${BATIDA_DEFINITIONS} JucePlugin_Name="Batida" JUCE_MODAL_LOOPS_PERMITTED=1)
 
 target_link_libraries(BatidaSnapshot
     PRIVATE

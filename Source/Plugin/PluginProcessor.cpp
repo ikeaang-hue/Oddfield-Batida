@@ -1,5 +1,7 @@
 #include "PluginProcessor.h"
 
+#include "Engine/ParamRange.h"
+
 using namespace batida;
 
 namespace
@@ -12,6 +14,7 @@ const juce::Identifier kPatternsTag ("PATTERNS");
 const juce::Identifier kNamesTag ("NAMES");
 const juce::Identifier kNameTag ("NAME");
 const juce::Identifier kTextAttr ("text");
+const juce::Identifier kMovementTag ("MOVEMENT");
 
 juce::String formatValue (const ParamSpec& spec, float v)
 {
@@ -109,9 +112,7 @@ std::unique_ptr<juce::RangedAudioParameter> makeParameter (const ParamSpec& spec
             break;
     }
 
-    juce::NormalisableRange<float> range (spec.min, spec.max, spec.step);
-    if (spec.centre > spec.min && spec.centre < spec.max && spec.centre != 0.5f * (spec.min + spec.max))
-        range.setSkewForCentre (spec.centre);
+    const auto range = rangeFor (spec); // shared with the engine's modulation
 
     const auto attributes = juce::AudioParameterFloatAttributes()
                                 .withStringFromValueFunction ([spec] (float v, int) { return formatValue (spec, v); })
@@ -161,12 +162,19 @@ BatidaProcessor::BatidaProcessor()
     for (int g = 0; g < kNumGlobalParams; ++g)
         globalRaw[(size_t) g] = state.getRawParameterValue (globalParamID (g));
 
+    for (int v = 0; v < kNumVoices; ++v)
+        for (int p = 0; p < kNumVoiceParams; ++p)
+            paramRefs[voiceParamID (v, p)] = { true, false, v, p };
+    for (int g = 0; g < kNumGlobalParams; ++g)
+        paramRefs[globalParamID (g)] = { true, true, 0, g };
+
     startTimer (1000);
 }
 
 BatidaProcessor::~BatidaProcessor()
 {
     stopTimer();
+    varyPool.removeAllJobs (true, 5000);
 }
 
 void BatidaProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
@@ -195,6 +203,10 @@ void BatidaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
 
     for (int g = 0; g < kNumGlobalParams; ++g)
         params.global[(size_t) g] = globalRaw[(size_t) g]->load (std::memory_order_relaxed);
+
+    // Auditioning a Vary suggestion: that voice plays the suggestion.
+    if (const auto* p = preview.acquire(); p != nullptr && p->active)
+        params.voices[(size_t) p->voice] = p->params;
 
     kit.setParameters (params);
 
@@ -256,6 +268,8 @@ juce::String BatidaProcessor::getVoiceName (int voice) const
 
 void BatidaProcessor::setVoiceName (int voice, const juce::String& name)
 {
+    if (name.trim().substring (0, 24) != getVoiceName (voice))
+        beginUndoStep();
     auto clean = name.trim().substring (0, 24);
     if (clean == defaultVoiceName (voice))
         clean = {};
@@ -267,6 +281,8 @@ void BatidaProcessor::swapVoices (int a, int b)
 {
     if (a == b || a < 0 || b < 0 || a >= kNumVoices || b >= kNumVoices)
         return;
+    beginUndoStep (true, true);
+    ++actionCounter;
 
     // Settings (host parameters, so the host sees the change).
     for (int p = 0; p < kNumVoiceParams; ++p)
@@ -321,6 +337,297 @@ void BatidaProcessor::swapVoices (int a, int b)
         keys->setValueNotifyingHost (keys->convertTo0to1 ((float) (k == a ? b : a)));
         keys->endChangeGesture();
     }
+}
+
+// Undo -------------------------------------------------------------------------
+
+juce::int64 BatidaProcessor::historyStamp() const
+{
+    return (juce::int64) kit.getPatternVersion() * 1000003 + (juce::int64) namesVersion.load() * 7919 + actionCounter;
+}
+
+HistorySnapshot BatidaProcessor::snapshot (bool withParameters, bool withSamples) const
+{
+    HistorySnapshot s;
+    s.patterns = const_cast<Kit&> (kit).patternStore().get();
+    s.names = voiceNames;
+    if (withParameters)
+    {
+        std::vector<float> values;
+        for (auto* p : getParameters())
+            values.push_back (p->getValue());
+        s.parameters = values;
+    }
+    if (withSamples)
+    {
+        std::array<juce::String, kNumVoices> paths;
+        for (int v = 0; v < kNumVoices; ++v)
+            paths[(size_t) v] = const_cast<Kit&> (kit).sampleSlot (v).getPath();
+        s.samples = paths;
+    }
+    return s;
+}
+
+void BatidaProcessor::restore (const HistorySnapshot& s)
+{
+    kit.patternStore().replace (s.patterns);
+    voiceNames = s.names;
+    ++namesVersion;
+
+    if (s.parameters)
+    {
+        const auto& params = getParameters();
+        for (size_t i = 0; i < params.size() && i < s.parameters->size(); ++i)
+            if (params[(int) i]->getValue() != (*s.parameters)[i])
+            {
+                params[(int) i]->beginChangeGesture();
+                params[(int) i]->setValueNotifyingHost ((*s.parameters)[i]);
+                params[(int) i]->endChangeGesture();
+            }
+    }
+    if (s.samples)
+        for (int v = 0; v < kNumVoices; ++v)
+        {
+            auto& slot = kit.sampleSlot (v);
+            const auto& path = (*s.samples)[(size_t) v];
+            if (path == slot.getPath())
+                continue;
+            if (path.isEmpty())
+                slot.clear();
+            else if (! slot.load (juce::File (path), formats))
+                slot.markMissing (path);
+        }
+    ++actionCounter;
+}
+
+void BatidaProcessor::beginUndoStep (bool withParameters, bool withSamples)
+{
+    history.beginStep (snapshot (withParameters, withSamples), historyStamp());
+}
+
+bool BatidaProcessor::canUndo() const
+{
+    return history.canUndo (historyStamp());
+}
+
+void BatidaProcessor::undo()
+{
+    // The redo side keeps the same kind of snapshot (parameters and samples
+    // included) so redo restores exactly what undo replaced.
+    const auto now = snapshot (true, true);
+    if (auto s = history.undo (now, historyStamp()))
+    {
+        restore (*s);
+        history.finalise (historyStamp()); // nothing pending after an undo
+    }
+}
+
+void BatidaProcessor::redo()
+{
+    if (auto s = history.redo (snapshot (true, true)))
+        restore (*s);
+}
+
+// Movement -------------------------------------------------------------------------
+
+BatidaProcessor::ParamRef BatidaProcessor::refFor (const juce::String& paramID) const
+{
+    const auto it = paramRefs.find (paramID);
+    return it == paramRefs.end() ? ParamRef {} : it->second;
+}
+
+bool BatidaProcessor::isModulatable (const juce::String& paramID) const
+{
+    const auto r = refFor (paramID);
+    return r.valid && (r.global ? isModulatableGlobal (r.param) : isModulatableVoice (r.param));
+}
+
+bool BatidaProcessor::isModTarget (int mod, const juce::String& paramID) const
+{
+    const auto r = refFor (paramID);
+    const ModTarget probe { true, r.global, r.voice, r.param, 0.0f };
+    for (const auto& t : kit.movementStore().get().mods[(size_t) mod].targets)
+        if (t == probe)
+            return true;
+    return false;
+}
+
+void BatidaProcessor::toggleModTarget (int mod, const juce::String& paramID)
+{
+    if (! isModulatable (paramID))
+        return;
+    const auto r = refFor (paramID);
+    const ModTarget probe { true, r.global, r.voice, r.param, 0.25f };
+    kit.movementStore().edit ([&] (MovementData& d)
+    {
+        auto& targets = d.mods[(size_t) mod].targets;
+        for (auto& t : targets)
+            if (t == probe)
+            {
+                t = {};
+                return;
+            }
+        for (auto& t : targets)
+            if (! t.active)
+            {
+                t = probe;
+                return;
+            }
+    });
+}
+
+std::optional<BatidaProcessor::ModDisplay> BatidaProcessor::modDisplayFor (const juce::String& paramID) const
+{
+    const auto r = refFor (paramID);
+    if (! r.valid)
+        return std::nullopt;
+
+    const auto& data = kit.movementStore().get();
+    float live = 0.0f, low = 0.0f, high = 0.0f;
+    bool any = false;
+    for (int m = 0; m < kNumMods; ++m)
+    {
+        const auto amount = globalRaw[(size_t) modParam (m, ModAmount)]->load();
+        const auto bipolar = globalRaw[(size_t) modParam (m, ModPolarity)]->load() > 0.5f;
+        for (const auto& t : data.mods[(size_t) m].targets)
+            if (t.active && t.global == r.global && t.param == r.param && (r.global || t.voice == r.voice))
+            {
+                any = true;
+                live += t.depth * kit.getModulators().getUiValue (m);
+                const auto a = t.depth * amount, b = bipolar ? -t.depth * amount : 0.0f;
+                low += std::min (a, b);
+                high += std::max (a, b);
+            }
+    }
+    if (! any)
+        return std::nullopt;
+
+    const auto& range = r.global ? globalRanges()[(size_t) r.param] : voiceRanges()[(size_t) r.param];
+    const auto base = range.convertTo0to1 (r.global ? globalRaw[(size_t) r.param]->load()
+                                                    : voiceRaw[(size_t) r.voice][(size_t) r.param]->load());
+    auto at = [&] (float offset) { return (double) range.convertFrom0to1 (juce::jlimit (0.0f, 1.0f, base + offset)); };
+    return ModDisplay { at (live), at (low), at (high) };
+}
+
+void BatidaProcessor::storeScene (int scene)
+{
+    kit.movementStore().edit ([&] (MovementData& d)
+    {
+        auto& sc = d.scenes[(size_t) scene];
+        sc.stored = true;
+        for (const auto g : sceneParams())
+            sc.values[(size_t) g] = globalRaw[(size_t) g]->load();
+    });
+}
+
+void BatidaProcessor::recallScene (int scene)
+{
+    const auto& sc = kit.movementStore().get().scenes[(size_t) scene];
+    if (! sc.stored)
+        return;
+    beginUndoStep (true);
+    ++actionCounter;
+    for (const auto g : sceneParams())
+    {
+        auto* p = state.getParameter (globalParamID (g));
+        p->beginChangeGesture();
+        p->setValueNotifyingHost (p->convertTo0to1 (sc.values[(size_t) g]));
+        p->endChangeGesture();
+    }
+}
+
+// Vary -----------------------------------------------------------------------------
+
+void BatidaProcessor::startVary (int voice, float amount, VaryDirection direction, bool lockSource, bool lockFx, bool lockEnvelopes)
+{
+    if (varyBusy.exchange (true))
+        return;
+    previewCandidate (-1);
+
+    VaryRequest req;
+    req.base = readVoiceParams (voice);
+    req.sample = kit.sampleSlot (voice).getDisplayData();
+    req.amount = amount;
+    req.direction = direction;
+    req.lockSource = lockSource;
+    req.lockFx = lockFx;
+    req.lockEnvelopes = lockEnvelopes;
+    req.seed = (uint32_t) juce::Random::getSystemRandom().nextInt();
+
+    juce::WeakReference<BatidaProcessor> safe (this);
+    varyPool.addJob ([safe, req, voice]
+    {
+        auto result = vary (req);
+        juce::MessageManager::callAsync ([safe, result = std::move (result), voice, base = req.base]() mutable
+        {
+            if (auto* self = safe.get())
+            {
+                self->candidates = std::move (result);
+                self->candidatesBase = base;
+                self->candidatesVoice = voice;
+                self->previewIndex = -1;
+                self->varyBusy = false;
+                ++self->varyVersion;
+            }
+        });
+    });
+}
+
+// A suggestion with the voice's mix settings as they are now; Level gets the
+// suggestion's loudness match on top of the current Level.
+VoiceParams BatidaProcessor::withLiveMix (const VaryCandidate& c, const VoiceParams& live)
+{
+    auto p = c.params;
+    for (const auto k : { vp::Pan, vp::ChainAmt, vp::Mute, vp::Solo })
+        p[k] = live[k];
+    const auto& level = voiceParamSpecs()[(size_t) vp::Level];
+    p[vp::Level] = std::clamp (live[vp::Level] + c.levelDb, level.min, level.max);
+    return p;
+}
+
+void BatidaProcessor::previewCandidate (int index)
+{
+    previewIndex = index >= 0 && index < (int) candidates.size() ? index : -1;
+    Preview p;
+    if (previewIndex >= 0)
+    {
+        p.active = true;
+        p.voice = candidatesVoice;
+        p.params = withLiveMix (candidates[(size_t) previewIndex], readVoiceParams (candidatesVoice));
+    }
+    preview.replace (p);
+    ++varyVersion;
+}
+
+void BatidaProcessor::writeVoiceParameters (int voice, const VoiceParams& values)
+{
+    for (int k = 0; k < kNumVoiceParams; ++k)
+    {
+        auto* p = state.getParameter (voiceParamID (voice, k));
+        const auto norm = p->convertTo0to1 (values[k]);
+        if (std::abs (p->getValue() - norm) > 1.0e-6f)
+        {
+            p->beginChangeGesture();
+            p->setValueNotifyingHost (norm);
+            p->endChangeGesture();
+        }
+    }
+}
+
+void BatidaProcessor::keepCandidate()
+{
+    if (previewIndex < 0)
+        return;
+    const auto voice = candidatesVoice;
+    const auto values = withLiveMix (candidates[(size_t) previewIndex], readVoiceParams (voice));
+
+    beginUndoStep (true);
+    ++actionCounter;
+    writeVoiceParameters (voice, values);
+    previewCandidate (-1);
+    candidates.clear();
+    candidatesVoice = -1; // back to "press Vary", not "nothing found"
+    ++varyVersion;
 }
 
 void BatidaProcessor::setPatternParameter (int pattern)
@@ -382,6 +689,8 @@ void BatidaProcessor::timerCallback()
     for (int v = 0; v < kNumVoices; ++v)
         kit.sampleSlot (v).collectGarbage();
     kit.patternStore().collectGarbage();
+    kit.movementStore().collectGarbage();
+    preview.collectGarbage();
 }
 
 void BatidaProcessor::getStateInformation (juce::MemoryBlock& destData)
@@ -391,6 +700,10 @@ void BatidaProcessor::getStateInformation (juce::MemoryBlock& destData)
     tree.removeChild (tree.getChildWithName (kPatternsTag), nullptr);
     if (const auto patternXml = kit.patternStore().get().toXml())
         tree.appendChild (juce::ValueTree::fromXml (*patternXml), nullptr);
+
+    tree.removeChild (tree.getChildWithName (kMovementTag), nullptr);
+    if (const auto movementXml = kit.movementStore().get().toXml())
+        tree.appendChild (juce::ValueTree::fromXml (*movementXml), nullptr);
 
     tree.removeChild (tree.getChildWithName (kNamesTag), nullptr);
     juce::ValueTree names (kNamesTag);
@@ -425,6 +738,15 @@ void BatidaProcessor::setStateInformation (const void* data, int sizeInBytes)
     tree.removeChild (patternTree, nullptr);
     const auto namesTree = tree.getChildWithName (kNamesTag);
     tree.removeChild (namesTree, nullptr);
+    const auto movementTree = tree.getChildWithName (kMovementTag);
+    tree.removeChild (movementTree, nullptr);
+    if (movementTree.isValid())
+        if (const auto xml = movementTree.createXml())
+        {
+            MovementData m;
+            m.fromXml (*xml);
+            kit.movementStore().replace (m);
+        }
     state.replaceState (tree);
 
     for (auto& n : voiceNames)

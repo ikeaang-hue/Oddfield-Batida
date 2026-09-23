@@ -65,6 +65,7 @@ SeqPage::SeqPage (BatidaProcessor& p)
         const auto len = (int) lengthSlider.getValue();
         if (proc.patterns().get().patterns[(size_t) pi].length == len)
             return;
+        proc.beginUndoStep();
         proc.patterns().edit ([&] (PatternBank& b)
         {
             auto& pat = b.patterns[(size_t) pi];
@@ -79,9 +80,12 @@ SeqPage::SeqPage (BatidaProcessor& p)
     pasteButton.onClick = [this]
     {
         if (patternClipboard)
+        {
+            proc.beginUndoStep();
             proc.patterns().edit ([&] (PatternBank& b) { b.patterns[(size_t) proc.displayPattern()] = *patternClipboard; });
+        }
     };
-    clearButton.onClick = [this] { proc.patterns().edit ([&] (PatternBank& b) { b.patterns[(size_t) proc.displayPattern()].clear(); }); };
+    clearButton.onClick = [this] { proc.beginUndoStep(); proc.patterns().edit ([&] (PatternBank& b) { b.patterns[(size_t) proc.displayPattern()].clear(); }); };
 
     static const char* laneNames[] = { "Steps", "Pitch", "Slice", "Ratchet", "Prob" };
     for (int i = 0; i < (int) laneButtons.size(); ++i)

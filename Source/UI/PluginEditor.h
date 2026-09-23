@@ -2,7 +2,9 @@
 
 #include "FmPage.h"
 #include "KitPage.h"
+#include "ModPage.h"
 #include "SeqPage.h"
+#include "VaryPage.h"
 #include "VoicePages.h"
 
 // Minimal demo UI (stock JUCE controls). Three views: KIT, the main panel for
@@ -53,7 +55,7 @@ private:
     };
 
     void selectVoice (int voice);
-    enum class View { Kit, Seq, Voice };
+    enum class View { Kit, Seq, Mod, Voice };
     void showView (View view);
     int voiceAt (int x, int y) const;
     void timerCallback() override;
@@ -71,9 +73,11 @@ private:
     std::array<juce::TextButton, batida::kNumVoices> muteButtons, soloButtons;
     std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>, batida::kNumVoices> muteAttachments,
         soloAttachments;
-    juce::TextButton kitViewButton { "KIT" }, seqViewButton { "SEQ" }, voiceViewButton { "VOICE" };
+    juce::TextButton kitViewButton { "KIT" }, seqViewButton { "SEQ" }, modViewButton { "MOD" }, voiceViewButton { "VOICE" };
+    juce::TextButton undoButton { "Undo" }, redoButton { "Redo" };
     KitPage kitPage;
     SeqPage seqPage;
+    ModPage modPage;
     juce::TabbedComponent tabs { juce::TabbedButtonBar::TabsAtTop };
     std::unique_ptr<juce::TextEditor> renameEditor;
 
@@ -81,6 +85,7 @@ private:
     FmPage* fmPage = nullptr;
     ChainPage* chainPage = nullptr;
     EnvelopePage* envelopePage = nullptr;
+    VaryPage* varyPage = nullptr;
 
     int selected = 0;
     int dropTarget = -1;

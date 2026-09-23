@@ -166,6 +166,29 @@ std::vector<ParamSpec> buildGlobalSpecs()
     s[gp::SeqQuantise] = choice ("seq_quantise", "Quantise", { "Step", "Beat", "Bar" }, 1);
     s[gp::SeqLatch]    = toggle ("seq_latch", "Latch");
     s[gp::SeqSync]     = toggle ("seq_sync", "Sync", true); // follow the host's tempo and position
+
+    for (int m = 0; m < kNumMods; ++m)
+    {
+        const auto k = "mod" + std::to_string (m + 1) + "_";
+        const auto l = "Mod" + std::to_string (m + 1) + " ";
+        s[modParam (m, ModMode)]     = choice (k + "mode", l + "Mode", { "Sync", "Free", "One-shot" });
+        s[modParam (m, ModRate)]     = choice (k + "rate", l + "Rate", { "1/32", "1/16T", "1/16", "1/16D", "1/8T", "1/8", "1/8D",
+                                                                          "1/4T", "1/4", "1/4D", "1/2", "1 bar", "2 bars",
+                                                                          "4 bars", "8 bars" }, 11);
+        s[modParam (m, ModHz)]       = flt (k + "hz", l + "Rate Hz", 0.01f, 20.0f, 1.0f, "Hz", 1.0f);
+        s[modParam (m, ModPolarity)] = choice (k + "polarity", l + "Polarity", { "Unipolar", "Bipolar" });
+        s[modParam (m, ModSmooth)]   = flt (k + "smooth", l + "Smooth", 0.0f, 1.0f, 0.0f, "%");
+        s[modParam (m, ModHuman)]    = flt (k + "humanise", l + "Humanise", 0.0f, 1.0f, 0.0f, "%");
+        s[modParam (m, ModAmount)]   = flt (k + "amount", l + "Amount", 0.0f, 1.0f, 1.0f, "%");
+        s[modParam (m, ModTrigger)]  = choice (k + "trigger", l + "Trigger", { "Any hit", "Pattern start", "Voice 1", "Voice 2",
+                                                                               "Voice 3", "Voice 4", "Voice 5", "Voice 6",
+                                                                               "Voice 7", "Voice 8" });
+    }
+
+    s[gp::SceneA]       = choice ("scene_a", "Scene Morph From", { "A", "B", "C", "D" }, 0);
+    s[gp::SceneB]       = choice ("scene_b", "Scene Morph To", { "A", "B", "C", "D" }, 1);
+    s[gp::SceneMorph]   = flt ("scene_morph", "Scene Morph", 0.0f, 1.0f, 0.0f, "%");
+    s[gp::SceneMorphOn] = toggle ("scene_morph_on", "Scene Morph On");
     return s;
 }
 } // namespace

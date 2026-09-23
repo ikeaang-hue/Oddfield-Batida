@@ -38,7 +38,7 @@ struct SeqSettings
 
 struct SeqEvent
 {
-    enum class Type { NoteOn, NoteOff, XyLock, XyRelease };
+    enum class Type { NoteOn, NoteOff, XyLock, XyRelease, PatternStart };
     Type type = Type::NoteOn;
     int offset = 0;
     int voice = 0, key = 60, slice = -1;

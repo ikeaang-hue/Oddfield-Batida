@@ -104,6 +104,8 @@ void XyPad::setFromMouse (juce::Point<float> p)
 
 void XyPad::mouseDown (const juce::MouseEvent& e)
 {
+    if (onGestureStart)
+        onGestureStart();
     x->beginChangeGesture();
     y->beginChangeGesture();
     setFromMouse (e.position);
@@ -171,6 +173,41 @@ KitPage::KitPage (BatidaProcessor& p) : VoicePage (p), pad (p.getState())
 
     xyRecButton.setTooltip ("While a pattern plays, moving the pad records XY locks into its steps (see SEQ).");
     addAndMakeVisible (xyRecButton);
+    pad.onGestureStart = [this]
+    {
+        if (xyRecButton.getToggleState())
+            proc.beginUndoStep();
+    };
+
+    // Scenes: click a letter to recall it; Store, then a letter, to save the chain there.
+    storeButton.setClickingTogglesState (true);
+    storeButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffd9534f));
+    storeButton.setTooltip ("Then click A-D to store the whole chain (and the pad) there");
+    addAndMakeVisible (storeButton);
+    for (int i = 0; i < kNumScenes; ++i)
+    {
+        auto& b = sceneButtons[(size_t) i];
+        b.setButtonText (juce::String::charToString ((juce::juce_wchar) ('A' + i)));
+        b.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff2b7bb9));
+        b.onClick = [this, i]
+        {
+            if (storeButton.getToggleState())
+            {
+                proc.storeScene (i);
+                storeButton.setToggleState (false, juce::dontSendNotification);
+            }
+            else
+                proc.recallScene (i);
+            refreshScenes();
+        };
+        addAndMakeVisible (b);
+    }
+    morphSection = addSection ("Scene morph");
+    addGlobal (morphSection, gp::SceneMorphOn, "On").withWidth (54);
+    addGlobal (morphSection, gp::SceneA, "From").withWidth (62);
+    addGlobal (morphSection, gp::SceneB, "To").withWidth (62);
+    addGlobal (morphSection, gp::SceneMorph, "Morph");
+    refreshScenes();
     pad.onMove = [this] (float x, float y)
     {
         const auto& seq = proc.sequencer();
@@ -190,8 +227,23 @@ KitPage::~KitPage()
     stopTimer();
 }
 
+void KitPage::refreshScenes()
+{
+    shownMovement = proc.movement().getVersion();
+    const auto& scenes = proc.movement().get().scenes;
+    for (int i = 0; i < kNumScenes; ++i)
+    {
+        auto& b = sceneButtons[(size_t) i];
+        b.setToggleState (scenes[(size_t) i].stored, juce::dontSendNotification);
+        b.setTooltip (scenes[(size_t) i].stored ? "Recall scene " + b.getButtonText() : "Empty: Store, then click to save here");
+    }
+}
+
 void KitPage::timerCallback()
 {
+    if (proc.movement().getVersion() != shownMovement)
+        refreshScenes();
+
     const auto base = proc.readGlobalParams();
     auto shown = base;
     const auto& kit = proc.getKit();
@@ -239,13 +291,20 @@ void KitPage::resized()
     auto area = getLocalBounds().reduced (10);
 
     auto left = area.removeFromLeft (310);
-    pad.setBounds (left.removeFromTop (340));
+    pad.setBounds (left.removeFromTop (330));
     left.removeFromTop (6);
-    xyRecButton.setBounds (left.removeFromTop (24).withWidth (90));
+    auto row = left.removeFromTop (26);
+    xyRecButton.setBounds (row.removeFromLeft (76));
+    storeButton.setBounds (row.removeFromLeft (58).reduced (1));
+    row.removeFromLeft (6);
+    for (auto& b : sceneButtons)
+        b.setBounds (row.removeFromLeft (40).reduced (1));
     left.removeFromTop (8);
-    layoutRow (left, { outputSection });
+    layoutRow (left, { morphSection });
 
     area.removeFromLeft (14);
-    for (const auto s : { dynamicsSection, distortionSection, eqSection, chainSection })
+    for (const auto s : { dynamicsSection, distortionSection })
         area.removeFromTop (layoutRow (area, { s }) + 8);
+    area.removeFromTop (layoutRow (area, { eqSection, outputSection }) + 8);
+    layoutRow (area, { chainSection });
 }
