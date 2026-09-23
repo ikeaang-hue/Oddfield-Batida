@@ -83,7 +83,8 @@ VaryPage::VaryPage (BatidaProcessor& p) : proc (p)
     status.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
     help.setText ("Vary suggests up to 4 sounds close to this one. Hold a suggestion to hear it (it's only a preview), "
                   "Keep the one you like, then Vary again from there. Directions steer the suggestions; "
-                  "locked sections stay as they are. Silent, clipping and near-identical results are filtered out.",
+                  "locked sections stay as they are. Suggestions are level-matched to the original (Keep adjusts "
+                  "Level to match); silent and near-identical results are filtered out.",
                   juce::dontSendNotification);
     help.setFont (juce::FontOptions (12.0f));
     help.setColour (juce::Label::textColourId, juce::Colours::grey);
@@ -120,8 +121,9 @@ juce::String VaryPage::describe (const SoundFeatures& f) const
     else if (f.brightnessHz < baseFeatures.brightnessHz * 0.9f) words.add ("darker");
     if (f.lengthMs > baseFeatures.lengthMs * 1.1f) words.add ("longer");
     else if (f.lengthMs < baseFeatures.lengthMs * 0.9f) words.add ("shorter");
-    if (f.rmsDb > baseFeatures.rmsDb + 1.5f) words.add ("louder");
-    else if (f.rmsDb < baseFeatures.rmsDb - 1.5f) words.add ("softer");
+    // Suggestions are level-matched, so this only shows when Level ran out of room.
+    if (f.loudnessDb > baseFeatures.loudnessDb + 1.5f) words.add ("louder");
+    else if (f.loudnessDb < baseFeatures.loudnessDb - 1.0f) words.add ("softer");
     return words.isEmpty() ? juce::String ("different tone") : words.joinIntoString (", ");
 }
 
@@ -138,7 +140,7 @@ void VaryPage::refresh()
     const bool mine = proc.varyVoice() == voice && ! cands.empty();
 
     if (mine)
-        baseFeatures = measureVoice (proc.readVoiceParams (voice), proc.sampleSlot (voice).getDisplayData());
+        baseFeatures = measureVoice (proc.varyBase(), proc.sampleSlot (voice).getDisplayData());
 
     for (int i = 0; i < 4; ++i)
     {

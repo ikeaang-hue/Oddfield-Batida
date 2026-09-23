@@ -98,10 +98,12 @@ public:
     bool isVarying() const { return varyBusy.load(); }
     const std::vector<batida::VaryCandidate>& varyCandidates() const { return candidates; }
     int varyVoice() const { return candidatesVoice; }
+    const batida::VoiceParams& varyBase() const { return candidatesBase; } // the sound the suggestions came from
     int getVaryVersion() const { return varyVersion.load(); }
     void previewCandidate (int index); // -1 = back to the original
     int previewedCandidate() const { return previewIndex; }
     void keepCandidate();
+    static batida::VoiceParams withLiveMix (const batida::VaryCandidate& c, const batida::VoiceParams& live);
     void setKeysVoice (int voice); // what Chromatic mode plays; follows the editor selection
     batida::VoiceParams readVoiceParams (int voice) const;
     std::array<float, batida::kNumGlobalParams> readGlobalParams() const;
@@ -138,6 +140,7 @@ private:
     struct Preview { bool active = false; int voice = 0; batida::VoiceParams params; };
     batida::SnapshotStore<Preview> preview;
     std::vector<batida::VaryCandidate> candidates;
+    batida::VoiceParams candidatesBase;
     int candidatesVoice = -1, previewIndex = -1;
     std::atomic<int> varyVersion { 0 };
     std::atomic<bool> varyBusy { false };

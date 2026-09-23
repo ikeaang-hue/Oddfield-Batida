@@ -172,10 +172,10 @@ public:
             for (const auto& c : result)
             {
                 for (int p = 0; p < kNumVoiceParams; ++p)
-                    if (varyGroupOf (p) == VaryGroup::Envelopes || varyGroupOf (p) == VaryGroup::None)
+                    if (p != vp::Level && (varyGroupOf (p) == VaryGroup::Envelopes || varyGroupOf (p) == VaryGroup::None))
                         expectEquals (c.params[p], base[p], "locked or excluded: " + juce::String (voiceParamSpecs()[(size_t) p].key));
-                expect (c.features.peakDb > -45.0f && c.features.peakDb <= 3.0f, "no silent or clipping results");
-                const auto differs = std::abs (c.features.rmsDb - baseF.rmsDb) > 0.5f
+                expect (c.features.peakDb > -45.0f && c.features.peakDb <= 6.0f, "no silent or slamming results");
+                const auto differs = std::abs (c.features.loudnessDb - baseF.loudnessDb) > 0.5f
                                   || std::abs (c.features.brightnessHz - baseF.brightnessHz) > 50.0f
                                   || std::abs (c.features.lengthMs - baseF.lengthMs) > 10.0f;
                 expect (differs, "not a near-duplicate of the original");
@@ -202,6 +202,41 @@ public:
                                                                : c.features.lengthMs > baseF.lengthMs;
                 expect (ok, name);
             }
+        }
+
+        beginTest ("Vary: suggestions are level-matched to the original");
+        {
+            int count = 0, atCeiling = 0;
+            float worst = 0.0f, worstAtCeiling = 0.0f;
+            const auto levelMax = voiceParamSpecs()[(size_t) vp::Level].max;
+            for (int v = 0; v < kNumVoices; ++v)
+                for (const auto dir : { VaryDirection::None, VaryDirection::Shorter, VaryDirection::Longer, VaryDirection::Darker })
+                {
+                    VaryRequest req;
+                    req.base = defaultKitParams().voices[(size_t) v];
+                    req.amount = 0.6f;
+                    req.direction = dir;
+                    req.seed = (uint32_t) (100 + v);
+                    const auto baseF = measureVoice (req.base, nullptr);
+                    for (const auto& c : vary (req))
+                    {
+                        // Measured again from scratch, with the matched Level.
+                        const auto f = measureVoice (c.params, nullptr);
+                        expectWithinAbsoluteError (f.loudnessDb, c.features.loudnessDb, 0.1f, "reported loudness is real");
+                        expectWithinAbsoluteError (c.params[vp::Level], req.base[vp::Level] + c.levelDb, 1.0e-4f);
+                        const auto miss = std::abs (f.loudnessDb - baseF.loudnessDb);
+                        if (c.params[vp::Level] >= levelMax - 1.0e-4f)
+                            worstAtCeiling = std::max (worstAtCeiling, miss), ++atCeiling;
+                        else
+                            worst = std::max (worst, miss);
+                        ++count;
+                    }
+                }
+            logMessage ("  " + juce::String (count) + " candidates, worst mismatch " + juce::String (worst, 2) + " dB; "
+                        + juce::String (atCeiling) + " at the Level ceiling, worst " + juce::String (worstAtCeiling, 2) + " dB");
+            expectGreaterOrEqual (count, 60);
+            expectLessOrEqual (worst, 0.1f);
+            expectLessOrEqual (worstAtCeiling, 1.5f);
         }
 
         beginTest ("Movement data survives XML");

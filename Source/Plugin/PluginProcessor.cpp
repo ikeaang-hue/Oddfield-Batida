@@ -558,11 +558,12 @@ void BatidaProcessor::startVary (int voice, float amount, VaryDirection directio
     varyPool.addJob ([safe, req, voice]
     {
         auto result = vary (req);
-        juce::MessageManager::callAsync ([safe, result = std::move (result), voice]() mutable
+        juce::MessageManager::callAsync ([safe, result = std::move (result), voice, base = req.base]() mutable
         {
             if (auto* self = safe.get())
             {
                 self->candidates = std::move (result);
+                self->candidatesBase = base;
                 self->candidatesVoice = voice;
                 self->previewIndex = -1;
                 self->varyBusy = false;
@@ -570,6 +571,18 @@ void BatidaProcessor::startVary (int voice, float amount, VaryDirection directio
             }
         });
     });
+}
+
+// A suggestion with the voice's mix settings as they are now; Level gets the
+// suggestion's loudness match on top of the current Level.
+VoiceParams BatidaProcessor::withLiveMix (const VaryCandidate& c, const VoiceParams& live)
+{
+    auto p = c.params;
+    for (const auto k : { vp::Pan, vp::ChainAmt, vp::Mute, vp::Solo })
+        p[k] = live[k];
+    const auto& level = voiceParamSpecs()[(size_t) vp::Level];
+    p[vp::Level] = std::clamp (live[vp::Level] + c.levelDb, level.min, level.max);
+    return p;
 }
 
 void BatidaProcessor::previewCandidate (int index)
@@ -580,11 +593,7 @@ void BatidaProcessor::previewCandidate (int index)
     {
         p.active = true;
         p.voice = candidatesVoice;
-        p.params = candidates[(size_t) previewIndex].params;
-        // Mix settings stay as they are now.
-        const auto live = readVoiceParams (candidatesVoice);
-        for (const auto k : { vp::Level, vp::Pan, vp::ChainAmt, vp::Mute, vp::Solo })
-            p.params[k] = live[k];
+        p.params = withLiveMix (candidates[(size_t) previewIndex], readVoiceParams (candidatesVoice));
     }
     preview.replace (p);
     ++varyVersion;
@@ -610,10 +619,7 @@ void BatidaProcessor::keepCandidate()
     if (previewIndex < 0)
         return;
     const auto voice = candidatesVoice;
-    auto values = candidates[(size_t) previewIndex].params;
-    const auto live = readVoiceParams (voice);
-    for (const auto k : { vp::Level, vp::Pan, vp::ChainAmt, vp::Mute, vp::Solo })
-        values[k] = live[k];
+    const auto values = withLiveMix (candidates[(size_t) previewIndex], readVoiceParams (voice));
 
     beginUndoStep (true);
     ++actionCounter;

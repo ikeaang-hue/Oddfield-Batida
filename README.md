@@ -88,7 +88,8 @@ the selected sound (its **Vary** tab suggests variations).
   can drive it.
 - **Vary (VOICE → Vary):** press **Vary** for up to 4 nearby versions of the sound (Amount = how
   far; Direction steers; Keep as is locks sections). Hold a suggestion to hear it, **Keep** it, or
-  **Back**. Silent, clipping and near-identical results are filtered out.
+  **Back**. Suggestions are level-matched to the original (by the loudest 50 ms of the hit), so
+  Keep may also move the voice's **Level**. Silent and near-identical results are filtered out.
 - **Undo / Redo** (header): pattern edits, names, Vary Keep, scene recall and slot swaps. Single
   knob moves are undone in Logic, so the two histories don't overlap.
 - During development Mod 1 gently moves XY Heat over each bar; the release starts empty.

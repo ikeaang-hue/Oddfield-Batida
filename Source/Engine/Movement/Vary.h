@@ -11,7 +11,9 @@ namespace batida
 // Guided variations of one voice: nudges its settings randomly within limits
 // that suit each parameter, steered by a direction, then renders and measures
 // every candidate and drops the duds (silent, clipping, near-duplicates, or
-// ones that moved the wrong way). No learning, no network: fast and offline.
+// ones that moved the wrong way). Every candidate is level-matched to the
+// original (through the voice's Level), so suggestions differ in tone, not
+// volume. No learning, no network: fast and offline.
 
 enum class VaryDirection { None, Brighter, Darker, Shorter, Longer, Tonal, Noisy, Cleaner, Dirtier };
 enum class VaryGroup { None, Source, Fx, Envelopes };
@@ -33,6 +35,7 @@ struct VaryRequest
 struct SoundFeatures
 {
     float peakDb = -120.0f, rmsDb = -120.0f, lengthMs = 0.0f, brightnessHz = 0.0f;
+    float loudnessDb = -120.0f; // the loudest 50 ms: how loud a hit sounds, whatever its length
     bool finite = true;
 };
 
@@ -40,8 +43,9 @@ SoundFeatures measureVoice (const VoiceParams& params, const SampleData* sample,
 
 struct VaryCandidate
 {
-    VoiceParams params;
-    SoundFeatures features;
+    VoiceParams params;     // Level already includes levelDb
+    SoundFeatures features; // measured with that Level
+    float levelDb = 0.0f;   // the Level change that matches the original's loudness
 };
 
 std::vector<VaryCandidate> vary (const VaryRequest& request);

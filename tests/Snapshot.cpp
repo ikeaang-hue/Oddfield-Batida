@@ -205,9 +205,12 @@ int main (int argc, char* argv[])
             proc.previewCandidate (0);
             check (snare()[batida::vp::FmBright] == before[batida::vp::FmBright]
                        && snare()[batida::vp::AmpD] == before[batida::vp::AmpD], "preview doesn't touch the project");
+            const auto expectedLevel = BatidaProcessor::withLiveMix (proc.varyCandidates()[0], before)[batida::vp::Level];
             proc.keepCandidate();
             bool changed = false;
             const auto after = snare();
+            check (std::abs (after[batida::vp::Level] - expectedLevel) < 0.05f, "Keep sets the level-matched Level");
+            std::printf ("  Level %.2f -> %.2f dB\n", before[batida::vp::Level], after[batida::vp::Level]);
             for (int k = 0; k < batida::kNumVoiceParams; ++k)
                 changed = changed || std::abs (after[k] - before[k]) > 1.0e-5f;
             check (changed, "Keep writes the suggestion into the voice");

@@ -74,7 +74,7 @@ float directionWeight (int p, VaryDirection d, const VoiceParams& base)
 // A distance between two sounds, in rough "just noticeable" units.
 float distance (const SoundFeatures& a, const SoundFeatures& b)
 {
-    const auto level = (a.rmsDb - b.rmsDb) / 6.0f;
+    const auto level = (a.loudnessDb - b.loudnessDb) / 6.0f;
     const auto length = std::log2 ((a.lengthMs + 20.0f) / (b.lengthMs + 20.0f)) / 0.5f;
     const auto bright = std::log2 ((a.brightnessHz + 50.0f) / (b.brightnessHz + 50.0f)) / 0.35f;
     return std::sqrt (level * level + length * length + bright * bright);
@@ -157,6 +157,19 @@ SoundFeatures measureVoice (const VoiceParams& params, const SampleData* sample,
     if (peak <= 0.0f || ! f.finite)
         return f;
 
+    // Loudest 50 ms window (both channels).
+    const auto window = (int) (0.05 * sampleRate);
+    double windowSum = 0.0, loudest = 0.0;
+    for (int i = 0; i < total; ++i)
+    {
+        windowSum += 0.5 * ((double) l[(size_t) i] * l[(size_t) i] + (double) r[(size_t) i] * r[(size_t) i]);
+        if (i >= window)
+            windowSum -= 0.5 * ((double) l[(size_t) (i - window)] * l[(size_t) (i - window)]
+                                + (double) r[(size_t) (i - window)] * r[(size_t) (i - window)]);
+        loudest = std::max (loudest, windowSum);
+    }
+    f.loudnessDb = (float) (10.0 * std::log10 (std::max (1.0e-12, loudest / window)));
+
     int last = 0, crossings = 0;
     double sum = 0.0;
     for (int i = 0; i < total; ++i)
@@ -193,6 +206,12 @@ std::vector<VaryCandidate> vary (const VaryRequest& req)
         return std::sqrt (-2.0f * std::log (u1)) * std::cos (6.2831853f * u2);
     };
 
+    // Level matching: Level can rise to its maximum; a candidate that would need
+    // more than a little beyond that is dropped rather than left quiet.
+    const auto baseLevel = req.base[vp::Level];
+    const auto& levelSpec = voiceParamSpecs()[(size_t) vp::Level];
+    constexpr float kLevelShortfallDb = 1.5f;
+
     std::vector<VaryCandidate> valid;
     for (int batch = 0; batch < 3 && (int) valid.size() < req.count * 2; ++batch)
     {
@@ -210,14 +229,28 @@ std::vector<VaryCandidate> vary (const VaryRequest& req)
                 p[k] = range.convertFrom0to1 (std::clamp (n, 0.0f, 1.0f));
             }
 
-            const auto f = measureVoice (p, req.sample);
-            if (! f.finite || f.peakDb < -45.0f || f.peakDb > 3.0f)
-                continue; // silent or clipping
+            auto f = measureVoice (p, req.sample);
+            if (! f.finite || f.peakDb < -45.0f)
+                continue; // broken or silent
+
+            const auto wanted = baseLevel + (baseFeatures.loudnessDb - f.loudnessDb);
+            const auto level = std::clamp (wanted, levelSpec.min, levelSpec.max);
+            if (wanted - level > kLevelShortfallDb)
+                continue; // can't be brought up to the original's loudness
+            const auto gainDb = level - baseLevel;
+            p[vp::Level] = level;
+            f.peakDb += gainDb; // Level is a plain gain after everything else
+            f.rmsDb += gainDb;
+            f.loudnessDb += gainDb;
+            if (f.peakDb > 6.0f)
+                continue; // would slam the safety clip
+
+
             if (distance (f, baseFeatures) < 0.35f)
                 continue; // sounds like the original
             if (! movedTheRightWay (f, baseFeatures, req.direction))
                 continue;
-            valid.push_back ({ p, f });
+            valid.push_back ({ p, f, gainDb });
         }
     }
 
