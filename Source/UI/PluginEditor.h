@@ -75,6 +75,7 @@ private:
     LibraryPage libraryPage;
     Scrim settingsScrim;
     SettingsPanel settings;
+    AboutCard about;
     juce::TooltipWindow tooltips { &content, 700 };
     std::unique_ptr<juce::TextEditor> renameEditor;
 

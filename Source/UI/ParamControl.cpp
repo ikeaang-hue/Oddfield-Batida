@@ -514,6 +514,8 @@ void ParamControl::mouseDown (const juce::MouseEvent& e)
     }
     dragging = true;
     fine = e.mods.isShiftDown();
+    pressedOnValue = valueArea().contains (e.getPosition());
+    movedSincePress = false;
     dragStartNorm = norm();
     dragOrigin = lastMouse = e.position;
     attachment->beginGesture();
@@ -525,6 +527,8 @@ void ParamControl::mouseDrag (const juce::MouseEvent& e)
     if (! dragging)
         return;
     lastMouse = e.position;
+    if (e.getDistanceFromDragStart() > 2)
+        movedSincePress = true;
     if (e.mods.isShiftDown() != fine)
     {
         // Pressing or releasing Shift mid-drag never jumps: carry on from here.
@@ -549,7 +553,7 @@ void ParamControl::modifierKeysChanged (const juce::ModifierKeys& mods)
     }
 }
 
-void ParamControl::mouseUp (const juce::MouseEvent&)
+void ParamControl::mouseUp (const juce::MouseEvent& e)
 {
     if (! dragging)
         return;
@@ -557,12 +561,29 @@ void ParamControl::mouseUp (const juce::MouseEvent&)
     fine = false;
     attachment->endGesture();
     repaint();
+
+    // A click on the number (no drag) opens a field to type into, unless it
+    // turns out to be a double-click (which goes back to the default).
+    if (pressedOnValue && ! movedSincePress && e.getNumberOfClicks() == 1)
+    {
+        const auto token = ++clickToken;
+        juce::Timer::callAfterDelay (juce::MouseEvent::getDoubleClickTimeout() + 20,
+                                     [safe = juce::Component::SafePointer<ParamControl> (this), token]
+                                     {
+                                         if (safe != nullptr && safe->clickToken == token)
+                                             safe->editValue();
+                                     });
+    }
 }
 
-void ParamControl::mouseDoubleClick (const juce::MouseEvent& e)
+void ParamControl::mouseDoubleClick (const juce::MouseEvent&)
 {
-    if ((kind == Kind::Bar || kind == Kind::Number) && ! e.mods.isAltDown())
-        editValue();
+    if ((kind != Kind::Bar && kind != Kind::Number) || param == nullptr)
+        return;
+    ++clickToken; // not a click to type after all
+    glideTo (param->getDefaultValue());
+    defaultFlash = 1.0f;
+    flashStart = juce::Time::getMillisecondCounterHiRes();
 }
 
 void ParamControl::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
@@ -591,11 +612,11 @@ void ParamControl::showMenu()
     }
     juce::PopupMenu::Item type ("Type a value...");
     type.itemID = 10;
-    type.shortcutKeyDescription = "double-click";
+    type.shortcutKeyDescription = "click the number";
     m.addItem (type);
     juce::PopupMenu::Item reset ("Back to default");
     reset.itemID = 11;
-    reset.shortcutKeyDescription = juce::String::fromUTF8 ("\xe2\x8c\xa5-click");
+    reset.shortcutKeyDescription = "double-click";
     m.addItem (reset);
 
     m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this),

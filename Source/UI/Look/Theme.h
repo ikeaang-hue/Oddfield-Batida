@@ -34,10 +34,11 @@ float easeOut (float t); // cubic ease-out, 0..1
 bool reduceMotion();
 inline bool canAnimate (const juce::Component& c) { return c.getPeer() != nullptr && ! reduceMotion(); }
 
-// Visible with all its parents (on screen or rendered offscreen): hidden pages skip their work.
+// Visible with all its parents up to the window (on screen or rendered
+// offscreen): hidden pages skip their work.
 inline bool isVisibleInTree (const juce::Component& c)
 {
-    for (auto* p = &c; p != nullptr; p = p->getParentComponent())
+    for (auto* p = &c; p->getParentComponent() != nullptr; p = p->getParentComponent())
         if (! p->isVisible())
             return false;
     return true;

@@ -415,8 +415,25 @@ void TopBar::resized()
     kitStrip.setBounds (middle.withSizeKeepingCentre (std::min (210, middle.getWidth()), 24));
 }
 
+juce::Rectangle<int> TopBar::logoBounds() const
+{
+    return { 0, 0, (int) juce::GlyphArrangement::getStringWidth (head (12.5f, true), "BATIDA/") + 4, getHeight() };
+}
+
+void TopBar::mouseMove (const juce::MouseEvent& e)
+{
+    setMouseCursor (logoBounds().contains (e.getPosition()) ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
+    repaint (navBounds());
+}
+
 void TopBar::mouseDown (const juce::MouseEvent& e)
 {
+    if (logoBounds().contains (e.getPosition()))
+    {
+        if (onAbout)
+            onAbout();
+        return;
+    }
     for (int i = 0; i < 5; ++i)
         if (navItem (i).contains (e.getPosition()))
         {
@@ -495,16 +512,6 @@ void SettingsPanel::paint (juce::Graphics& g)
     g.setFont (mono (10.0f));
     g.drawText (proc.library().getRoot().getFullPathName().replace (juce::File::getSpecialLocation (juce::File::userHomeDirectory).getFullPathName(), "~"),
                 juce::Rectangle<int> (14, reveal.getY() - 20, getWidth() - 28, 14), juce::Justification::centredLeft, true);
-
-    const auto about = juce::Rectangle<int> (14, getHeight() - 48, getWidth() - 28, 36);
-    g.setColour (line);
-    g.fillRect (about.getX(), about.getY() - 8, about.getWidth(), 1);
-    g.setFont (mono (9.5f));
-    g.setColour (ink);
-    g.drawText ("Batida " BATIDA_VERSION, about.withHeight (13), juce::Justification::centredLeft);
-    g.setColour (muted);
-    g.drawFittedText (juce::String::fromUTF8 ("Negative Space \xc2\xb7 AGPLv3 \xc2\xb7 fonts: JetBrains Mono, Martian Mono (OFL)"),
-                      about.withTrimmedTop (15), juce::Justification::topLeft, 2, 1.0f);
 }
 
 void SettingsPanel::resized()
@@ -520,4 +527,52 @@ void SettingsPanel::resized()
     reveal.setBounds (r.removeFromTop (22).withWidth (120));
     r.removeFromTop (26);
     author.setBounds (r.removeFromTop (26));
+}
+
+// AboutCard ------------------------------------------------------------------------
+
+void AboutCard::paint (juce::Graphics& g)
+{
+    g.fillAll (bg);
+    g.setColour (ink);
+    g.drawRect (getLocalBounds(), 1);
+    auto r = getLocalBounds().reduced (18, 16);
+
+    g.setFont (head (22.0f, true));
+    g.drawText ("BATIDA/", r.removeFromTop (28), juce::Justification::centredLeft, false);
+    g.setColour (muted);
+    g.setFont (mono (10.5f));
+    g.drawText ("by Negative Space", r.removeFromTop (16), juce::Justification::centredLeft, false);
+    r.removeFromTop (14);
+    g.setColour (line);
+    g.fillRect (r.removeFromTop (1));
+    r.removeFromTop (12);
+
+    auto row = [&] (const juce::String& label, const juce::String& value, const juce::String& detail = {})
+    {
+        auto area = r.removeFromTop (detail.isNotEmpty() ? 30 : 16);
+        drawLabel (g, label, area.removeFromLeft (82).withHeight (16));
+        g.setColour (ink);
+        g.setFont (mono (10.5f, Weight::Medium));
+        g.drawText (value, area.withHeight (16), juce::Justification::centredLeft, true);
+        if (detail.isNotEmpty())
+        {
+            g.setColour (muted);
+            g.setFont (mono (9.5f));
+            g.drawText (detail, area.withTrimmedTop (15).withHeight (14), juce::Justification::centredLeft, true);
+        }
+        r.removeFromTop (8);
+    };
+    row ("Version", BATIDA_VERSION);
+    row ("Licence", "GNU AGPL v3", "free and open source");
+    row ("Fonts", "JetBrains Mono, Martian Mono", "SIL Open Font License 1.1");
+    row ("Built with", "JUCE " + juce::String (JUCE_MAJOR_VERSION) + "." + juce::String (JUCE_MINOR_VERSION) + "."
+                           + juce::String (JUCE_BUILDNUMBER));
+    r.removeFromTop (4);
+    g.setColour (line);
+    g.fillRect (r.removeFromTop (1));
+    r.removeFromTop (10);
+    g.setColour (muted);
+    g.setFont (mono (9.5f));
+    g.drawText (juce::String::fromUTF8 ("\xc2\xa9 2026 Negative Space"), r.removeFromTop (14), juce::Justification::centredLeft, false);
 }

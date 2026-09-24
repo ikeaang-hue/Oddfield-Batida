@@ -545,7 +545,7 @@ void SoundPage::paint (juce::Graphics& g)
     const auto sampleShown = shownSource == 1 || (shownSource == 2 && layerView.getSelected() == 1);
     if (sampleShown)
     {
-        const auto area = panelContent (sourceBounds).withHeight (14);
+        const auto area = panelContent (sourceBounds).withTrimmedTop (shownSource == 2 ? 26 : 0).withHeight (14);
         g.setColour (ink);
         g.setFont (mono (10.5f, Weight::Medium));
         g.drawText (fileLine, area, juce::Justification::centredLeft, true);
@@ -604,13 +604,16 @@ void SoundPage::resized()
     {
         auto c = panelContent (sourceBounds);
         const auto headerRight = juce::Rectangle<int> (sourceBounds.getRight() - 8, sourceBounds.getY() + 5, 0, 20);
-        openOperators.setBounds (headerRight.withLeft (headerRight.getX() - 100));
         layerView.setBounds (headerRight.withLeft (headerRight.getX() - layerView.getIdealWidth()));
-        const auto buttonsRight = shownSource == 2 ? layerView.getX() - 8 : headerRight.getX();
-        clearButton.setBounds (buttonsRight - 52, headerRight.getY(), 52, 20);
+        // With a layer, the view switch takes the right; the rest sits left of it.
+        const auto headerEnd = shownSource == 2 ? layerView.getX() - 10 : headerRight.getX();
+        openOperators.setBounds (headerRight.withLeft (headerEnd - 100).withRight (headerEnd));
+        clearButton.setBounds (headerEnd - 52, headerRight.getY(), 52, 20);
         loadButton.setBounds (clearButton.getX() - 58, headerRight.getY(), 54, 20);
 
         auto fm = c;
+        if (shownSource == 2)
+            fm.removeFromTop (26); // under the Balance bar
         algorithm.setBounds (fm.removeFromLeft (140).withHeight (std::min (140, fm.getHeight())));
         fm.removeFromLeft (14);
         RowLayout rows { fm };
@@ -627,8 +630,8 @@ void SoundPage::resized()
             smp.removeFromTop (6);
         }
         smp.removeFromTop (18);
-        sampleView.setBounds (smp.removeFromTop (shownSource == 2 ? 60 : 74));
-        smp.removeFromTop (8);
+        sampleView.setBounds (smp.removeFromTop (shownSource == 2 ? 46 : 74));
+        smp.removeFromTop (shownSource == 2 ? 6 : 8);
         const auto colW = (smp.getWidth() - 14) / 2;
         RowLayout left { smp.withWidth (colW) }, right { smp.withTrimmedLeft (colW + 14) };
         start->setBounds (left.next());
@@ -637,7 +640,10 @@ void SoundPage::resized()
         gain->setBounds (right.next());
         fadeIn->setBounds (left.next());
         fadeOut->setBounds (right.next());
-        reverse->setBounds (left.next().withWidth (reverse->getIdealWidth()));
+        if (shownSource == 2) // no room below: next to LOAD in the header
+            reverse->setBounds (loadButton.getX() - 8 - reverse->getIdealWidth(), headerRight.getY(), reverse->getIdealWidth(), 20);
+        else
+            reverse->setBounds (left.next().withWidth (reverse->getIdealWidth()));
 
         // Layer: both summaries side by side.
         auto both = c.withTrimmedTop (26 + 18);

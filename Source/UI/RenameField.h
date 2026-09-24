@@ -11,6 +11,12 @@ inline void startRename (std::unique_ptr<juce::TextEditor>& holder, juce::Compon
     auto* ed = holder.get();
     ed->setText (current, false);
     ed->setFont (theme::mono (10.5f, theme::Weight::Bold));
+    ed->setColour (juce::TextEditor::backgroundColourId, theme::bg);
+    ed->setColour (juce::TextEditor::textColourId, theme::ink);
+    ed->setColour (juce::TextEditor::highlightColourId, theme::ink);
+    ed->setColour (juce::TextEditor::highlightedTextColourId, theme::bg);
+    ed->setColour (juce::TextEditor::focusedOutlineColourId, theme::ink);
+    ed->setColour (juce::CaretComponent::caretColourId, theme::ink);
     ed->setIndents (6, 4);
     ed->setJustification (juce::Justification::centredLeft);
     ed->setBounds (area);

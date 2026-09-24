@@ -126,6 +126,16 @@ BatidaLook::BatidaLook()
     scheme.setUIColour (ColourScheme::highlightedFill, ink);
     scheme.setUIColour (ColourScheme::menuText, ink);
     setColourScheme (scheme);
+
+    // After the scheme (which resets them): selected text is inverted, white
+    // block and black letters, like every other selection.
+    setColour (TextEditor::backgroundColourId, bg);
+    setColour (TextEditor::textColourId, ink);
+    setColour (TextEditor::highlightColourId, ink);
+    setColour (TextEditor::highlightedTextColourId, bg);
+    setColour (TextEditor::outlineColourId, line);
+    setColour (TextEditor::focusedOutlineColourId, ink);
+    setColour (CaretComponent::caretColourId, ink);
 }
 
 juce::Typeface::Ptr BatidaLook::getTypefaceForFont (const juce::Font& f)

@@ -93,7 +93,7 @@ public:
     enum Page { Kit, Seq, Mod, Sound, Lib };
     void setPage (int page);
     std::function<void (int)> onPage;
-    std::function<void()> onRelink, onSettings;
+    std::function<void()> onRelink, onSettings, onAbout;
 
     BrowseStrip kitStrip { BrowseStrip::Style::Compact };
     TextLink undo { "UNDO" }, redo { "REDO" }, settings { "CFG" };
@@ -103,12 +103,13 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     void mouseDown (const juce::MouseEvent&) override;
-    void mouseMove (const juce::MouseEvent&) override { repaint (navBounds()); }
+    void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override { repaint (navBounds()); }
 
 private:
     juce::Rectangle<int> navBounds() const;
     juce::Rectangle<int> navItem (int i) const;
+    juce::Rectangle<int> logoBounds() const;
 
     ParamControl master;
     Meter meter;
@@ -134,7 +135,7 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
 
-    static constexpr int kWidth = 330, kHeight = 380;
+    static constexpr int kWidth = 330, kHeight = 324;
 
 private:
     BatidaProcessor& proc;
@@ -142,4 +143,12 @@ private:
     Segmented zoom { { "100%", "125%", "150%" } };
     TextLink reveal { "SHOW IN FINDER", true };
     juce::TextEditor author;
+};
+
+// The card under the BATIDA/ logo: version and credits. Clicking outside closes it.
+class AboutCard final : public juce::Component
+{
+public:
+    void paint (juce::Graphics&) override;
+    static constexpr int kWidth = 320, kHeight = 262;
 };

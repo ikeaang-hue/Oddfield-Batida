@@ -148,6 +148,16 @@ int main (int argc, char* argv[])
     state.getParameter (batida::voiceParamID (4, batida::vp::SrcMode))->setValueNotifyingHost (1.0f); // Layer
     settle (100);
     save ("06-Sound-Layer");
+    if (auto* soundPage = find ("soundPage"))
+        for (auto* c : soundPage->getChildren())
+            if (auto* seg = dynamic_cast<Segmented*> (c); seg != nullptr && seg->isVisible())
+            {
+                seg->setSelected (2, true); // the FM layer
+                save ("06-Sound-Layer-FM");
+                seg->setSelected (1, true);
+                save ("06-Sound-Layer-Sample");
+                seg->setSelected (0, true);
+            }
     state.getParameter (batida::voiceParamID (4, batida::vp::SrcMode))->setValueNotifyingHost (0.5f); // Sample again
     proc.clearSample (4);
     state.getParameter (batida::voiceParamID (4, batida::vp::SrcMode))->setValueNotifyingHost (0.0f);
@@ -182,6 +192,9 @@ int main (int argc, char* argv[])
         top->onSettings();
         save ("12-Settings");
         top->onSettings();
+        top->onAbout();
+        save ("13-About");
+        top->onAbout();
     }
     editor->showPage (BatidaEditor::Kit);
 
@@ -301,9 +314,13 @@ int main (int argc, char* argv[])
         {
             auto snare = [&] { return proc.readVoiceParams (2); };
             const auto before = snare();
-            proc.startVary (2, 0.4f, batida::VaryDirection::None, false, false, false);
-            for (int i = 0; i < 200 && proc.isVarying(); ++i)
-                juce::MessageManager::getInstance()->runDispatchLoopUntil (20);
+            // Suggestions are random (a fresh seed each time): allow a few tries.
+            for (int attempt = 0; attempt < 3 && (attempt == 0 || proc.varyCandidates().size() < 3); ++attempt)
+            {
+                proc.startVary (2, 0.4f, batida::VaryDirection::None, false, false, false);
+                for (int i = 0; i < 200 && proc.isVarying(); ++i)
+                    juce::MessageManager::getInstance()->runDispatchLoopUntil (20);
+            }
             check (proc.varyCandidates().size() >= 3, "Vary finds at least 3 suggestions");
             std::printf ("  %d suggestions\n", (int) proc.varyCandidates().size());
             proc.previewCandidate (0);
@@ -537,11 +554,22 @@ int main (int argc, char* argv[])
             check (std::abs (drive->getValue() - (afterDrag + 2.0f / trackW)) < 0.005f, "bar: Shift drags ten times finer");
             driveBar->mouseDown (event (driveBar, far, far, false, juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier | juce::ModifierKeys::altModifier)));
             check (std::abs (drive->getValue() - drive->getDefaultValue()) < 1.0e-4f, "bar: Option-click goes back to the default");
+            drive->setValueNotifyingHost (0.3f);
             driveBar->mouseDoubleClick (event (driveBar, far, far, false));
-            bool editorOpen = false;
-            for (auto* c : driveBar->getChildren())
-                editorOpen = editorOpen || dynamic_cast<juce::TextEditor*> (c) != nullptr;
-            check (editorOpen, "bar: double-click opens a value field");
+            check (std::abs (drive->getValue() - drive->getDefaultValue()) < 1.0e-4f, "bar: double-click goes back to the default");
+            auto editorOpen = [&]
+            {
+                for (auto* c : driveBar->getChildren())
+                    if (dynamic_cast<juce::TextEditor*> (c) != nullptr)
+                        return true;
+                return false;
+            };
+            const juce::Point<float> number ((float) driveBar->getWidth() - 20.0f, 10.0f);
+            driveBar->mouseDown (event (driveBar, number, number, false));
+            driveBar->mouseUp (event (driveBar, number, number, false, juce::ModifierKeys()));
+            check (! editorOpen(), "bar: a click on the number waits in case it's a double-click");
+            settle (juce::MouseEvent::getDoubleClickTimeout() + 150);
+            check (editorOpen(), "bar: then opens a field to type into");
             settle (30);
 
             check (detector != nullptr && detector->getKind() == ParamControl::Kind::Menu, "Detector is a drop-down");

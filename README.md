@@ -58,7 +58,8 @@ Insert it as an instrument: *AU Instruments → Negative Space → Batida*. The 
 locks).
 
 - **Value bars** (every continuous control): drag left/right or up/down, always from the current
-  value. **Shift** = fine. **Double-click** = type a value. **Option-click** = back to the default.
+  value. **Shift** = fine. **Click the number** = type a value. **Double-click** (or Option-click)
+  = back to the default.
   **Right-click** = Modulate with Mod 1 / Mod 2, type a value, default. The scroll wheel nudges.
   A lime tick and segment show where Batida has moved the value; a modulated one also shows its
   reach as a dim lime band.
@@ -149,7 +150,7 @@ locks).
   stopped, patterns start at once on Batida's **Tempo**.
 - **Sync** on: follow the project's tempo and position while Logic plays. Off: always run on
   Batida's own Tempo. **Tempo** drags from its value: the whole number and the decimals drag
-  separately; double-click to type.
+  separately; click to type, double-click for 120.
 - **Grid** (SEQ page), one bar per page; the **Bar** map shows all 64 steps, click a bar to show
   it. The 16 pattern slots at the top show which hold steps; click one to show it.
   - **Steps:** tap = on/off; drag up/down = velocity from where it was; drag to the bottom = off;

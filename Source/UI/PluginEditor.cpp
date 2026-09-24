@@ -44,7 +44,8 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
     for (juce::Component* c : { (juce::Component*) &top, (juce::Component*) &row, (juce::Component*) &kitPage })
         content.addAndMakeVisible (c);
     for (juce::Component* c : { (juce::Component*) &seqPage, (juce::Component*) &modPage, (juce::Component*) &soundPage,
-                                (juce::Component*) &libraryPage, (juce::Component*) &settingsScrim, (juce::Component*) &settings })
+                                (juce::Component*) &libraryPage, (juce::Component*) &settingsScrim, (juce::Component*) &settings,
+                                (juce::Component*) &about })
         content.addChildComponent (c);
 
     // Top bar
@@ -55,13 +56,23 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
     top.onSettings = [this]
     {
         const auto show = ! settings.isVisible();
+        about.setVisible (false);
         settings.refresh();
         settingsScrim.setVisible (show);
         settings.setVisible (show);
         if (show)
             settings.toFront (false);
     };
-    settingsScrim.onClick = [this] { settingsScrim.setVisible (false); settings.setVisible (false); };
+    top.onAbout = [this]
+    {
+        const auto show = ! about.isVisible();
+        settings.setVisible (false);
+        settingsScrim.setVisible (show);
+        about.setVisible (show);
+        if (show)
+            about.toFront (false);
+    };
+    settingsScrim.onClick = [this] { settingsScrim.setVisible (false); settings.setVisible (false); about.setVisible (false); };
     settings.onZoom = [this] (int percent) { setZoom (percent); };
 
     // Library strips: the kit (top bar), the sound (SOUND) and the pattern (SEQ).
@@ -301,6 +312,7 @@ void BatidaEditor::resized()
         p->setBounds (area);
     settingsScrim.setBounds (content.getLocalBounds());
     settings.setBounds (kWidth - kSide - SettingsPanel::kWidth, 36, SettingsPanel::kWidth, SettingsPanel::kHeight);
+    about.setBounds (kSide, 36, AboutCard::kWidth, AboutCard::kHeight);
     library.layoutOverlays();
 }
 
