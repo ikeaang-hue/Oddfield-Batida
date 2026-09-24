@@ -1,147 +1,159 @@
-# Negative Space Batida
+# Batida
 
-**Batida** (Portuguese for "beat" and "hit") is a sound-design drum instrument for macOS. Eight
-sounds run into one shared **kit chain**, and an **XY pad** plays that chain as a whole. There
-are also a step sequencer, drawn modulators, guided variations and a library. It works for any
-style but is built for synthetic and heavy music: techno, breakbeat, glitch.
+**A drum instrument for sound design**, by Negative Space. macOS · Audio Unit · version 0.6.1
+(pre-release).
 
-Version **0.6.1**, pre-release. Audio Unit only for now; VST3 comes later. The design is in
-[SPEC.md](SPEC.md), and each build phase has a plan in [docs/](docs/). Testers: start with
-[TESTING.md](TESTING.md).
+Eight sounds play into one shared effects chain. An **XY pad** pushes the whole chain at once:
+left to right goes warm → aggressive → digital, bottom to top goes clean → destroyed. Around
+that are a step sequencer, two drawn modulators, a "Vary" button that suggests new versions of a
+sound, and a library. It works for any style but is made for techno, breakbeat and glitch.
 
-## What's in it
+> **Testing Batida?** Start with [TESTING.md](TESTING.md): what to try, known limits, and how to
+> report.
 
-- **8 sounds**, each FM (4 operators, 8 algorithms, four macros), Sample (slices, loop, reverse)
-  or both layered. Each has punch → drive → filter, amp and pitch envelopes, and glide. They
-  are monophonic and chromatic.
-- **Kit chain:** dynamics (with a sidechain input) → distortion with exciter and clean low end →
-  EQ → output. A **Chain amount** per sound mixes it dry or wet.
-- **XY pad:** X = character (warm → aggressive → digital), Y = heat (clean → destroyed). One
-  gesture moves the whole chain; the stage controls set the base it moves around.
-- **Sequencer:** 16 patterns of 8–64 steps, per-track lengths, lanes for velocity, pitch, slice,
-  ratchet and probability, per-step XY locks, and swing. Patterns are played by MIDI keys or by
-  the host transport.
-- **Movement:** two drawn modulators, four chain scenes with a morph, and **Vary**, which
-  suggests nearby versions of a sound.
-- **Library:** sounds, kits, patterns and sets as readable files, with a browser, tags,
-  favourites, and sample collecting and relinking.
-- **Signal UI:** black, mono type, value bars. **White is what you set; lime is what Batida is
-  moving.** Zoom is 100 / 125 / 150%.
+---
 
-## Build and install
+## Quick start
 
-You need macOS 12 or later, Xcode and CMake.
+You need macOS 12 or later, Xcode and CMake (`brew install cmake`).
 
 ```bash
-git submodule update --init --depth 1
+git clone --recurse-submodules https://github.com/ikeaang-hue/NegativeSpace-Batida.git
+cd NegativeSpace-Batida
 cmake -B build -G Xcode
 cmake --build build --config Release
+killall -9 AudioComponentRegistrar
 ```
 
-The build installs `~/Library/Audio/Plug-Ins/Components/Batida.component`. After each rebuild,
-run `killall -9 AudioComponentRegistrar`, then quit and relaunch your host so it loads the new
-version.
+Then quit and reopen Logic, and add **AU Instruments → Negative Space → Batida** to a
+software-instrument track.
 
-In Logic: *AU Instruments → Negative Space → Batida*.
+To update later: `git pull && git submodule update --init`, then build again and run the
+`killall` line.
 
-## Using it
+---
 
-The top bar has the pages (**KIT · SEQ · MOD · SOUND · LIB**), the kit's ‹ name ›, **UNDO /
-REDO**, **CFG** (MIDI mode, Keys Sound, zoom, library folder, author) and the master meter and
-level. Click **BATIDA/** for the version and credits.
+## Your first five minutes
 
-### Gestures
+1. **Play C1 to G1** on your keyboard. Those eight notes are the eight sounds: kick, rim, snare,
+   clap, tom, bass, closed hat, open hat.
+2. **Drag the XY pad** on the KIT page while you play. That's the heart of Batida.
+3. **Click a sound** in the row at the top, then open the **SOUND** page to change it. Press
+   **VARY** for four new versions; hold one to hear it and **KEEP** the one you like.
+4. **Open LIB → Patterns** and click *Breakbeat*. **Hold C3** to play it.
+5. **Made a mistake?** **UNDO** is in the top bar.
 
-| Control | How |
+---
+
+## How it looks
+
+Everything is black and white. **White is what you set. Lime is what Batida is moving**: the XY
+pad pushing a control, a modulator, or an FM macro.
+
+Every value is a **bar**:
+
+| To… | Do this |
 |---|---|
-| Value bar | Drag left/right or up/down, always from the current value. **Shift** = fine. **Click the number** = type a value. **Double-click** (or Option-click) = default. **Right-click** = Modulate with Mod 1 / 2, type, default. The wheel nudges. |
-| XY pad | Drag (relative). **Shift** locks one axis. **Option-click** puts it where you click. Double-click = default. |
-| Sound slot | Click = select and play. Double-click = rename. Drag onto another slot = swap. Right-click = rename, swap, init / load / save sound. **M / S** = mute / solo. |
-| ‹ name › strips | The arrows step through the library; the name opens Init, Load, Save, Save as. |
-| Tempo | Drag the whole number or the decimals. Click to type; double-click = 120. |
+| change it | drag left/right (or up/down), always starting from where it is |
+| change it finely | hold **Shift** while dragging |
+| type an exact value | click the number |
+| reset it | double-click |
+| modulate it | right-click → *Modulate with Mod 1 / Mod 2* |
 
-### Pages
+---
 
-- **KIT:** the XY pad, the chain drawn as a signal path (01 Dynamics, 02 Distortion, 03 EQ, 04
-  Output; the **XY** chip lets a stage ignore the pad), scenes A–D with **STORE** and **MORPH**,
-  and **XY REC** (records pad moves into the playing pattern). On the pad, the white square is
-  where you put it and the lime square is where the chain really is.
-- **SOUND:** the selected sound as its own path. 01 Source (FM, Sample or Layer) → 02 Punch → 03
-  Drive → 04 Filter, then operators (or slices and loop), amp envelope, and pitch envelope and
-  play.
-  - **OPERATORS ↗** opens every FM operator control.
-  - **VARY** suggests up to 4 versions. Each shows what changed; hold one to hear it, then
-    **KEEP** or **BACK**. Suggestions are level-matched to the original.
-- **SEQ:** pattern ‹ name › and the 16 slots, tempo, **SYNC**, **PLAY**, length, run mode (Keys /
-  Transport), start quantise, **LATCH**, swing, lanes, and the bar map.
-  - Grid, in the Steps lane: tap = on/off; drag = velocity (to the bottom = off); Shift-drag =
-    paint. Option-click a step = that track's length.
-  - **XY LOCK** lane: tap = lock the step to the pad; drag = move the lock.
-- **MOD:** two modulators: draw the shape (click adds, drag moves, double-click deletes,
-  Option-drag bends), Sync / Free / One-shot, Smooth, Humanise, Amount, and targets. Modulation
-  never writes the value, so it doesn't fight host automation.
-- **LIB:** sounds, kits, patterns, sets and sample folders, filtered by source, category,
-  character and search. **Clicking a row tries it live**; one **UNDO** takes back a whole run of
-  tries. Click ♥ to mark a favourite.
+## The pages
 
-### MIDI
+The top bar switches pages. It also holds **UNDO / REDO**, **CFG** (settings and zoom) and the
+master level. Click **BATIDA/** for the version.
 
-| Notes | Plays |
+**KIT: the pad and the chain**
+- **XY pad.** The white square is where you put it; a lime square shows where the chain really
+  is when something else moves it. **Shift** locks one direction. **Option-click** jumps to a spot.
+- **Chain:** 01 Dynamics → 02 Distortion → 03 EQ → 04 Output. Each stage's **XY** chip turns the
+  pad's influence on or off.
+- **Scenes A–D.** Click **STORE**, then a letter, to save the chain. Click a letter to recall it.
+  **MORPH** blends between two scenes.
+
+**SOUND: one sound in detail**
+- Pick **FM**, **SAMPLE** or **LAYER** (both) at the top.
+- The path runs left to right: Source → Punch → Drive → Filter. Below it are the operators (or
+  slices for a sample), the amp envelope and the pitch envelope.
+- **OPERATORS ↗** opens every FM setting. **VARY** suggests new versions.
+- To use a sample, drop a WAV, AIFF or FLAC onto a sound in the top row.
+
+**SEQ: patterns**
+- 16 patterns of up to 64 steps. **Hold C3–D#4** to play patterns 1–16; **LATCH** keeps them going.
+- In the grid: click a step to turn it on or off, and drag up or down for velocity.
+  **Option-click** a step to make that track shorter.
+- The lanes (Pitch, Slice, Ratchet, Prob) change what each step does. The **XY LOCK** row moves
+  the pad on a single step.
+
+**MOD: two modulators**
+- Draw a shape: click to add a point, drag to move it, double-click to delete it. **SHAPES** has
+  ready-made ones.
+- **+ ADD TARGET**, or right-click any bar, to choose what it moves.
+
+**LIB: the library**
+- Browse sounds, kits, patterns and sets. **Clicking one loads it right away**, even while a
+  pattern plays. One **UNDO** takes back a whole run of clicks.
+- ♥ marks a favourite. Use **SAVE AS…** to keep your own.
+- Files live in `~/Music/Negative Space/Batida/`, with *Factory* and *User* folders you can open
+  in Finder.
+
+**The sound row** (top of every page; on SEQ, down the left side)
+- Click a slot to select and play it. Double-click to rename it; drag it onto another slot to
+  swap the two; right-click for more.
+- **M** mutes and **S** solos. The small bars show how much of the sound goes through the chain.
+
+---
+
+## MIDI
+
+| Notes | What they play |
 |---|---|
-| C1–G1 (36–43) | Sounds 1–8 (Kick, Rim, Snare, Clap, Tom, Bass, Closed hat, Open hat by default) |
-| C3–D#4 (60–75) | Patterns 1–16 while held (**LATCH** keeps them running) |
+| C1–G1 (36–43) | the 8 sounds |
+| C3–D#4 (60–75) | patterns 1–16, while held |
 
-- **Drum map** (default): the notes above work on every channel.
-- **Chromatic:** every channel except 10 plays the **Keys Sound** like a mono synth (C3 = the
-  sound's own pitch). Channel 10 keeps the drum map and pattern keys.
+**CFG → MIDI mode → Chromatic** turns Batida into a mono synth. Every channel except 10 plays
+one chosen sound across the keyboard, and channel 10 keeps the drum notes.
 
-**Sidechain:** set Dynamics → **Detector** to *Sidechain*, then pick a source in Logic's Side
+**Sidechain:** set Dynamics → *Detector* to **Sidechain**, then choose a track in Logic's Side
 Chain menu at the top of the plugin window.
 
-### Library and samples
+---
 
-- **Where:** `~/Music/Negative Space/Batida/`, with **Factory** and **User** folders.
-- **Files:** readable XML in four types: `.batida-sound`, `.batida-kit` (8 sounds, chain, pad,
-  scenes, modulators; not patterns), `.batida-pattern` and `.batida-set` (everything). You can
-  manage them in Finder.
-- **Saving:** set name, category, character, author, and optionally **Collect samples**, which
-  copies them next to the file so it travels.
-- **Samples:** drop a WAV, AIFF or FLAC onto a slot. Missing samples are searched for by name
-  and size; what's still missing shows in the top bar, where **Relink…** finds them.
+## For developers
 
-## Development
+<details>
+<summary>Tests, tools and code layout</summary>
 
 ```bash
-build/BatidaTests_artefacts/Release/BatidaTests               # engine unit tests
-build/BatidaTests_artefacts/Release/BatidaTests --bench       # CPU, worst-case load
-build/BatidaTests_artefacts/Release/BatidaTests --render build/renders   # default kit as WAVs
-auval -v aumu Btda Ngsp                                       # Apple's AU validation
-swiftc -O -o build/au_check tests/au_check.swift && build/au_check     # the installed AU, host-style
+build/BatidaTests_artefacts/Release/BatidaTests                        # unit tests
+build/BatidaTests_artefacts/Release/BatidaTests --bench                # CPU, worst case
 build/BatidaSnapshot_artefacts/Release/BatidaSnapshot build/snapshots  # screenshots + gesture checks
+auval -v aumu Btda Ngsp                                                # Apple's AU validation
+swiftc -O -o build/au_check tests/au_check.swift && build/au_check     # the installed AU, host-style
 ```
 
-- `au_check` loads the installed AU the way a host does. Host values: continuous controls are
-  0–1, menus are indexes.
-- `BatidaSnapshot` renders every page and state (and KIT at each zoom) offscreen, then runs
-  gesture checks on the real editor. A third argument adds a paint benchmark.
+- **Demo defaults:** builds start empty, like a release. `cmake -B build -DBATIDA_DEMO=ON` puts a
+  breakbeat in pattern 1 and has Mod 1 move the pad. The tests pass either way.
+- **Code:**
+  - `Source/Engine`: the sound (no UI);
+  - `Source/Library`: preset files and samples;
+  - `Source/Plugin`: the AU;
+  - `Source/UI`: the editor (`Look/Theme` holds colours, fonts and styles);
+  - `tests/`: tests and tools.
+- The design is in [SPEC.md](SPEC.md).
 
-**Layout:**
-- `Source/Engine`: the DSP; no UI.
-- `Source/Library`: preset files, library index, sample locating.
-- `Source/Plugin`: the AU processor.
-- `Source/UI`: the editor. `Look/Theme` holds the palette, fonts and LookAndFeel; `ParamControl`
-  is the value bar and its relatives.
-- `tests/`: unit tests and tools.
+</details>
 
-**Demo defaults:** builds start like a release (every pattern and modulator empty). For
-development, `cmake -B build -DBATIDA_DEMO=ON` puts the breakbeat in pattern 1 and has Mod 1 move
-XY Heat. The tests pass either way.
+---
 
 ## Licence
 
-Batida will be released as free, open-source software under the **GNU AGPL v3**; the licence file
-comes with the first public release. It is built with [JUCE](https://juce.com) (AGPLv3). It
-embeds **JetBrains Mono** and **Martian Mono** under the SIL Open Font License 1.1; the fonts
-and their licences are in `resources/fonts/`.
+Free and open source under the **GNU AGPL v3**; the licence file comes with the first public
+release. Built with [JUCE](https://juce.com). The fonts, JetBrains Mono and Martian Mono, are
+under the SIL Open Font License; you'll find them in `resources/fonts/`.
 
 © 2026 Negative Space
