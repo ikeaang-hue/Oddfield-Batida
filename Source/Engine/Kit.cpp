@@ -39,6 +39,7 @@ void Kit::reset()
 
 void Kit::noteOn (int voice, int key, float velocity, int slice)
 {
+    hitCounts[(size_t) voice].fetch_add (1, std::memory_order_relaxed);
     if ((switching >> voice) & 1u)
     {
         deferred[(size_t) voice] = { true, false, key, slice, velocity };

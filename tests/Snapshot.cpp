@@ -1,10 +1,11 @@
 // Developer tool: renders the plugin editor offscreen and saves one PNG per
-// tab, so the layout can be reviewed without a host.
+// page and state (and the KIT page at each zoom), so the layout can be
+// reviewed without a host; then runs gesture checks on the real editor.
 //
 //   BatidaSnapshot <out-dir> [sample.wav]
 
 #include "Plugin/PluginProcessor.h"
-#include "UI/LibraryPage.h"
+#include "UI/PluginEditor.h"
 
 namespace
 {
@@ -64,14 +65,28 @@ int main (int argc, char* argv[])
     state.getParameter ("xy_y")->setValueNotifyingHost (0.55f);
     state.getParameter ("dist_drive")->setValueNotifyingHost (0.1f);
 
-    std::unique_ptr<juce::AudioProcessorEditor> editor (proc.createEditor());
-    auto* tabs = dynamic_cast<juce::TabbedComponent*> (editor->findChildWithID ("tabs"));
-    auto* kit = editor->findChildWithID ("kitPage");
-    if (tabs == nullptr || kit == nullptr)
+    std::unique_ptr<juce::AudioProcessorEditor> editorHolder (proc.createEditor());
+    auto* editor = dynamic_cast<BatidaEditor*> (editorHolder.get());
+    if (editor == nullptr)
         return 1;
+    auto& content = editor->getContent();
+    auto find = [&] (const juce::String& id) { return content.findChildWithID (id); };
+    std::function<juce::Component* (juce::Component*, const juce::String&)> findDeep = [&] (juce::Component* c, const juce::String& id) -> juce::Component*
+    {
+        for (auto* child : c->getChildren())
+        {
+            if (child->getComponentID() == id)
+                return child;
+            if (auto* found = findDeep (child, id))
+                return found;
+        }
+        return nullptr;
+    };
+    auto settle = [] (int ms) { juce::MessageManager::getInstance()->runDispatchLoopUntil (ms); };
 
     auto save = [&] (const juce::String& name)
     {
+        settle (60);
         const auto image = editor->createComponentSnapshot (editor->getLocalBounds(), true, 1.0f);
         const auto file = outDir.getChildFile (name + ".png");
         file.deleteFile();
@@ -80,42 +95,113 @@ int main (int argc, char* argv[])
         std::printf ("%s\n", file.getFullPathName().toRawUTF8());
     };
 
-    save ("0-Kit"); // the opening page
-
-    auto* seq = editor->findChildWithID ("seqPage");
-    kit->setVisible (false);
-    if (seq != nullptr)
+    // Paint cost: a full repaint of each page, averaged (--paint-bench).
+    if (juce::JUCEApplicationBase::getCommandLineParameters().contains ("--paint-bench") || argc > 3)
     {
-        seq->setVisible (true);
-        save ("0-Seq");
-        seq->setVisible (false);
-    }
-    // Put a voice target on Mod 2 so the MOD page shows a list, and the knob shows the arc.
-    proc.toggleModTarget (1, "v1_flt_cutoff");
-    if (auto* mod = editor->findChildWithID ("modPage"))
-    {
-        mod->setVisible (true);
-        save ("0-Mod");
-        mod->setVisible (false);
-    }
-    tabs->setVisible (true);
-    if (auto* strip = editor->findChildWithID ("soundStrip"))
-        strip->setVisible (true);
-    proc.toggleModTarget (1, "v1_flt_cutoff"); // shows the modulation arc on the Voice FX cutoff knob
-    for (int i = 0; i < tabs->getNumTabs(); ++i)
-    {
-        tabs->setCurrentTabIndex (i);
-        save (juce::String (i + 1) + "-" + tabs->getTabNames()[i].replace (" ", "").replace ("&", ""));
+        juce::Image image (juce::Image::ARGB, editor->getWidth(), editor->getHeight(), true);
+        for (const auto page : { BatidaEditor::Kit, BatidaEditor::Seq, BatidaEditor::Mod, BatidaEditor::Sound, BatidaEditor::Lib })
+        {
+            editor->showPage (page);
+            settle (30);
+            juce::Graphics warm (image);
+            editor->paintEntireComponent (warm, true);
+            const auto start = juce::Time::getMillisecondCounterHiRes();
+            constexpr int frames = 60;
+            for (int i = 0; i < frames; ++i)
+            {
+                juce::Graphics g (image);
+                editor->paintEntireComponent (g, true);
+            }
+            std::printf ("paint page %d: %.2f ms per full repaint\n", page, (juce::Time::getMillisecondCounterHiRes() - start) / frames);
+        }
+        editor->showPage (BatidaEditor::Kit);
     }
 
+    // A drum pattern is playing in the SEQ shots only if the sequencer runs; the
+    // step edits below use pattern 1.
+    save ("01-Kit");
+    for (const auto zoom : { 125, 150 })
+    {
+        editor->setZoom (zoom);
+        save ("01-Kit-" + juce::String (zoom));
+    }
+    editor->setZoom (100);
+
+    editor->showPage (BatidaEditor::Seq);
+    save ("02-Seq");
+
+    // A target on Mod 2 so the MOD page shows a list and a bar shows modulation.
     proc.toggleModTarget (1, "v1_flt_cutoff");
-    if (auto* strip = editor->findChildWithID ("soundStrip"))
-        strip->setVisible (false);
+    editor->showPage (BatidaEditor::Mod);
+    save ("03-Mod");
+
+    editor->showPage (BatidaEditor::Sound);
+    save ("04-Sound-FM");
+    proc.toggleModTarget (1, "v1_flt_cutoff");
+
+    // Sample and Layer sources, on sound 5 with a generated tone.
+    const auto snapTone = writeTone (sampleDir.getChildFile ("snap/tone.wav"), 220.0f);
+    proc.loadSample (4, snapTone);
+    editor->selectVoice (4);
+    settle (100);
+    save ("05-Sound-Sample");
+    state.getParameter (batida::voiceParamID (4, batida::vp::SrcMode))->setValueNotifyingHost (1.0f); // Layer
+    settle (100);
+    save ("06-Sound-Layer");
+    if (auto* soundPage = find ("soundPage"))
+        for (auto* c : soundPage->getChildren())
+            if (auto* seg = dynamic_cast<Segmented*> (c); seg != nullptr && seg->isVisible())
+            {
+                seg->setSelected (2, true); // the FM layer
+                save ("06-Sound-Layer-FM");
+                seg->setSelected (1, true);
+                save ("06-Sound-Layer-Sample");
+                seg->setSelected (0, true);
+            }
+    state.getParameter (batida::voiceParamID (4, batida::vp::SrcMode))->setValueNotifyingHost (0.5f); // Sample again
+    proc.clearSample (4);
+    state.getParameter (batida::voiceParamID (4, batida::vp::SrcMode))->setValueNotifyingHost (0.0f);
+    editor->selectVoice (0);
+
+    // Vary over the page, once its suggestions are in.
+    if (auto* soundPage = dynamic_cast<SoundPage*> (find ("soundPage")))
+    {
+        soundPage->openVary();
+        for (int i = 0; i < 200 && proc.isVarying(); ++i)
+            settle (20);
+        settle (200);
+        save ("07-Vary");
+        soundPage->closeOverlays();
+        settle (50);
+        if (auto* b = findButton (*soundPage, juce::String::fromUTF8 ("OPERATORS \xe2\x86\x97")))
+        {
+            b->onClick();
+            save ("08-Operators");
+            soundPage->closeOverlays();
+            settle (50);
+        }
+    }
+
+    editor->showPage (BatidaEditor::Lib);
+    proc.library().scanNow();
+    settle (100);
+    save ("09-Lib");
+
+    if (auto* top = dynamic_cast<TopBar*> (find ("topBar")))
+    {
+        top->onSettings();
+        save ("12-Settings");
+        top->onSettings();
+        top->onAbout();
+        save ("13-About");
+        top->onAbout();
+    }
+    editor->showPage (BatidaEditor::Kit);
 
     // Gesture checks on the real editor: synthetic mouse events into the grid
     // and the tempo control.
-    auto* grid = editor->findChildWithID ("seqPage") != nullptr ? editor->findChildWithID ("seqPage")->findChildWithID ("grid") : nullptr;
-    auto* tempo = editor->findChildWithID ("seqPage") != nullptr ? editor->findChildWithID ("seqPage")->findChildWithID ("tempo") : nullptr;
+    auto* grid = find ("seqPage") != nullptr ? find ("seqPage")->findChildWithID ("grid") : nullptr;
+    auto* tempo = find ("seqPage") != nullptr ? find ("seqPage")->findChildWithID ("tempo") : nullptr;
     if (grid != nullptr && tempo != nullptr)
     {
         auto source = juce::Desktop::getInstance().getMainMouseSource();
@@ -141,9 +227,9 @@ int main (int argc, char* argv[])
         auto stepOf = [&] (int track, int step) { return bank.patterns[0].tracks[(size_t) track].steps[(size_t) step]; };
 
         // Cell centre of (track, step) on page 1.
-        const auto rh = (float) grid->getHeight() / (batida::kNumTracks + 1);
-        const auto cw = (float) (grid->getWidth() - 130) / 16.0f;
-        auto cell = [&] (int track, int step) { return juce::Point<float> (130.0f + (step + 0.5f) * cw, (track + 0.5f) * rh); };
+        const auto rh = (float) (grid->getHeight() / (batida::kNumTracks + 1));
+        const auto cw = (float) grid->getWidth() / 16.0f;
+        auto cell = [&] (int track, int step) { return juce::Point<float> ((step + 0.5f) * cw, (track + 0.5f) * rh); };
 
         int failures = 0;
         auto check = [&] (bool ok, const char* what) { std::printf ("  %s  %s\n", ok ? "ok  " : "FAIL", what); failures += ok ? 0 : 1; };
@@ -176,25 +262,15 @@ int main (int argc, char* argv[])
         std::printf ("  tempo now %.2f (was %.2f)\n", bpm(), t0);
 
         // Modulation: assign, display, remove.
+        proc.toggleModTarget (1, "v1_flt_cutoff");
         check (proc.isModTarget (1, "v1_flt_cutoff"), "right-click assign: Mod 2 now drives V1 Cutoff");
         check (proc.modDisplayFor ("v1_flt_cutoff").has_value(), "the knob gets a live modulation display");
         proc.toggleModTarget (1, "v1_flt_cutoff");
         check (! proc.isModTarget (1, "v1_flt_cutoff") && ! proc.modDisplayFor ("v1_flt_cutoff").has_value(), "assigning again removes it");
 
         // Shape editor: click adds a point, double-click deletes it.
-        std::function<juce::Component* (juce::Component*, const juce::String&)> findDeep = [&] (juce::Component* c, const juce::String& id) -> juce::Component*
-        {
-            for (auto* child : c->getChildren())
-            {
-                if (child->getComponentID() == id)
-                    return child;
-                if (auto* found = findDeep (child, id))
-                    return found;
-            }
-            return nullptr;
-        };
         bool shapeChecked = false;
-        if (auto* modPage = editor->findChildWithID ("modPage"))
+        if (auto* modPage = find ("modPage"))
             if (auto* shape = findDeep (modPage, "shape1"))
             {
                 shapeChecked = true;
@@ -238,9 +314,13 @@ int main (int argc, char* argv[])
         {
             auto snare = [&] { return proc.readVoiceParams (2); };
             const auto before = snare();
-            proc.startVary (2, 0.4f, batida::VaryDirection::None, false, false, false);
-            for (int i = 0; i < 200 && proc.isVarying(); ++i)
-                juce::MessageManager::getInstance()->runDispatchLoopUntil (20);
+            // Suggestions are random (a fresh seed each time): allow a few tries.
+            for (int attempt = 0; attempt < 3 && (attempt == 0 || proc.varyCandidates().size() < 3); ++attempt)
+            {
+                proc.startVary (2, 0.4f, batida::VaryDirection::None, false, false, false);
+                for (int i = 0; i < 200 && proc.isVarying(); ++i)
+                    juce::MessageManager::getInstance()->runDispatchLoopUntil (20);
+            }
             check (proc.varyCandidates().size() >= 3, "Vary finds at least 3 suggestions");
             std::printf ("  %d suggestions\n", (int) proc.varyCandidates().size());
             proc.previewCandidate (0);
@@ -290,11 +370,10 @@ int main (int argc, char* argv[])
             using namespace batida;
             auto& lib = proc.library();
             lib.scanNow();
-            auto* libPage = dynamic_cast<LibraryPage*> (editor->findChildWithID ("libraryPage"));
+            auto* libPage = dynamic_cast<LibraryPage*> (find ("libraryPage"));
             check (libPage != nullptr && lib.getRoot().getChildFile ("Factory/Kits/Neutral.batida-kit").existsAsFile(),
                    "the factory library is installed");
-            tabs->setVisible (false);
-            libPage->setVisible (true);
+            editor->showPage (BatidaEditor::Lib);
             libPage->setMode (LibraryPage::Mode::Sounds);
             check (libPage->getNumShown() == 8, "the 8 factory sounds are listed");
             auto rowOf = [&] (PresetType type, const juce::String& n)
@@ -314,7 +393,7 @@ int main (int argc, char* argv[])
                    "clicking a sound loads it into the selected voice");
             libPage->clickRow (rowOf (PresetType::Sound, "Open Hat"));
             check (proc.getVoiceName (0) == "Open Hat", "clicking another tries that one");
-            save ("6-Lib");
+            save ("09-Lib-Browsing");
             proc.undo();
             check (proc.getVoiceName (0) == nameBefore && std::abs (proc.readVoiceParams (0)[vp::AmpD] - before[vp::AmpD]) < 1.0e-3f
                        && std::abs (proc.readVoiceParams (0)[vp::FmBright] - before[vp::FmBright]) < 1.0e-3f,
@@ -325,19 +404,18 @@ int main (int argc, char* argv[])
             check (lib.isFavourite (kickFile) && proc.getVoiceName (0) == nameBefore, "the heart marks a favourite without loading");
 
             libPage->setMode (LibraryPage::Mode::Kits);
-            save ("6-LibKits");
-            if (auto* strip = editor->findChildWithID ("kitStrip"))
-                if (auto* nextButton = dynamic_cast<juce::Button*> (strip->getChildComponent (2)))
-                    nextButton->onClick();
+            save ("09-Lib-Kits");
+            if (auto* strip = dynamic_cast<BrowseStrip*> (findDeep (&content, "kitStrip")))
+                strip->onNext();
             check (proc.getOrigins().kitName == "Neutral" && proc.getOrigins().kitFile.existsAsFile(), "the kit strip steps to a library kit");
 
             // Save a sound through the panel; the same name asks before replacing.
             libPage->setMode (LibraryPage::Mode::Sounds);
             auto saveThroughPanel = [&] (const juce::String& name, int clicks)
             {
-                if (auto* b = findButton (*libPage, "Save..."))
+                if (auto* b = findButton (*libPage, juce::String::fromUTF8 ("SAVE AS\xe2\x80\xa6")))
                     b->onClick();
-                auto* panel = editor->findChildWithID ("savePanel");
+                auto* panel = find ("savePanel");
                 if (panel == nullptr)
                     return juce::String ("no panel");
                 if (auto* field = dynamic_cast<juce::TextEditor*> (panel->findChildWithID ("saveName")))
@@ -349,14 +427,14 @@ int main (int argc, char* argv[])
                 juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
                 return text;
             };
-            if (auto* b = findButton (*libPage, "Save..."))
+            if (auto* b = findButton (*libPage, juce::String::fromUTF8 ("SAVE AS\xe2\x80\xa6")))
                 b->onClick();
-            if (auto* panel = editor->findChildWithID ("savePanel"))
+            if (auto* panel = find ("savePanel"))
             {
                 if (auto* field = dynamic_cast<juce::TextEditor*> (panel->findChildWithID ("saveName")))
                     field->setText ("Test Kick", true);
-                save ("7-Save");
-                if (auto* cancel = findButton (*panel, "Cancel"))
+                save ("10-Save");
+                if (auto* cancel = findButton (*panel, "CANCEL"))
                     cancel->onClick();
                 juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
             }
@@ -365,9 +443,10 @@ int main (int argc, char* argv[])
             check (mine.existsAsFile() && proc.getVoiceName (0) == "Test Kick", "Save puts it in the library and names the voice");
             const auto firstSave = mine.getLastModificationTime();
             const auto armed = saveThroughPanel ("Test Kick", 1);
-            check (armed == "Replace", "saving the same name asks first (Replace)");
-            if (auto* panel = editor->findChildWithID ("savePanel"))
-                if (auto* cancel = findButton (*panel, "Cancel"))
+            save ("10-Save-Replace");
+            check (armed == "REPLACE", "saving the same name asks first (Replace)");
+            if (auto* panel = find ("savePanel"))
+                if (auto* cancel = findButton (*panel, "CANCEL"))
                     cancel->onClick();
             juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
             check (mine.getLastModificationTime() == firstSave, "and doesn't replace it until asked");
@@ -410,17 +489,18 @@ int main (int argc, char* argv[])
             proc.setStateInformation (withSample.getData(), (int) withSample.getSize());
             check (proc.numMissingSamples() == 1, "a moved sample shows as missing");
             juce::MessageManager::getInstance()->runDispatchLoopUntil (300); // the editor's timer updates the header
-            if (auto* b = findButton (*editor, "1 sample missing: Relink..."))
+            if (auto* top = dynamic_cast<TopBar*> (find ("topBar")))
             {
-                b->onClick();
-                save ("7-Relink");
-                if (auto* panel = editor->findChildWithID ("relinkPanel"))
-                    if (auto* close = findButton (*panel, "Close"))
+                editor->showPage (BatidaEditor::Kit);
+                top->onRelink();
+                save ("11-Relink");
+                if (auto* panel = find ("relinkPanel"))
+                    if (auto* close = findButton (*panel, "LATER"))
                         close->onClick();
                 juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
             }
             else
-                check (false, "the header shows the missing-sample notice");
+                check (false, "the top bar is there");
             proc.relinkSample (4, moved);
             check (proc.numMissingSamples() == 0 && proc.sampleSlot (4).getPath() == moved.getFullPathName(), "Locate relinks it");
             // Next time it's found on its own: Batida remembers where samples turned up.
@@ -431,8 +511,7 @@ int main (int argc, char* argv[])
 
             libPage->setMode (LibraryPage::Mode::Samples);
             juce::MessageManager::getInstance()->runDispatchLoopUntil (300);
-            save ("6-LibSamples");
-            libPage->setVisible (false);
+            save ("09-Lib-Samples");
         }
 
         // State keeps names.
@@ -442,9 +521,130 @@ int main (int argc, char* argv[])
         BatidaProcessor other;
         other.setStateInformation (saved.getData(), (int) saved.getSize());
         check (other.getVoiceName (2) == "Crack" && other.getVoiceName (1) == "Rim", "names are saved with the project");
+        // The new controls: value bars, segmented buttons, sound cells, the XY pad.
+        {
+            editor->showPage (BatidaEditor::Kit);
+            auto* kitPage = find ("kitPage");
+            ParamControl* driveBar = nullptr;
+            ParamControl* detector = nullptr;
+            for (auto* c : kitPage->getChildren())
+                if (auto* pc = dynamic_cast<ParamControl*> (c))
+                {
+                    if (pc->getParamID() == "dist_drive")
+                        driveBar = pc;
+                    if (pc->getParamID() == "comp_detector")
+                        detector = pc;
+                }
+            check (driveBar != nullptr && driveBar->getKind() == ParamControl::Kind::Bar, "Drive is a value bar");
+            auto* drive = state.getParameter ("dist_drive");
+            drive->setValueNotifyingHost (0.3f);
+            const auto trackW = (float) (driveBar->getWidth() - 62 - 8 - 70 - 8);
+            // Press far from the value: nothing jumps; a 20 px drag moves by 20 px' worth.
+            const juce::Point<float> far (driveBar->getWidth() - 70.0f, 10.0f);
+            driveBar->mouseDown (event (driveBar, far, far, false));
+            check (std::abs (drive->getValue() - 0.3f) < 1.0e-4f, "bar: pressing doesn't jump to the mouse");
+            driveBar->mouseDrag (event (driveBar, far, far.translated (20.0f, 0.0f), true));
+            driveBar->mouseUp (event (driveBar, far, far.translated (20.0f, 0.0f), true, juce::ModifierKeys()));
+            check (std::abs (drive->getValue() - (0.3f + 20.0f / trackW)) < 0.01f, "bar: drag moves from the current value");
+            const auto afterDrag = drive->getValue();
+            const auto shiftMods = juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier | juce::ModifierKeys::shiftModifier);
+            driveBar->mouseDown (event (driveBar, far, far, false, shiftMods));
+            driveBar->mouseDrag (event (driveBar, far, far.translated (20.0f, 0.0f), true, shiftMods));
+            driveBar->mouseUp (event (driveBar, far, far.translated (20.0f, 0.0f), true, juce::ModifierKeys()));
+            check (std::abs (drive->getValue() - (afterDrag + 2.0f / trackW)) < 0.005f, "bar: Shift drags ten times finer");
+            driveBar->mouseDown (event (driveBar, far, far, false, juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier | juce::ModifierKeys::altModifier)));
+            check (std::abs (drive->getValue() - drive->getDefaultValue()) < 1.0e-4f, "bar: Option-click goes back to the default");
+            drive->setValueNotifyingHost (0.3f);
+            driveBar->mouseDoubleClick (event (driveBar, far, far, false));
+            check (std::abs (drive->getValue() - drive->getDefaultValue()) < 1.0e-4f, "bar: double-click goes back to the default");
+            auto editorOpen = [&]
+            {
+                for (auto* c : driveBar->getChildren())
+                    if (dynamic_cast<juce::TextEditor*> (c) != nullptr)
+                        return true;
+                return false;
+            };
+            const juce::Point<float> number ((float) driveBar->getWidth() - 20.0f, 10.0f);
+            driveBar->mouseDown (event (driveBar, number, number, false));
+            driveBar->mouseUp (event (driveBar, number, number, false, juce::ModifierKeys()));
+            check (! editorOpen(), "bar: a click on the number waits in case it's a double-click");
+            settle (juce::MouseEvent::getDoubleClickTimeout() + 150);
+            check (editorOpen(), "bar: then opens a field to type into");
+            settle (30);
+
+            check (detector != nullptr && detector->getKind() == ParamControl::Kind::Menu, "Detector is a drop-down");
+
+            // Segmented: Run (Keys | Transport) on SEQ.
+            editor->showPage (BatidaEditor::Seq);
+            ParamControl* runControl = nullptr;
+            for (auto* c : find ("seqPage")->getChildren())
+                if (auto* pc = dynamic_cast<ParamControl*> (c); pc != nullptr && pc->getParamID() == "seq_run")
+                    runControl = pc;
+            check (runControl != nullptr && runControl->getKind() == ParamControl::Kind::Segmented, "Run is segmented");
+            if (runControl != nullptr)
+            {
+                auto* run = state.getParameter ("seq_run");
+                const juce::Point<float> second ((float) runControl->getWidth() - 10.0f, 10.0f);
+                runControl->mouseDown (event (runControl, second, second, false));
+                check (run->getValue() > 0.5f, "segmented: clicking an option chooses it");
+                const juce::Point<float> first (40.0f, 10.0f);
+                runControl->mouseDown (event (runControl, first, first, false));
+            }
+
+            // Sound cells: the SEQ track header selects, and M mutes.
+            auto* seqPage = dynamic_cast<SeqPage*> (find ("seqPage"));
+            auto* cell = seqPage->getTrackCells()[3];
+            const juce::Point<float> middle (40.0f, 10.0f);
+            cell->mouseDown (event (cell, middle, middle, false));
+            cell->mouseUp (event (cell, middle, middle, false, juce::ModifierKeys()));
+            check (proc.selectedVoice.load() == 3, "track header: click selects the sound");
+            const juce::Point<float> m ((float) cell->getWidth() - 23.0f, (float) cell->getHeight() - 11.0f);
+            cell->mouseDown (event (cell, m, m, false));
+            check (proc.readVoiceParams (3).flag (batida::vp::Mute), "track header: M mutes it");
+            cell->mouseDown (event (cell, m, m, false));
+            check (! proc.readVoiceParams (3).flag (batida::vp::Mute), "and again unmutes");
+
+            // The XY pad: relative drag, Shift locks an axis.
+            editor->showPage (BatidaEditor::Kit);
+            XyPad* pad = nullptr;
+            for (auto* c : kitPage->getChildren())
+                if (auto* p = dynamic_cast<XyPad*> (c))
+                    pad = p;
+            check (pad != nullptr, "found the XY pad");
+            if (pad != nullptr)
+            {
+                auto* px = state.getParameter ("xy_x");
+                auto* py = state.getParameter ("xy_y");
+                px->setValueNotifyingHost (0.5f);
+                py->setValueNotifyingHost (0.5f);
+                const juce::Point<float> corner (20.0f, 20.0f);
+                pad->mouseDown (event (pad, corner, corner, false));
+                pad->mouseDrag (event (pad, corner, corner.translated (39.6f, 0.0f), true));
+                pad->mouseUp (event (pad, corner, corner.translated (39.6f, 0.0f), true, juce::ModifierKeys()));
+                check (std::abs (px->getValue() - 0.6f) < 0.01f && std::abs (py->getValue() - 0.5f) < 0.01f,
+                       "pad: a drag moves from where the puck was, not to the mouse");
+                pad->mouseDown (event (pad, corner, corner, false, shiftMods));
+                pad->mouseDrag (event (pad, corner, corner.translated (39.6f, -10.0f), true, shiftMods));
+                pad->mouseUp (event (pad, corner, corner.translated (39.6f, -10.0f), true, juce::ModifierKeys()));
+                check (std::abs (py->getValue() - 0.5f) < 0.001f && px->getValue() > 0.65f, "pad: Shift locks to one axis");
+                pad->mouseDown (event (pad, corner, corner, false, juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier | juce::ModifierKeys::altModifier)));
+                check (std::abs (px->getValue() - 20.0f / (float) pad->getWidth()) < 0.01f, "pad: Option-click puts it there");
+            }
+
+            // Zoom
+            editor->setZoom (150);
+            check (editor->getWidth() == 1470 && editor->getHeight() == 960, "zoom 150% makes the window 1470 x 960");
+            editor->setZoom (100);
+            check (editor->getWidth() == 980, "and back to 980");
+
+            // Host names say sound.
+            check (state.getParameter ("v1_level")->getName (32) == "S1 Level" && state.getParameter ("keys_voice")->getName (32) == "Keys Sound",
+                   "host parameter names say sound (S1 Level, Keys Sound)");
+        }
+
         std::printf ("%s\n", failures == 0 ? "GESTURES PASS" : "GESTURES FAIL");
     }
 
-    editor.reset();
+    editorHolder.reset();
     return 0;
 }

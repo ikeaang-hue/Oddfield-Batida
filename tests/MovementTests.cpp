@@ -239,6 +239,35 @@ public:
             expectLessOrEqual (worstAtCeiling, 1.5f);
         }
 
+        beginTest ("Vary notes name the two biggest changes you can hear");
+        {
+            const auto base = defaultKitParams().voices[0]; // the kick: FM
+            auto changed = base;
+            changed.v[(size_t) vp::AmpD] = base[vp::AmpD] * 0.59f;          // decay −41%
+            changed.v[(size_t) vp::Level] = base[vp::Level] + 6.0f;          // the loudness match: never named
+            changed.v[(size_t) vp::SmpStart] = 0.4f;                          // a sample setting on an FM sound
+            changed.v[(size_t) opParam (3, OpD)] = base.op (3, OpD) * 3.0f;   // a silent operator
+            const auto note = juce::String::fromUTF8 (describeChanges (base, changed).c_str());
+            expect (note.contains ("decay"), "names the decay: " + note);
+            expect (note.contains (juce::String::fromUTF8 ("\xe2\x88\x92") + "41%"), "as a signed percentage: " + note);
+            expect (! note.containsIgnoreCase ("level") && ! note.containsIgnoreCase ("start") && ! note.containsIgnoreCase ("op4"),
+                    "leaves out Level, the sample and silent operators: " + note);
+
+            auto two = changed;
+            two.v[(size_t) opParam (1, OpLevel)] = std::min (1.0f, base.op (1, OpLevel) + 0.3f);
+            const auto both = juce::String::fromUTF8 (describeChanges (base, two).c_str());
+            expect (both.contains (juce::String::fromUTF8 ("\xc2\xb7")) && both.containsIgnoreCase ("op2 level"), "two changes: " + both);
+            expectEquals (juce::String::fromUTF8 (describeChanges (base, base).c_str()), juce::String(), "no changes, no note");
+        }
+
+        beginTest ("Host names say sound; IDs stay");
+        {
+            expectEquals (juce::String (voiceParamName (0, vp::Level)), juce::String ("S1 Level"));
+            expectEquals (juce::String (voiceParamID (0, vp::Level)), juce::String ("v1_level"));
+            expectEquals (juce::String (globalParamSpecs()[(size_t) gp::KeysVoice].label), juce::String ("Keys Sound"));
+            expectEquals (juce::String (globalParamSpecs()[(size_t) gp::KeysVoice].key), juce::String ("keys_voice"));
+        }
+
         beginTest ("Movement data survives XML");
         {
             auto d = defaultMovement();

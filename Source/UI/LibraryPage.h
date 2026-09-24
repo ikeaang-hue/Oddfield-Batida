@@ -2,6 +2,7 @@
 
 #include "BrowseStrip.h"
 #include "LibraryController.h"
+#include "Widgets.h"
 
 // The LIB view: browse sounds, kits, patterns, sets and sample folders.
 // Click a row to try it (live, in the beat); a run of clicks is one undo step.
@@ -21,6 +22,9 @@ public:
     void paint (juce::Graphics& g) override;
     void resized() override;
     void visibilityChanged() override;
+
+    // Tries in this browsing run (one Undo takes them all back); reset by Undo.
+    void resetTries() { tries = 0; repaint(); }
 
     // For the gesture checks: click row `row` as a user would (x from the left).
     void clickRow (int row, int x = 100);
@@ -65,7 +69,7 @@ private:
     std::vector<batida::LibraryEntry> rows;
     std::vector<juce::File> sampleRows; // folders first, then audio files
     juce::File folder;
-    int shownRow = -1, shownVersion = -1, shownOrigins = -1;
+    int shownRow = -1, shownVersion = -1, shownOrigins = -1, tries = 0;
     bool selecting = false;
 
     std::array<juce::TextButton, 5> modeButtons;
@@ -75,11 +79,13 @@ private:
     juce::TextEditor search;
     juce::Label countLabel, hint, detailName, detailWhat, detailInfo, detailPath, showLabel;
     juce::ListBox list { "library", this };
-    ArrowTextButton previous { true }, next { false };
-    juce::TextButton loadFile { "Load file..." }, saveAs { "Save..." }, init { "Init" }, reveal { "Show in Finder" };
+    TextLink previous { juce::String::fromUTF8 ("\xe2\x80\xb9 PREV"), true }, next { juce::String::fromUTF8 ("NEXT \xe2\x80\xba"), true };
+    TextLink loadFile { juce::String::fromUTF8 ("LOAD\xe2\x80\xa6"), true }, saveAs { juce::String::fromUTF8 ("SAVE AS\xe2\x80\xa6"), true },
+        init { "INIT", true }, reveal { "SHOW LIBRARY IN FINDER", true };
+    juce::Rectangle<int> detailBounds;
     std::array<juce::TextButton, 5> detailTags;
     juce::ComboBox detailCategory;
     juce::ComboBox rootBox;
-    juce::TextButton upButton { "Up" }, addFolderButton { "Add folder..." }, removeFolderButton { "Remove" };
+    juce::TextButton upButton { "UP" }, addFolderButton { "ADD FOLDER..." }, removeFolderButton { "REMOVE" };
     std::unique_ptr<juce::FileChooser> chooser;
 };

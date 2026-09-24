@@ -21,457 +21,317 @@ juce::String drumNoteName (int voice)
 {
     return juce::MidiMessage::getMidiNoteName (kDrumMapFirstNote + voice, true, true, 3);
 }
+
+constexpr int kSide = 16;
 } // namespace
 
-void BatidaEditor::VoiceButton::paintButton (juce::Graphics& g, bool over, bool down)
-{
-    const auto base = findColour (getToggleState() ? juce::TextButton::buttonOnColourId : juce::TextButton::buttonColourId);
-    getLookAndFeel().drawButtonBackground (g, *this, base, over, down);
-
-    auto r = getLocalBounds().reduced (6, 2);
-    g.setColour (audible ? juce::Colours::white : juce::Colours::white.withAlpha (0.35f));
-    g.setFont (juce::FontOptions (13.0f, juce::Font::bold));
-    g.drawFittedText (name, r.removeFromTop (r.getHeight() * 3 / 5), juce::Justification::centredBottom, 1, 0.7f);
-    g.setColour (juce::Colours::lightgrey.withAlpha (audible ? 0.8f : 0.35f));
-    g.setFont (juce::FontOptions (10.0f));
-    g.drawText (slot, r, juce::Justification::centredTop);
-
-    if (missing)
-    {
-        g.setColour (juce::Colours::orange);
-        g.setFont (juce::FontOptions (13.0f, juce::Font::bold));
-        g.drawText ("!", getLocalBounds().reduced (5, 2), juce::Justification::topRight);
-    }
-    if (dropHover)
-    {
-        g.setColour (juce::Colours::orange);
-        g.drawRoundedRectangle (getLocalBounds().toFloat().reduced (1.0f), 4.0f, 2.0f);
-    }
-}
-
-void BatidaEditor::VoiceButton::mouseDown (const juce::MouseEvent& e)
-{
-    dragStarted = false;
-    if (e.mods.isPopupMenu())
-    {
-        if (onMenu)
-            onMenu();
-        return;
-    }
-    juce::TextButton::mouseDown (e);
-    if (onPress)
-        onPress();
-}
-
-void BatidaEditor::VoiceButton::mouseDrag (const juce::MouseEvent& e)
-{
-    juce::TextButton::mouseDrag (e);
-    if (dragStarted || e.mods.isPopupMenu() || e.getDistanceFromDragStart() < 8)
-        return;
-    if (auto* container = juce::DragAndDropContainer::findParentDragContainerFor (this))
-    {
-        dragStarted = true;
-        container->startDragging ("voice:" + juce::String (index), this);
-    }
-}
-
-void BatidaEditor::VoiceButton::mouseUp (const juce::MouseEvent& e)
-{
-    if (e.mods.isPopupMenu())
-        return;
-    juce::TextButton::mouseUp (e);
-    if (onRelease)
-        onRelease();
-}
-
-void BatidaEditor::VoiceButton::mouseDoubleClick (const juce::MouseEvent&)
-{
-    if (onRename)
-        onRename();
-}
-
-bool BatidaEditor::VoiceButton::isInterestedInDragSource (const SourceDetails& d)
-{
-    return d.description.toString().startsWith ("voice:");
-}
-
-void BatidaEditor::VoiceButton::itemDropped (const SourceDetails& d)
-{
-    dropHover = false;
-    repaint();
-    const auto from = d.description.toString().fromFirstOccurrenceOf (":", false, false).getIntValue();
-    if (onSwapFrom && from != index)
-        onSwapFrom (from);
-}
-
 BatidaEditor::BatidaEditor (BatidaProcessor& p)
-    : AudioProcessorEditor (&p), proc (p), library (p, *this), midiMode (p.getState()), keysVoice (p.getState()),
-      master (p.getState()), kitPage (p), seqPage (p), modPage (p), libraryPage (p, library)
+    : AudioProcessorEditor (&p), proc (p), library (p, content), top (p), kitPage (p), seqPage (p), modPage (p), soundPage (p),
+      libraryPage (p, library), settings (p)
 {
-    title.setText ("BATIDA", juce::dontSendNotification);
-    title.setFont (juce::FontOptions (26.0f, juce::Font::bold));
-    addAndMakeVisible (title);
+    setLookAndFeel (&look->look);
+    juce::LookAndFeel::setDefaultLookAndFeel (&look->look);
+    addAndMakeVisible (content);
 
-    info.setFont (juce::FontOptions (13.0f));
-    info.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
-    addAndMakeVisible (info);
-
-    midiMode.bind (globalParamID (gp::MidiMode));
-    keysVoice.bind (globalParamID (gp::KeysVoice));
-    master.bind (globalParamID (gp::Master));
-    addAndMakeVisible (midiMode);
-    addAndMakeVisible (keysVoice);
-    addAndMakeVisible (master);
-
-    for (int v = 0; v < kNumVoices; ++v)
-    {
-        auto& b = voiceButtons[(size_t) v];
-        b.index = v;
-        b.slot = juce::String (v + 1) + " \u00b7 " + drumNoteName (v);
-        b.setClickingTogglesState (false);
-        b.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff2b7bb9));
-        b.setTooltip ("Click: select and play. Double-click: rename. Drag onto another voice: swap slots. "
-                      "Right-click: menu. Drop a sample here to load it.");
-        b.onPress = [this, v]
-        {
-            selectVoice (v);
-            proc.setKeysVoice (v); // only on a click, so opening the editor never changes it
-            proc.audition (v, true);
-        };
-        b.onRelease = [this, v] { proc.audition (v, false); };
-        b.onRename = [this, v] { renameVoice (v); };
-        b.onMenu = [this, v] { voiceMenu (v); };
-        b.onSwapFrom = [this, v] (int from) { swapVoices (from, v); };
-        addAndMakeVisible (b);
-
-        auto& m = muteButtons[(size_t) v];
-        auto& so = soloButtons[(size_t) v];
-        m.setButtonText ("M");
-        so.setButtonText ("S");
-        m.setTooltip ("Mute voice " + juce::String (v + 1));
-        so.setTooltip ("Solo voice " + juce::String (v + 1) + " (while any voice is soloed, only soloed voices sound)");
-        m.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffd9534f));
-        so.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffe0b84a));
-        so.setColour (juce::TextButton::textColourOnId, juce::Colours::black);
-        for (auto* t : { &m, &so })
-        {
-            t->setClickingTogglesState (true);
-            addAndMakeVisible (*t);
-        }
-        muteAttachments[(size_t) v] = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
-            p.getState(), voiceParamID (v, vp::Mute), m);
-        soloAttachments[(size_t) v] = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
-            p.getState(), voiceParamID (v, vp::Solo), so);
-    }
-    refreshVoiceButtons();
-
-    const auto tabColour = juce::Colour (0xff2a2d31);
-    tabs.addTab ("Source", tabColour, sourcePage = new SourcePage (p), true);
-    tabs.addTab ("FM", tabColour, fmPage = new FmPage (p), true);
-    tabs.addTab ("Voice FX", tabColour, chainPage = new ChainPage (p), true);
-    tabs.addTab ("Envelopes & Play", tabColour, envelopePage = new EnvelopePage (p), true);
-    tabs.addTab ("Vary", tabColour, varyPage = new VaryPage (p), true);
-    tabs.setTabBarDepth (30);
-    tabs.setComponentID ("tabs");
-    tabs.setCurrentTabIndex (1);
-    addChildComponent (tabs);
-
+    top.setComponentID ("topBar");
+    row.setComponentID ("soundRow");
     kitPage.setComponentID ("kitPage");
-    addAndMakeVisible (kitPage);
     seqPage.setComponentID ("seqPage");
-    addChildComponent (seqPage);
     modPage.setComponentID ("modPage");
-    addChildComponent (modPage);
+    soundPage.setComponentID ("soundPage");
     libraryPage.setComponentID ("libraryPage");
-    addChildComponent (libraryPage);
+    settings.setComponentID ("settings");
+    for (juce::Component* c : { (juce::Component*) &top, (juce::Component*) &row, (juce::Component*) &kitPage })
+        content.addAndMakeVisible (c);
+    for (juce::Component* c : { (juce::Component*) &seqPage, (juce::Component*) &modPage, (juce::Component*) &soundPage,
+                                (juce::Component*) &libraryPage, (juce::Component*) &settingsScrim, (juce::Component*) &settings,
+                                (juce::Component*) &about })
+        content.addChildComponent (c);
 
-    // The library: ◀ name ▶ for the kit (here), the sound (VOICE view) and the pattern (SEQ).
+    // Top bar
+    top.onPage = [this] (int index) { showPage (index); };
+    top.undo.onClick = [this] { proc.undo(); libraryPage.resetTries(); libraryChanged(); };
+    top.redo.onClick = [this] { proc.redo(); libraryChanged(); };
+    top.onRelink = [this] { library.showRelink(); };
+    top.onSettings = [this]
+    {
+        const auto show = ! settings.isVisible();
+        about.setVisible (false);
+        settings.refresh();
+        settingsScrim.setVisible (show);
+        settings.setVisible (show);
+        if (show)
+            settings.toFront (false);
+    };
+    top.onAbout = [this]
+    {
+        const auto show = ! about.isVisible();
+        settings.setVisible (false);
+        settingsScrim.setVisible (show);
+        about.setVisible (show);
+        if (show)
+            about.toFront (false);
+    };
+    settingsScrim.onClick = [this] { settingsScrim.setVisible (false); settings.setVisible (false); about.setVisible (false); };
+    settings.onZoom = [this] (int percent) { setZoom (percent); };
+
+    // Library strips: the kit (top bar), the sound (SOUND) and the pattern (SEQ).
     auto wire = [this] (BrowseStrip& strip, PresetType type)
     {
         strip.onPrevious = [this, type] { library.step (type, -1); };
         strip.onNext = [this, type] { library.step (type, 1); };
         strip.onMenu = [this, &strip, type] { library.showMenu (type, strip); };
     };
-    wire (kitStrip, PresetType::Kit);
-    wire (soundStrip, PresetType::Sound);
+    wire (top.kitStrip, PresetType::Kit);
+    wire (soundPage.soundStrip, PresetType::Sound);
     wire (seqPage.patternStrip, PresetType::Pattern);
-    kitStrip.setComponentID ("kitStrip");
-    soundStrip.setComponentID ("soundStrip");
-    addAndMakeVisible (kitStrip);
-    addChildComponent (soundStrip);
     library.onChanged = [this] { libraryChanged(); };
+    soundPage.onSaveSound = [this] { library.saveAs (PresetType::Sound); };
 
-    missingButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff7a4a12));
-    missingButton.setTooltip ("Some samples weren't found where they were. Click to find them.");
-    missingButton.onClick = [this] { library.showRelink(); };
-    addChildComponent (missingButton);
+    // Sound cells: the row, and the SEQ track headers (same gestures).
+    for (auto* c : row.getCells())
+        wireCell (*c, false);
+    for (auto* c : seqPage.getTrackCells())
+        wireCell (*c, true);
+    seqPage.getGrid().onRename = [this] (int track) { renameVoice (track, *seqPage.getTrackCells()[(size_t) track]); };
 
-    undoButton.setTooltip ("Undo pattern edits, names, Vary Keep, scene recall and slot swaps "
-                           "(knob moves are undone in Logic)");
-    redoButton.setTooltip ("Redo");
-    undoButton.onClick = [this] { proc.undo(); libraryChanged(); };
-    redoButton.onClick = [this] { proc.redo(); libraryChanged(); };
-    addAndMakeVisible (undoButton);
-    addAndMakeVisible (redoButton);
-
-    for (auto* b : { &kitViewButton, &seqViewButton, &modViewButton, &voiceViewButton, &libViewButton })
-    {
-        b->setClickingTogglesState (false);
-        b->setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffc0632a));
-        addAndMakeVisible (*b);
-    }
-    kitViewButton.onClick = [this] { showView (View::Kit); };
-    seqViewButton.onClick = [this] { showView (View::Seq); };
-    modViewButton.onClick = [this] { showView (View::Mod); };
-    voiceViewButton.onClick = [this] { showView (View::Voice); };
-    libViewButton.onClick = [this] { showView (View::Lib); };
-    libViewButton.setComponentID ("libView");
-    showView (View::Kit); // the kit panel is the opening page
+    for (int v = 0; v < kNumVoices; ++v)
+        hitCounts[(size_t) v] = proc.getKit().getHitCount (v);
 
     selectVoice (juce::jlimit (0, kNumVoices - 1, proc.selectedVoice.load()));
+    showPage (Kit);
     updateStrips();
+    refreshCells();
 
-    setSize (980, 640);
-    startTimerHz (10);
+    zoom = proc.library().getZoom();
+    setSize (kWidth * zoom / 100, kHeight * zoom / 100);
+    startTimerHz (30);
 }
 
 BatidaEditor::~BatidaEditor()
 {
     stopTimer();
+    juce::LookAndFeel::setDefaultLookAndFeel (nullptr);
+    setLookAndFeel (nullptr);
 }
 
-void BatidaEditor::showView (View view)
+void BatidaEditor::setZoom (int percent)
 {
-    currentView = view;
-    libraryPage.setVisible (view == View::Lib);
-    libViewButton.setToggleState (view == View::Lib, juce::dontSendNotification);
-    soundStrip.setVisible (view == View::Voice);
-    kitPage.setVisible (view == View::Kit);
-    seqPage.setVisible (view == View::Seq);
-    modPage.setVisible (view == View::Mod);
-    modViewButton.setToggleState (view == View::Mod, juce::dontSendNotification);
-    tabs.setVisible (view == View::Voice);
-    kitViewButton.setToggleState (view == View::Kit, juce::dontSendNotification);
-    seqViewButton.setToggleState (view == View::Seq, juce::dontSendNotification);
-    voiceViewButton.setToggleState (view == View::Voice, juce::dontSendNotification);
+    zoom = juce::jlimit (100, 150, percent);
+    setSize (kWidth * zoom / 100, kHeight * zoom / 100);
+}
+
+void BatidaEditor::wireCell (SoundCell& cell, bool inSequencer)
+{
+    const auto v = cell.index;
+    cell.onPress = [this, v]
+    {
+        selectVoice (v);
+        proc.setKeysVoice (v); // only on a click, so opening the editor never changes it
+        proc.audition (v, true);
+    };
+    cell.onRelease = [this, v] { proc.audition (v, false); };
+    cell.onRename = [this, v, &cell] { renameVoice (v, cell); };
+    cell.onSwapFrom = [this, v] (int from) { swapVoices (from, v); };
+    cell.onMute = [this, v] { toggleMute (v, vp::Mute); };
+    cell.onSolo = [this, v] { toggleMute (v, vp::Solo); };
+    if (inSequencer)
+        cell.onMenu = [this, v, &cell] { selectVoice (v); seqPage.getGrid().trackMenu (v, cell); };
+    else
+        cell.onMenu = [this, v, &cell] { voiceMenu (v, cell); };
+}
+
+void BatidaEditor::toggleMute (int voice, int param)
+{
+    if (auto* p = proc.getState().getParameter (voiceParamID (voice, param)))
+    {
+        p->beginChangeGesture();
+        p->setValueNotifyingHost (p->getValue() >= 0.5f ? 0.0f : 1.0f);
+        p->endChangeGesture();
+    }
+    refreshCells();
+}
+
+std::vector<SoundCell*> BatidaEditor::allCells()
+{
+    std::vector<SoundCell*> cells;
+    for (auto* c : row.getCells())
+        cells.push_back (c);
+    for (auto* c : seqPage.getTrackCells())
+        cells.push_back (c);
+    return cells;
+}
+
+void BatidaEditor::showPage (int p)
+{
+    page = p;
+    kitPage.setVisible (p == Kit);
+    seqPage.setVisible (p == Seq);
+    modPage.setVisible (p == Mod);
+    soundPage.setVisible (p == Sound);
+    libraryPage.setVisible (p == Lib);
+    row.setVisible (p != Seq); // the SEQ track headers are the sound row there
+    if (p != Sound)
+        soundPage.closeOverlays();
+    top.setPage (p);
+    resized();
 }
 
 void BatidaEditor::selectVoice (int voice)
 {
-    if (voice == selected && sourcePage != nullptr && voiceButtons[(size_t) voice].getToggleState())
-        return;
-
     selected = voice;
     proc.selectedVoice = voice;
-
-    for (int v = 0; v < kNumVoices; ++v)
-        voiceButtons[(size_t) v].setToggleState (v == voice, juce::dontSendNotification);
-
-    sourcePage->bindVoice (voice);
-    fmPage->bindVoice (voice);
-    chainPage->bindVoice (voice);
-    envelopePage->bindVoice (voice);
-    varyPage->bindVoice (voice);
-    updateInfo();
+    soundPage.bindVoice (voice);
+    refreshCells();
 }
 
-void BatidaEditor::updateInfo()
+void BatidaEditor::refreshCells()
 {
-    const auto p = proc.readVoiceParams (selected);
-    static const char* sources[] = { "FM", "Sample", "Layer" };
-    const auto source = sources[juce::jlimit (0, 2, p.choice (vp::SrcMode))];
-
-    auto& slot = proc.sampleSlot (selected);
-    juce::String sample = "no sample";
-    if (slot.getStatus() == SampleSlot::Status::Loaded)
-        sample = juce::File (slot.getPath()).getFileName();
-    else if (slot.getStatus() == SampleSlot::Status::Missing)
-        sample = "sample missing";
-
-    const auto chromatic = (MidiMode) juce::roundToInt (proc.getState().getRawParameterValue (globalParamID (gp::MidiMode))->load())
-                           == MidiMode::Chromatic;
-    const auto keys = juce::roundToInt (proc.getState().getRawParameterValue (globalParamID (gp::KeysVoice))->load());
-    const auto keysText = chromatic ? "keys play voice " + juce::String (keys + 1) + " (drum map on ch 10)"
-                                    : juce::String ("keys: drum map");
-
-    info.setText (juce::String (selected + 1) + " " + proc.getVoiceName (selected) + "  |  note " + drumNoteName (selected)
-                      + " (" + juce::String (kDrumMapFirstNote + selected) + ")  |  " + source + ", " + sample
-                      + "  |  " + keysText,
-                  juce::dontSendNotification);
+    refreshSoundCells (proc, row.getCells(), selected, [] (int v) { return drumNoteName (v); });
+    const auto& pat = proc.patterns().get().patterns[(size_t) std::clamp (proc.displayPattern(), 0, kNumPatterns - 1)];
+    refreshSoundCells (proc, seqPage.getTrackCells(), selected, [&pat] (int v)
+    {
+        return "LEN " + juce::String (std::min (pat.tracks[(size_t) v].length, pat.length));
+    });
 }
 
 void BatidaEditor::updateStrips()
 {
     const auto& o = proc.getOrigins();
-    kitStrip.setName (o.kitName, "Kit: " + o.kitName + (o.kitFile.existsAsFile() ? " (" + o.kitFile.getFileName() + ")" : juce::String())
-                                     + ". The arrows step through the library's kits; the name opens Init, Load, Save.");
-    soundStrip.setName (proc.getVoiceName (selected), "Sound on voice " + juce::String (selected + 1)
-                                                          + ". The arrows step through the library's sounds; the name opens Init, Load, Save.");
+    top.kitStrip.setText (o.kitName, "Kit: " + o.kitName + (o.kitFile.existsAsFile() ? " (" + o.kitFile.getFileName() + ")" : juce::String()));
     const auto pattern = proc.displayPattern();
-    seqPage.patternStrip.setName (proc.getPatternName (pattern), "Pattern " + juce::String (pattern + 1)
-                                                                   + ". The arrows step through the library's patterns; the name opens Init, Load, Save.");
-    const auto missing = proc.numMissingSamples();
-    if (missing > 0)
-        missingButton.setButtonText (juce::String (missing) + " sample" + (missing == 1 ? "" : "s") + " missing: Relink...");
-    if (missingButton.isVisible() != (missing > 0))
-    {
-        missingButton.setVisible (missing > 0);
-        resized();
-    }
+    seqPage.patternStrip.setText ("P" + juce::String (pattern + 1).paddedLeft ('0', 2), "Pattern " + juce::String (pattern + 1));
+    top.setMissing (proc.numMissingSamples());
 }
 
 void BatidaEditor::libraryChanged()
 {
-    // A load replaced sounds: the pages re-read the selected voice.
-    const auto v = selected;
-    selected = -1;
-    selectVoice (v);
-    refreshVoiceButtons();
+    // A load replaced sounds: the pages re-read the selected sound.
+    selectVoice (selected);
     updateStrips();
 }
 
 void BatidaEditor::timerCallback()
 {
-    updateInfo();
-    refreshVoiceButtons();
-    updateStrips();
-    undoButton.setEnabled (proc.canUndo());
-    redoButton.setEnabled (proc.canRedo());
-}
-
-void BatidaEditor::refreshVoiceButtons()
-{
-    // Names, missing samples, and whether each voice can be heard (mute/solo).
-    bool anySolo = false;
-    std::array<VoiceParams, kNumVoices> p;
+    // Hit lights and the meter every frame; the rest ten times a second.
+    const auto& kit = proc.getKit();
     for (int v = 0; v < kNumVoices; ++v)
     {
-        p[(size_t) v] = proc.readVoiceParams (v);
-        anySolo = anySolo || p[(size_t) v].flag (vp::Solo);
-    }
-
-    for (int v = 0; v < kNumVoices; ++v)
-    {
-        auto& b = voiceButtons[(size_t) v];
-        const auto name = proc.getVoiceName (v);
-        const auto missing = proc.sampleSlot (v).getStatus() == SampleSlot::Status::Missing;
-        const auto audible = ! p[(size_t) v].flag (vp::Mute) && (! anySolo || p[(size_t) v].flag (vp::Solo));
-        if (name != b.name || missing != b.missing || audible != b.audible)
+        const auto count = kit.getHitCount (v);
+        if (count != hitCounts[(size_t) v])
         {
-            b.name = name;
-            b.missing = missing;
-            b.audible = audible;
-            b.repaint();
+            hitCounts[(size_t) v] = count;
+            row.getCells()[(size_t) v]->hit();
+            seqPage.getTrackCells()[(size_t) v]->hit();
         }
     }
+    const auto peaks = proc.takeOutputPeaks();
+    top.setOutputPeak (std::max (peaks[0], peaks[1]));
+
+    if (++ticks % 3 != 0)
+        return;
+    refreshCells();
+    updateStrips();
+    top.undo.setEnabled (proc.canUndo());
+    top.redo.setEnabled (proc.canRedo());
+    if (settings.isVisible())
+        settings.refresh();
 }
 
-void BatidaEditor::renameVoice (int voice)
+void BatidaEditor::renameVoice (int voice, juce::Component& over)
 {
-    startRename (renameEditor, *this, voiceButtons[(size_t) voice].getBounds(), proc.getVoiceName (voice),
+    const auto area = content.getLocalArea (&over, over.getLocalBounds()).withHeight (std::min (22, over.getHeight()));
+    startRename (renameEditor, content, area, proc.getVoiceName (voice),
                  [this, voice] (const juce::String& text)
                  {
                      proc.setVoiceName (voice, text);
-                     refreshVoiceButtons();
-                     updateInfo();
+                     refreshCells();
                  });
 }
 
 void BatidaEditor::swapVoices (int from, int to)
 {
     proc.swapVoices (from, to);
-    selected = -1; // force the pages to re-read
     selectVoice (to);
-    refreshVoiceButtons();
 }
 
-void BatidaEditor::voiceMenu (int voice)
+void BatidaEditor::voiceMenu (int voice, juce::Component& target)
 {
     juce::PopupMenu swapMenu;
     for (int v = 0; v < kNumVoices; ++v)
         if (v != voice)
-            swapMenu.addItem (100 + v, juce::String (v + 1) + " " + proc.getVoiceName (v));
+            swapMenu.addItem (100 + v, juce::String (v + 1).paddedLeft ('0', 2) + " " + proc.getVoiceName (v));
 
     juce::PopupMenu m;
-    m.addSectionHeader (juce::String (voice + 1) + " " + proc.getVoiceName (voice));
-    m.addItem (1, "Rename...");
+    m.addSectionHeader (juce::String (voice + 1).paddedLeft ('0', 2) + " " + proc.getVoiceName (voice));
+    juce::PopupMenu::Item rename ("Rename...");
+    rename.itemID = 1;
+    rename.shortcutKeyDescription = "double-click";
+    m.addItem (rename);
     m.addSubMenu ("Swap with", swapMenu);
-    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (voiceButtons[(size_t) voice]),
-                     [this, voice] (int choice)
+    m.addSeparator();
+    m.addItem (2, "Init sound");
+    m.addItem (3, "Load sound...");
+    m.addItem (4, "Save sound...");
+    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (target),
+                     [this, voice, safe = juce::Component::SafePointer<juce::Component> (&target)] (int choice)
                      {
-                         if (choice == 1)
-                             renameVoice (voice);
+                         if (choice == 1 && safe != nullptr)
+                             renameVoice (voice, *safe);
                          else if (choice >= 100)
                              swapVoices (voice, choice - 100);
+                         else if (choice >= 2 && choice <= 4)
+                         {
+                             selectVoice (voice);
+                             if (choice == 2)
+                                 library.init (PresetType::Sound);
+                             else if (choice == 3)
+                                 library.loadFromDisk (PresetType::Sound);
+                             else
+                                 library.saveAs (PresetType::Sound);
+                         }
                      });
 }
 
 void BatidaEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff1e2023));
-
-    g.setColour (juce::Colours::grey);
-    g.setFont (juce::FontOptions (12.0f));
-    g.drawText ("NEGATIVE SPACE", title.getBounds().translated (0, 24), juce::Justification::topLeft);
-
-    if (dropTarget >= 0)
-    {
-        g.setColour (juce::Colours::orange);
-        g.drawRect (voiceButtons[(size_t) dropTarget].getBounds().expanded (3), 2);
-    }
+    g.fillAll (theme::bg);
 }
 
 void BatidaEditor::resized()
 {
-    auto r = getLocalBounds().reduced (10);
-    auto header = r.removeFromTop (ParamControl::kHeight);
+    content.setBounds (0, 0, kWidth, kHeight);
+    content.setTransform (juce::AffineTransform::scale ((float) zoom / 100.0f));
 
-    auto titleArea = header.removeFromLeft (232);
-    title.setBounds (titleArea.removeFromTop (30));
-    auto views = titleArea.removeFromBottom (28).withTrimmedRight (6);
-    for (auto [b, w] : { std::pair { &kitViewButton, 42 }, { &seqViewButton, 44 }, { &modViewButton, 46 }, { &voiceViewButton, 56 } })
-        b->setBounds (views.removeFromLeft (w).withTrimmedRight (2));
-    libViewButton.setBounds (views);
-    master.setBounds (header.removeFromRight (ParamControl::kWidth));
-    auto menus = header.removeFromRight (190);
-    auto kitRow = menus.removeFromBottom (22);
-    keysVoice.setBounds (menus.removeFromRight (80));
-    midiMode.setBounds (menus);
-    kitStrip.setBounds (kitRow.withTrimmedRight (4));
-    header.removeFromRight (10);
-
-    auto buttons = header.removeFromTop (38);
-    auto ms = header.removeFromTop (22);
-    const auto w = buttons.getWidth() / kNumVoices;
-    for (int v = 0; v < kNumVoices; ++v)
-    {
-        voiceButtons[(size_t) v].setBounds (buttons.removeFromLeft (w).reduced (3, 1));
-        auto cell = ms.removeFromLeft (w).reduced (3, 2);
-        muteButtons[(size_t) v].setBounds (cell.removeFromLeft (cell.getWidth() / 2).withTrimmedRight (1));
-        soloButtons[(size_t) v].setBounds (cell.withTrimmedLeft (1));
-    }
-    redoButton.setBounds (header.removeFromRight (52).reduced (2, 3));
-    undoButton.setBounds (header.removeFromRight (52).reduced (2, 3));
-    if (missingButton.isVisible())
-        missingButton.setBounds (header.removeFromRight (190).reduced (2, 3));
-    info.setBounds (header);
-
-    r.removeFromTop (6);
-    tabs.setBounds (r);
-    kitPage.setBounds (r);
-    seqPage.setBounds (r);
-    modPage.setBounds (r);
-    libraryPage.setBounds (r);
-    soundStrip.setBounds (r.getRight() - 230, r.getY() + 3, 226, 24);
+    top.setBounds (kSide, 0, kWidth - 2 * kSide, 40);
+    row.setBounds (kSide, 48, kWidth - 2 * kSide, 42);
+    const auto pageTop = page == Seq ? 52 : 100;
+    const auto area = juce::Rectangle<int> (kSide, pageTop, kWidth - 2 * kSide, kHeight - pageTop - 10);
+    for (auto* p : { (juce::Component*) &kitPage, (juce::Component*) &seqPage, (juce::Component*) &modPage, (juce::Component*) &soundPage,
+                     (juce::Component*) &libraryPage })
+        p->setBounds (area);
+    settingsScrim.setBounds (content.getLocalBounds());
+    settings.setBounds (kWidth - kSide - SettingsPanel::kWidth, 36, SettingsPanel::kWidth, SettingsPanel::kHeight);
+    about.setBounds (kSide, 36, AboutCard::kWidth, AboutCard::kHeight);
     library.layoutOverlays();
 }
 
-int BatidaEditor::voiceAt (int x, int y) const
+int BatidaEditor::voiceAt (juce::Point<int> p) const
 {
-    for (int v = 0; v < kNumVoices; ++v)
-        if (voiceButtons[(size_t) v].getBounds().expanded (3).contains (x, y))
-            return v;
+    auto* self = const_cast<BatidaEditor*> (this);
+    for (auto* c : self->allCells())
+        if (c->isShowing() && content.getLocalArea (c, c->getLocalBounds()).expanded (2).contains (p))
+            return c->index;
     return -1;
+}
+
+void BatidaEditor::setDropTarget (int voice)
+{
+    if (voice == dropTarget)
+        return;
+    dropTarget = voice;
+    for (auto* c : allCells())
+        c->setDropHighlight (c->index == voice && c->isShowing());
 }
 
 bool BatidaEditor::isInterestedInFileDrag (const juce::StringArray& files)
@@ -489,31 +349,24 @@ void BatidaEditor::fileDragEnter (const juce::StringArray& files, int x, int y)
 
 void BatidaEditor::fileDragMove (const juce::StringArray&, int x, int y)
 {
-    const auto target = voiceAt (x, y);
-    const auto shown = target >= 0 ? target : selected;
-    if (shown != dropTarget)
-    {
-        dropTarget = shown;
-        repaint();
-    }
+    const auto target = voiceAt (content.getLocalPoint (this, juce::Point<int> (x, y)));
+    setDropTarget (target >= 0 ? target : selected);
 }
 
 void BatidaEditor::fileDragExit (const juce::StringArray&)
 {
-    dropTarget = -1;
-    repaint();
+    setDropTarget (-1);
 }
 
 void BatidaEditor::filesDropped (const juce::StringArray& files, int x, int y)
 {
-    const auto target = voiceAt (x, y);
+    const auto target = voiceAt (content.getLocalPoint (this, juce::Point<int> (x, y)));
     const auto voice = target >= 0 ? target : selected;
-    dropTarget = -1;
-    repaint();
+    setDropTarget (-1);
 
     for (const auto& f : files)
     {
-        // A library file: a sound goes to the voice it's dropped on; the rest load whole.
+        // A library file: a sound goes to the slot it's dropped on; the rest load whole.
         if (isPresetFile (f))
         {
             juce::String error;
@@ -532,9 +385,7 @@ void BatidaEditor::filesDropped (const juce::StringArray& files, int x, int y)
 
         proc.loadSample (voice, juce::File (f));
         selectVoice (voice);
-        sourcePage->bindVoice (voice);
-        tabs.setCurrentTabIndex (0);
-        showView (View::Voice);
+        showPage (Sound);
         break;
     }
 }

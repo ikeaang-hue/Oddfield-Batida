@@ -1,8 +1,9 @@
 #include "PatternGrid.h"
 
-#include "RenameField.h"
+#include "Look/Theme.h"
 
 using namespace batida;
+using namespace theme;
 
 namespace
 {
@@ -11,7 +12,6 @@ std::optional<Track> trackClipboard;
 constexpr float kVelocityPerPixel = 0.8f; // ~160 px from 0 to 127
 constexpr int kDragThreshold = 3;
 
-const juce::Colour kOn (0xff4fc3f7);
 
 juce::String laneValueText (const Step& s, PatternGrid::Lane lane)
 {
@@ -45,25 +45,6 @@ float laneValue (const Step& s, PatternGrid::Lane lane)
 
 PatternGrid::PatternGrid (BatidaProcessor& p) : proc (p)
 {
-    for (int t = 0; t < kNumTracks; ++t)
-    {
-        auto& m = muteButtons[(size_t) t];
-        auto& so = soloButtons[(size_t) t];
-        m.setButtonText ("M");
-        so.setButtonText ("S");
-        m.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffd9534f));
-        so.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffe0b84a));
-        so.setColour (juce::TextButton::textColourOnId, juce::Colours::black);
-        for (auto* b : { &m, &so })
-        {
-            b->setClickingTogglesState (true);
-            addAndMakeVisible (*b);
-        }
-        muteAttachments[(size_t) t] = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
-            proc.getState(), voiceParamID (t, vp::Mute), m);
-        soloAttachments[(size_t) t] = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
-            proc.getState(), voiceParamID (t, vp::Solo), so);
-    }
     shownSteps.fill (-2);
     startTimerHz (30);
 }
@@ -116,35 +97,6 @@ void PatternGrid::timerCallback()
         repaint();
 }
 
-void PatternGrid::resized()
-{
-    const auto rh = rowHeight();
-    for (int t = 0; t < kNumTracks; ++t)
-    {
-        const auto y = t * rh + rh - 20;
-        muteButtons[(size_t) t].setBounds (6, y, 24, 17);
-        soloButtons[(size_t) t].setBounds (32, y, 24, 17);
-    }
-}
-
-void PatternGrid::renameTrack (int track)
-{
-    const auto rh = rowHeight();
-    startRename (renameEditor, *this, { 4, track * rh + 2, kHeaderWidth - 8, std::min (26, rh - 4) }, proc.getVoiceName (track),
-                 [this, track] (const juce::String& text)
-                 {
-                     proc.setVoiceName (track, text);
-                     repaint();
-                 });
-}
-
-void PatternGrid::mouseDoubleClick (const juce::MouseEvent& e)
-{
-    const auto row = e.y / std::max (1, rowHeight());
-    if (e.x < kHeaderWidth && row < kNumTracks)
-        renameTrack (row);
-}
-
 juce::Rectangle<int> PatternGrid::cellBounds (int row, int step) const
 {
     const auto w = (float) (getWidth() - kHeaderWidth) / kStepsPerPage;
@@ -164,106 +116,95 @@ bool PatternGrid::hitCell (juce::Point<int> p, int& row, int& step) const
 
 void PatternGrid::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff202326));
+    g.fillAll (bg);
     const auto& pat = proc.patterns().get().patterns[(size_t) patternIndex()];
     const auto pageStart = page * kStepsPerPage;
-    const auto rh = rowHeight();
 
     for (int row = 0; row <= kNumTracks; ++row)
     {
         const bool xyRow = row == kNumTracks;
-        const auto header = juce::Rectangle<int> (0, row * rh, kHeaderWidth, rh).reduced (6, 2);
-
-        g.setColour (juce::Colours::lightgrey);
-        g.setFont (juce::FontOptions (14.0f, juce::Font::bold));
-        if (xyRow)
-            g.drawText ("XY lock", header, juce::Justification::centredLeft);
-        else
-        {
-            const auto& tr = pat.tracks[(size_t) row];
-            const auto top = header.withHeight (std::max (14, header.getHeight() - 20));
-            g.drawFittedText (juce::String (row + 1) + " " + proc.getVoiceName (row), top.withTrimmedRight (26),
-                              juce::Justification::centredLeft, 1, 0.7f);
-            g.setFont (juce::FontOptions (12.0f));
-            g.setColour (juce::Colours::grey);
-            g.drawText (juce::String (std::min (tr.length, pat.length)), top, juce::Justification::centredRight);
-        }
-
         const auto trackLen = xyRow ? pat.length : std::min (pat.tracks[(size_t) row].length, pat.length);
         const auto playing = shownSteps[(size_t) row];
 
         for (int i = 0; i < kStepsPerPage; ++i)
         {
             const auto step = pageStart + i;
-            const auto cell = cellBounds (row, i).reduced (2);
+            const auto cell = cellBounds (row, i).withTrimmedRight (2).withTrimmedBottom (3);
             const bool inPattern = step < pat.length;
             const bool inTrack = step < trackLen;
-            const auto alpha = inTrack ? 1.0f : 0.35f;
 
-            auto base = juce::Colour (i / 4 % 2 == 0 ? 0xff30343a : 0xff292c31);
+            auto base = (i / 4) % 2 == 0 ? cellA : cellB;
             if (! inPattern)
-                base = juce::Colour (0xff191b1d);
-            else if (! inTrack)
-                base = base.darker (0.5f);
+                base = bg;
             g.setColour (base);
-            g.fillRoundedRectangle (cell.toFloat(), 3.0f);
-
-            if (inPattern && step == playing)
-            {
-                g.setColour (juce::Colours::white.withAlpha (0.16f));
-                g.fillRoundedRectangle (cell.toFloat(), 3.0f);
-            }
+            g.fillRect (cell);
             if (! inPattern)
+            {
+                g.setColour (grid);
+                g.drawRect (cell, 1);
                 continue;
+            }
+            const auto alpha = inTrack ? 1.0f : 0.3f;
 
             if (xyRow)
             {
                 const auto& l = pat.xy[(size_t) step];
                 if (l.active)
                 {
-                    const auto c = cell.toFloat().reduced (4.0f);
-                    g.setColour (juce::Colours::orange.withAlpha (0.18f));
-                    g.fillRoundedRectangle (c, 2.0f);
-                    g.setColour (juce::Colours::orange);
-                    g.fillEllipse (juce::Rectangle<float> (10.0f, 10.0f).withCentre ({ c.getX() + l.x * c.getWidth(),
-                                                                                     c.getBottom() - l.y * c.getHeight() }));
+                    const auto m = std::min (cell.getWidth(), cell.getHeight()) - 12;
+                    const auto box = juce::Rectangle<int> (m, m).withCentre (cell.getCentre()).toFloat();
+                    g.setColour (lime);
+                    g.drawRect (box, 1.0f);
+                    const juce::Point<float> p (box.getX() + l.x * box.getWidth(), box.getBottom() - l.y * box.getHeight());
+                    g.setColour (lime.withAlpha (0.4f));
+                    g.fillRect (p.x, box.getY(), 1.0f, box.getHeight());
+                    g.fillRect (box.getX(), p.y, box.getWidth(), 1.0f);
+                    g.setColour (lime);
+                    g.fillRect (juce::Rectangle<float> (4.0f, 4.0f).withCentre (p));
                 }
-                continue;
-            }
-
-            const auto& s = pat.tracks[(size_t) row].steps[(size_t) step];
-            if (! s.gate)
-                continue;
-
-            // The bar shows the lane's value; in Steps it is the velocity.
-            const auto v = laneValue (s, lane);
-            const auto bar = cell.withTop (cell.getBottom() - std::max (3, juce::roundToInt (v * cell.getHeight())));
-            g.setColour (kOn.withAlpha (0.35f * alpha));
-            g.fillRoundedRectangle (cell.toFloat(), 3.0f);
-            g.setColour (kOn.withAlpha (alpha));
-            g.fillRoundedRectangle (bar.toFloat(), 3.0f);
-
-            juce::String marks;
-            if (lane == Lane::Steps)
-            {
-                if (s.ratchet > 1) marks << "x" << (int) s.ratchet;
-                if (s.probability < 100) marks << " " << (int) s.probability << "%";
             }
             else
-                marks = laneValueText (s, lane);
-
-            if (marks.isNotEmpty() || (pressRow == row && pressStep == step && moved))
             {
-                g.setColour (juce::Colours::white);
-                g.setFont (juce::FontOptions (11.0f, juce::Font::bold));
-                const auto text = pressRow == row && pressStep == step && moved ? laneValueText (s, lane) : marks.trim();
-                g.drawText (text, cell.reduced (3, 2), juce::Justification::centredTop);
+                const auto& s = pat.tracks[(size_t) row].steps[(size_t) step];
+                if (s.gate)
+                {
+                    // The bar shows the lane's value; in Steps it is the velocity.
+                    const auto v = laneValue (s, lane);
+                    const auto inner = cell.reduced (3);
+                    const auto bar = inner.withTop (inner.getBottom() - std::max (2, juce::roundToInt (v * (float) inner.getHeight())));
+                    g.setColour (ink.withAlpha (alpha));
+                    g.fillRect (bar);
+
+                    juce::String marks;
+                    if (lane == Lane::Steps)
+                    {
+                        if (s.ratchet > 1) marks << "x" << (int) s.ratchet;
+                        if (s.probability < 100) marks << " " << (int) s.probability << "%";
+                    }
+                    else
+                        marks = laneValueText (s, lane);
+                    const auto pressed = pressRow == row && pressStep == step && moved;
+                    if (pressed)
+                        marks = laneValueText (s, lane);
+                    if (marks.isNotEmpty())
+                    {
+                        g.setColour (pressed ? ink : lime.withAlpha (alpha));
+                        g.setFont (mono (8.5f, Weight::Medium));
+                        g.drawText (marks.trim(), cell.reduced (4, 3), juce::Justification::topLeft, false);
+                    }
+                }
+            }
+
+            if (step == playing)
+            {
+                g.setColour (lime);
+                g.drawRect (cell, 1);
             }
         }
     }
 }
 
-void PatternGrid::trackMenu (int track)
+void PatternGrid::trackMenu (int track, juce::Component& target)
 {
     const auto pi = patternIndex();
     juce::PopupMenu m;
@@ -274,7 +215,7 @@ void PatternGrid::trackMenu (int track)
 
     m.addSectionHeader (juce::String (track + 1) + " " + proc.getVoiceName (track));
     m.addItem (7, "Rename...");
-    m.addSubMenu ("Swap voice with", swapMenu);
+    m.addSubMenu ("Swap with", swapMenu);
     m.addSeparator();
     m.addItem (1, "Copy track");
     m.addItem (2, "Paste track", trackClipboard.has_value());
@@ -284,13 +225,14 @@ void PatternGrid::trackMenu (int track)
     m.addItem (5, "Fill every 2nd step");
     m.addItem (6, "Fill every 4th step");
 
-    m.showMenuAsync (juce::PopupMenu::Options(), [this, track, pi] (int choice)
+    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (target), [this, track, pi] (int choice)
     {
         if (choice == 0)
             return;
         if (choice == 7)
         {
-            renameTrack (track);
+            if (onRename)
+                onRename (track);
             return;
         }
         if (choice >= 100)
@@ -327,14 +269,6 @@ void PatternGrid::mouseDown (const juce::MouseEvent& e)
     pressRow = pressStep = -1;
     moved = painting = false;
     const auto pi = patternIndex();
-
-    if (e.x < kHeaderWidth)
-    {
-        const auto row = e.y / std::max (1, rowHeight());
-        if (row < kNumTracks && e.mods.isPopupMenu())
-            trackMenu (row);
-        return;
-    }
 
     int row, step;
     if (! hitCell (e.getPosition(), row, step))
@@ -476,47 +410,52 @@ void PatternGrid::mouseUp (const juce::MouseEvent&)
 
 PageMap::PageMap (BatidaProcessor& p, PatternGrid& g) : proc (p), grid (g)
 {
-    setTooltip ("All 64 steps: click a bar to show it; right-click to copy, paste or clear a bar");
+    setTooltip ("Bars 1-4: click to show one; right-click to copy, paste or clear it");
     startTimerHz (15);
 }
 
 void PageMap::paint (juce::Graphics& g)
 {
-    const auto r = getLocalBounds().toFloat().reduced (1.0f);
+    const auto r = getLocalBounds().toFloat();
     const auto& pat = proc.patterns().get().patterns[(size_t) std::clamp (proc.displayPattern(), 0, kNumPatterns - 1)];
     const auto stepW = r.getWidth() / kMaxSteps;
-    const auto rowH = r.getHeight() / kNumTracks;
+    const auto rowH = (r.getHeight() - 2.0f) / kNumTracks;
 
-    g.setColour (juce::Colour (0xff191b1d));
-    g.fillRoundedRectangle (r, 3.0f);
-
+    g.fillAll (bg);
     for (int bar = 0; bar < PatternGrid::kPages; ++bar)
     {
-        const auto area = juce::Rectangle<float> (r.getX() + bar * 16 * stepW, r.getY(), 16 * stepW, r.getHeight());
-        const bool used = bar * 16 < pat.length;
-        g.setColour (used ? juce::Colour (0xff2d3136) : juce::Colour (0xff1c1e21));
-        g.fillRect (area.reduced (1.0f, 0.0f));
+        const auto area = juce::Rectangle<float> (r.getX() + bar * 16 * stepW, r.getY(), 16 * stepW, r.getHeight()).reduced (1.0f, 0.0f);
+        if (bar * 16 < pat.length)
+        {
+            g.setColour (theme::cellB);
+            g.fillRect (area);
+        }
+        else
+        {
+            const float dash[] = { 2.0f, 2.0f };
+            g.setColour (theme::faint);
+            for (const auto& l : { juce::Line<float> (area.getTopLeft(), area.getTopRight()), juce::Line<float> (area.getBottomLeft(), area.getBottomRight()) })
+                g.drawDashedLine (l, dash, 2);
+        }
     }
 
     for (int t = 0; t < kNumTracks; ++t)
         for (int s = 0; s < pat.length; ++s)
             if (pat.tracks[(size_t) t].steps[(size_t) s].gate)
             {
-                g.setColour (kOn.withAlpha (s < pat.tracks[(size_t) t].length ? 0.9f : 0.3f));
-                g.fillRect (r.getX() + s * stepW + 0.5f, r.getY() + t * rowH + 0.5f, std::max (1.0f, stepW - 1.0f),
-                            std::max (1.0f, rowH - 1.0f));
+                g.setColour (theme::ink.withAlpha (s < pat.tracks[(size_t) t].length ? 0.9f : 0.3f));
+                g.fillRect (r.getX() + s * stepW + 0.5f, r.getY() + 1.0f + t * rowH, std::max (1.0f, stepW - 1.0f), std::max (1.0f, rowH - 0.5f));
             }
 
     const auto& seq = proc.sequencer();
     if (seq.isRunning() && seq.getPatternStep() >= 0)
     {
-        g.setColour (juce::Colours::white.withAlpha (0.8f));
+        g.setColour (theme::lime);
         g.fillRect (r.getX() + seq.getPatternStep() * stepW, r.getY(), std::max (1.5f, stepW), r.getHeight());
     }
 
-    g.setColour (juce::Colours::orange);
-    g.drawRoundedRectangle (juce::Rectangle<float> (r.getX() + grid.getPage() * 16 * stepW, r.getY(), 16 * stepW, r.getHeight()),
-                            2.0f, 2.0f);
+    g.setColour (theme::ink);
+    g.drawRect (juce::Rectangle<float> (r.getX() + grid.getPage() * 16 * stepW, r.getY(), 16 * stepW, r.getHeight()), 1.0f);
 }
 
 void PageMap::mouseDown (const juce::MouseEvent& e)

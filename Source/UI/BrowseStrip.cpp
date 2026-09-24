@@ -1,45 +1,95 @@
 #include "BrowseStrip.h"
 
-void ArrowTextButton::paintButton (juce::Graphics& g, bool over, bool down)
+using namespace theme;
+
+namespace
 {
-    getLookAndFeel().drawButtonBackground (g, *this, findColour (juce::TextButton::buttonColourId), over, down);
-    const auto r = getLocalBounds().toFloat().withSizeKeepingCentre (7.0f, 9.0f);
-    juce::Path p;
-    if (left)
-        p.addTriangle (r.getRight(), r.getY(), r.getRight(), r.getBottom(), r.getX(), r.getCentreY());
-    else
-        p.addTriangle (r.getX(), r.getY(), r.getX(), r.getBottom(), r.getRight(), r.getCentreY());
-    g.setColour (juce::Colours::white.withAlpha (isEnabled() ? 0.85f : 0.3f));
-    g.fillPath (p);
+constexpr int kArrow = 18;
+} // namespace
+
+BrowseStrip::BrowseStrip (Style s) : style (s)
+{
+    setRepaintsOnMouseActivity (false);
 }
 
-BrowseStrip::BrowseStrip()
+void BrowseStrip::setText (const juce::String& text, const juce::String& tooltip)
 {
-    previous.setTooltip ("Previous in the library (LIB page's list)");
-    next.setTooltip ("Next in the library (LIB page's list)");
-    previous.setConnectedEdges (juce::Button::ConnectedOnRight);
-    name.setConnectedEdges (juce::Button::ConnectedOnLeft | juce::Button::ConnectedOnRight);
-    next.setConnectedEdges (juce::Button::ConnectedOnLeft);
-    previous.onClick = [this] { if (onPrevious) onPrevious(); };
-    next.onClick = [this] { if (onNext) onNext(); };
-    name.onClick = [this] { if (onMenu) onMenu(); };
-    for (juce::Button* b : { (juce::Button*) &previous, (juce::Button*) &name, (juce::Button*) &next })
-        addAndMakeVisible (*b);
+    if (text != shown)
+    {
+        shown = text;
+        repaint();
+    }
+    setTooltip (tooltip);
 }
 
-void BrowseStrip::setName (const juce::String& text, const juce::String& tooltip)
+void BrowseStrip::setSubtitle (const juce::String& text)
 {
-    if (text == shown)
-        return;
-    shown = text;
-    name.setButtonText (text + juce::String::fromUTF8 (" \xe2\x96\xbe")); // ▾
-    name.setTooltip (tooltip);
+    if (text != subtitle)
+    {
+        subtitle = text;
+        repaint();
+    }
 }
 
-void BrowseStrip::resized()
+BrowseStrip::Part BrowseStrip::partAt (juce::Point<int> p) const
 {
+    if (! getLocalBounds().contains (p))
+        return Part::None;
+    if (p.x < kArrow)
+        return Part::Previous;
+    if (p.x >= getWidth() - kArrow)
+        return Part::Next;
+    return Part::Name;
+}
+
+void BrowseStrip::paint (juce::Graphics& g)
+{
+    const auto hot = isMouseOver() ? partAt (getMouseXYRelative()) : Part::None;
     auto r = getLocalBounds();
-    previous.setBounds (r.removeFromLeft (22));
-    next.setBounds (r.removeFromRight (22));
-    name.setBounds (r);
+    const auto arrowFont = mono (style == Style::Large ? 14.0f : 12.0f);
+
+    g.setFont (arrowFont);
+    g.setColour (hot == Part::Previous ? ink : muted);
+    g.drawText (juce::String::fromUTF8 ("\xe2\x80\xb9"), r.removeFromLeft (kArrow), juce::Justification::centred);
+    g.setColour (hot == Part::Next ? ink : muted);
+    g.drawText (juce::String::fromUTF8 ("\xe2\x80\xba"), r.removeFromRight (kArrow), juce::Justification::centred);
+
+    if (style == Style::Large)
+    {
+        auto top = r.removeFromTop (r.getHeight() * 11 / 20).withTrimmedLeft (4);
+        g.setColour (ink);
+        g.setFont (head (14.0f, true));
+        g.drawText (shown.toUpperCase(), top, juce::Justification::bottomLeft, true);
+        g.setColour (muted);
+        g.setFont (mono (9.5f));
+        g.drawText (subtitle, r.withTrimmedLeft (4).withTrimmedTop (3), juce::Justification::topLeft, true);
+        if (hot == Part::Name)
+        {
+            g.setColour (faint);
+            g.fillRect (top.getX(), top.getBottom() + 1, (int) juce::GlyphArrangement::getStringWidth (head (14.0f, true), shown.toUpperCase()), 1);
+        }
+        return;
+    }
+
+    g.setFont (mono (11.0f, Weight::Medium));
+    const auto text = prefixText + shown;
+    g.setColour (hot == Part::Name ? ink : ink.withAlpha (0.9f));
+    g.drawText (text, r, juce::Justification::centred, true);
+    if (hot == Part::Name)
+    {
+        const auto w = std::min (r.getWidth(), (int) juce::GlyphArrangement::getStringWidth (mono (11.0f, Weight::Medium), text));
+        g.setColour (faint);
+        g.fillRect (r.getCentreX() - w / 2, r.getCentreY() + 8, w, 1);
+    }
+}
+
+void BrowseStrip::mouseDown (const juce::MouseEvent& e)
+{
+    switch (partAt (e.getPosition()))
+    {
+        case Part::Previous: if (onPrevious) onPrevious(); break;
+        case Part::Next:     if (onNext) onNext(); break;
+        case Part::Name:     if (onMenu) onMenu(); break;
+        case Part::None:     break;
+    }
 }

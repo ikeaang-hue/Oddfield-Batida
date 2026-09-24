@@ -168,6 +168,9 @@ public:
     std::array<float, batida::kNumGlobalParams> readGlobalParams() const;
     float getGainReductionDb() const { return kit.getGainReductionDb(); }
 
+    // The output's peak level per channel since the last call (for the meter).
+    std::array<float, 2> takeOutputPeaks();
+
     std::atomic<int> selectedVoice { 0 };
 
 private:
@@ -183,6 +186,7 @@ private:
     std::array<std::array<std::atomic<float>*, batida::kNumVoiceParams>, batida::kNumVoices> voiceRaw {};
     std::array<std::atomic<float>*, batida::kNumGlobalParams> globalRaw {};
     std::atomic<uint32_t> auditionOn { 0 }, auditionOff { 0 };
+    std::array<std::atomic<float>, 2> outputPeaks {};
     std::array<juce::String, batida::kNumVoices> voiceNames;
     std::atomic<int> namesVersion { 0 };
 

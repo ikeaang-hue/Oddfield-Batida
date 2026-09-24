@@ -1,23 +1,36 @@
 #include "LibraryController.h"
 
 #include "Library/SampleLocator.h"
+#include "Look/Theme.h"
 
 using namespace batida;
 
 namespace
 {
-const juce::Colour kBox (0xff2a2d31), kAccent (0xffc0632a), kBlue (0xff2b7bb9);
 
 juce::String capitalised (const juce::String& s)
 {
     return s.substring (0, 1).toUpperCase() + s.substring (1);
 }
 
-void styleLabel (juce::Label& l, const juce::String& text, float size = 13.0f, bool bold = false)
+void styleLabel (juce::Label& l, const juce::String& text, float size = 10.5f, bool bold = false)
 {
     l.setText (text, juce::dontSendNotification);
-    l.setFont (juce::FontOptions (size, bold ? juce::Font::bold : juce::Font::plain));
-    l.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+    l.setFont (bold ? theme::mono (size, theme::Weight::Bold) : theme::mono (size));
+    l.setColour (juce::Label::textColourId, theme::ink);
+    l.setBorderSize ({});
+}
+
+void styleFieldLabel (juce::Label& l, const juce::String& text)
+{
+    styleLabel (l, text.toUpperCase(), 9.5f);
+    l.setColour (juce::Label::textColourId, theme::muted);
+    l.setJustificationType (juce::Justification::centredLeft);
+}
+
+juce::String tildePath (const juce::File& f)
+{
+    return f.getFullPathName().replace (juce::File::getSpecialLocation (juce::File::userHomeDirectory).getFullPathName(), "~");
 }
 
 void showMessage (const juce::String& title, const juce::String& text)
@@ -30,14 +43,19 @@ void showMessage (const juce::String& title, const juce::String& text)
                                   nullptr);
 }
 
-void paintOverlay (juce::Graphics& g, juce::Rectangle<int> area, juce::Rectangle<int> box)
+void paintOverlay (juce::Graphics& g, juce::Rectangle<int> area, juce::Rectangle<int> box, const juce::String& tag, const juce::String& title)
 {
-    g.setColour (juce::Colours::black.withAlpha (0.55f));
+    g.setColour (theme::bg.withAlpha (0.78f));
     g.fillRect (area);
-    g.setColour (kBox);
-    g.fillRoundedRectangle (box.toFloat(), 6.0f);
-    g.setColour (kAccent.withAlpha (0.7f));
-    g.drawRoundedRectangle (box.toFloat().reduced (0.5f), 6.0f, 1.0f);
+    g.setColour (theme::bg);
+    g.fillRect (box);
+    g.setColour (theme::ink);
+    g.drawRect (box, 1);
+    const auto head = box.reduced (16, 14).withHeight (theme::kTagHeight);
+    const auto w = theme::drawTag (g, head, tag);
+    g.setColour (theme::ink);
+    g.setFont (theme::head (11.0f, true));
+    g.drawText (title.toUpperCase(), head.withTrimmedLeft (w + 10), juce::Justification::centredLeft, true);
 }
 } // namespace
 
@@ -65,24 +83,31 @@ SavePanel::SavePanel (BatidaProcessor& p, PresetType t, int v, int pat) : proc (
     if (info.author.isEmpty())
         info.author = lib.getAuthor();
 
-    juce::String what = typeName (type);
+    juce::String from;
     if (type == PresetType::Sound)
-        what += " (voice " + juce::String (voice + 1) + ")";
+        from = "from " + juce::String (voice + 1).paddedLeft ('0', 2) + " " + proc.getVoiceName (voice);
     else if (type == PresetType::Pattern)
-        what += " (pattern " + juce::String (pattern + 1) + ")";
+        from = "from pattern " + juce::String (pattern + 1);
     else if (type == PresetType::Set)
-        what = "set (everything: kit, patterns, settings)";
-    styleLabel (title, "Save " + what, 16.0f, true);
-    title.setColour (juce::Label::textColourId, juce::Colours::white);
+        from = "everything";
+    tagText = "SAVE " + juce::String (typeName (type)).toUpperCase();
+    titleText = from;
+    title.setVisible (false);
 
-    styleLabel (nameLabel, "Name");
-    styleLabel (categoryLabel, "Category");
-    styleLabel (tagsLabel, "Character");
-    styleLabel (authorLabel, "Author");
-    styleLabel (where, {}, 12.0f);
-    where.setColour (juce::Label::textColourId, juce::Colours::grey);
-    styleLabel (message, {}, 12.0f);
-    message.setColour (juce::Label::textColourId, juce::Colours::orange);
+    styleFieldLabel (nameLabel, "Name");
+    styleFieldLabel (categoryLabel, "Category");
+    styleFieldLabel (tagsLabel, "Character");
+    styleFieldLabel (authorLabel, "Author");
+    styleLabel (where, {}, 10.0f);
+    styleLabel (message, {}, 10.0f);
+    message.setColour (juce::Label::backgroundColourId, theme::ink);
+    message.setColour (juce::Label::textColourId, theme::bg);
+    message.setBorderSize ({ 0, 8, 0, 8 });
+    for (auto* ed : { &name, &author })
+    {
+        ed->setFont (theme::mono (11.0f, theme::Weight::Medium));
+        ed->setIndents (8, 6);
+    }
 
     name.setText (info.name, false);
     name.setComponentID ("saveName");
@@ -99,15 +124,28 @@ SavePanel::SavePanel (BatidaProcessor& p, PresetType t, int v, int pat) : proc (
         category.setSelectedId (1, juce::dontSendNotification);
     category.onChange = [this] { replacing = juce::File(); update(); };
     const auto isSound = type == PresetType::Sound;
-    category.setVisible (isSound);
+    category.setVisible (false);
     categoryLabel.setVisible (isSound);
+    for (int i = 0; i < soundCategories().size() && i < (int) categories.size(); ++i)
+    {
+        auto& b = categories[(size_t) i];
+        b.setButtonText (Library::categoryFolder (soundCategories()[i]).toLowerCase());
+        b.onClick = [this, i]
+        {
+            category.setSelectedId (category.getSelectedId() == i + 2 ? 1 : i + 2);
+            for (int k = 0; k < (int) categories.size(); ++k)
+                categories[(size_t) k].setToggleState (category.getSelectedId() == k + 2, juce::dontSendNotification);
+        };
+        b.setToggleState (category.getSelectedId() == i + 2, juce::dontSendNotification);
+        b.setVisible (isSound);
+        addChildComponent (b);
+    }
 
     for (int i = 0; i < 5; ++i)
     {
         auto& b = tags[(size_t) i];
         b.setButtonText (characterTags()[i]);
         b.setClickingTogglesState (true);
-        b.setColour (juce::TextButton::buttonOnColourId, kBlue);
         b.setToggleState (info.tags.contains (characterTags()[i]), juce::dontSendNotification);
         addAndMakeVisible (b);
     }
@@ -118,9 +156,10 @@ SavePanel::SavePanel (BatidaProcessor& p, PresetType t, int v, int pat) : proc (
             anySample = true;
     collect.setVisible (type != PresetType::Pattern);
     collect.setEnabled (anySample);
-    collect.setColour (juce::ToggleButton::textColourId, juce::Colours::lightgrey);
+    collect.setButtonText ("Collect samples");
 
-    save.setColour (juce::TextButton::buttonColourId, kAccent);
+    save.setColour (juce::TextButton::buttonColourId, theme::ink);
+    save.setColour (juce::TextButton::textColourOffId, theme::bg);
     save.setComponentID ("saveButton");
     save.onClick = [this]
     {
@@ -163,14 +202,13 @@ PresetInfo SavePanel::currentInfo() const
 void SavePanel::update()
 {
     const auto file = proc.library().userFileFor (type, currentInfo());
-    where.setText ("Saves to " + file.getRelativePathFrom (proc.library().getRoot()) + " in the library",
-                   juce::dontSendNotification);
+    where.setText (tildePath (file), juce::dontSendNotification);
     const auto armed = replacing != juce::File() && replacing == file;
-    save.setButtonText (armed ? "Replace" : "Save");
-    message.setText (armed ? "There's already a " + juce::String (typeName (type)) + " called \"" + currentInfo().name
-                                 + "\". Click Replace to overwrite it."
+    save.setButtonText (armed ? "REPLACE" : "SAVE");
+    message.setText (armed ? juce::String::fromUTF8 ("! \xe2\x80\x9c") + currentInfo().name + juce::String::fromUTF8 ("\xe2\x80\x9d already exists in User")
                            : juce::String(),
                      juce::dontSendNotification);
+    message.setVisible (armed);
 }
 
 bool SavePanel::saveTo (const juce::File& file)
@@ -189,7 +227,8 @@ bool SavePanel::saveTo (const juce::File& file)
     }
     if (! ok)
     {
-        message.setText ("Couldn't save: " + error, juce::dontSendNotification);
+        message.setText ("! couldn't save: " + error, juce::dontSendNotification);
+        message.setVisible (true);
         return false;
     }
     if (onClose)
@@ -219,43 +258,67 @@ void SavePanel::saveElsewhere()
 
 void SavePanel::paint (juce::Graphics& g)
 {
-    paintOverlay (g, getLocalBounds(), box);
+    paintOverlay (g, getLocalBounds(), box, tagText, titleText);
+    g.setColour (theme::muted);
+    g.setFont (theme::mono (9.5f));
+    g.drawText ("SAVES TO", where.getBounds().withX (box.getX() + 16).withWidth (80), juce::Justification::centredLeft);
 }
 
 void SavePanel::resized()
 {
-    box = getLocalBounds().withSizeKeepingCentre (460, 330);
-    auto r = box.reduced (16);
-    title.setBounds (r.removeFromTop (26));
-    r.removeFromTop (8);
-    auto row = [&] (juce::Label& l, int h = 26) { auto a = r.removeFromTop (h); l.setBounds (a.removeFromLeft (80)); r.removeFromTop (6); return a; };
+    box = getLocalBounds().withSizeKeepingCentre (600, category.isVisible() || categoryLabel.isVisible() ? 330 : 300);
+    auto r = box.reduced (16, 14);
+    r.removeFromTop (theme::kTagHeight + 16);
+    auto row = [&] (juce::Label& l, int h = 26)
+    {
+        auto a = r.removeFromTop (h);
+        l.setBounds (a.removeFromLeft (88));
+        r.removeFromTop (8);
+        return a;
+    };
     name.setBounds (row (nameLabel));
-    if (category.isVisible())
-        category.setBounds (row (categoryLabel).withWidth (160));
-    auto t = row (tagsLabel);
+    if (categoryLabel.isVisible())
+    {
+        auto c = row (categoryLabel, 22);
+        for (auto& b : categories)
+        {
+            const auto w = (int) juce::GlyphArrangement::getStringWidth (theme::mono (10.0f), b.getButtonText()) + 14;
+            b.setBounds (c.removeFromLeft (w));
+            c.removeFromLeft (4);
+        }
+    }
+    auto t = row (tagsLabel, 22);
     for (auto& b : tags)
-        b.setBounds (t.removeFromLeft (t.getWidth() / (int) (&tags.back() - &b + 1)).reduced (2, 0));
-    author.setBounds (row (authorLabel).withWidth (200));
+    {
+        const auto w = (int) juce::GlyphArrangement::getStringWidth (theme::mono (10.0f), b.getButtonText()) + 14;
+        b.setBounds (t.removeFromLeft (w));
+        t.removeFromLeft (4);
+    }
+    author.setBounds (row (authorLabel).withWidth (300));
     if (collect.isVisible())
-        collect.setBounds (r.removeFromTop (24));
-    r.removeFromTop (4);
-    where.setBounds (r.removeFromTop (18));
-    message.setBounds (r.removeFromTop (34));
-    auto buttons = r.removeFromBottom (30);
-    cancel.setBounds (buttons.removeFromRight (80));
-    buttons.removeFromRight (8);
-    save.setBounds (buttons.removeFromRight (90));
-    buttons.removeFromRight (8);
-    elsewhere.setBounds (buttons.removeFromLeft (140));
+    {
+        auto c = r.removeFromTop (22).withTrimmedLeft (88);
+        collect.setBounds (c.withWidth ((int) juce::GlyphArrangement::getStringWidth (theme::mono (9.5f, theme::Weight::Bold), "[COLLECT SAMPLES]") + 14));
+        r.removeFromTop (8);
+    }
+    where.setBounds (r.removeFromTop (16).withTrimmedLeft (88));
+    r.removeFromTop (8);
+    message.setBounds (r.removeFromTop (22));
+    auto buttons = r.removeFromBottom (24);
+    save.setBounds (buttons.removeFromLeft (84));
+    buttons.removeFromLeft (6);
+    elsewhere.setBounds (buttons.removeFromLeft (150));
+    buttons.removeFromLeft (6);
+    cancel.setBounds (buttons.removeFromLeft (80));
 }
 
 // Relink panel ---------------------------------------------------------------------
 
 RelinkPanel::RelinkPanel (BatidaProcessor& p) : proc (p)
 {
-    styleLabel (title, "Missing samples", 16.0f, true);
-    title.setColour (juce::Label::textColourId, juce::Colours::white);
-    styleLabel (status, "Batida looks in your library and the folders you've found samples in before.", 12.0f);
+    title.setVisible (false);
+    styleLabel (status, {}, 9.5f);
+    status.setColour (juce::Label::textColourId, theme::muted);
     status.setJustificationType (juce::Justification::topLeft);
     searchButton.onClick = [this] { searchFolder(); };
     againButton.onClick = [this]
@@ -290,16 +353,22 @@ void RelinkPanel::rebuild()
             continue;
         const juce::File f (proc.sampleSlot (v).getPath());
         auto* l = rowLabels.add (new juce::Label());
-        styleLabel (*l, juce::String (v + 1) + " " + proc.getVoiceName (v) + ":  " + f.getFileName() + "   (was in "
-                            + f.getParentDirectory().getFullPathName() + ")", 12.0f);
-        l->setMinimumHorizontalScale (0.7f);
-        auto* b = rowButtons.add (new juce::TextButton ("Locate..."));
+        styleLabel (*l, juce::String (v + 1).paddedLeft ('0', 2) + " " + proc.getVoiceName (v).toUpperCase(), 10.5f, true);
+        auto* fileLabel = rowLabels.add (new juce::Label());
+        styleLabel (*fileLabel, f.getFileName(), 10.5f);
+        auto* wasLabel = rowLabels.add (new juce::Label());
+        styleLabel (*wasLabel, tildePath (f), 10.0f);
+        wasLabel->setColour (juce::Label::textColourId, theme::muted);
+        wasLabel->setMinimumHorizontalScale (0.6f);
+        addAndMakeVisible (fileLabel);
+        addAndMakeVisible (wasLabel);
+        auto* b = rowButtons.add (new juce::TextButton (juce::String::fromUTF8 ("LOCATE\xe2\x80\xa6")));
         b->onClick = [this, v] { locate (v); };
         addAndMakeVisible (l);
         addAndMakeVisible (b);
     }
     if (shownMissing == 0)
-        status.setText ("All samples are found.", juce::dontSendNotification);
+        status.setText ("all samples found", juce::dontSendNotification);
     resized();
     repaint();
 }
@@ -379,28 +448,39 @@ void RelinkPanel::locate (int voice)
 
 void RelinkPanel::paint (juce::Graphics& g)
 {
-    paintOverlay (g, getLocalBounds(), box);
+    paintOverlay (g, getLocalBounds(), box, "RELINK",
+                  juce::String (shownMissing) + " sample" + (shownMissing == 1 ? "" : "s") + " missing");
+    const auto top = box.getY() + 14 + theme::kTagHeight + 14;
+    const auto x = box.getX() + 16;
+    theme::drawLabel (g, "Slot", { x, top, 100, 14 });
+    theme::drawLabel (g, "File", { x + 110, top, 160, 14 });
+    theme::drawLabel (g, "Last seen", { x + 280, top, 200, 14 });
+    g.setColour (theme::line);
+    g.fillRect (x, top + 18, box.getWidth() - 32, 1);
 }
 
 void RelinkPanel::resized()
 {
-    box = getLocalBounds().withSizeKeepingCentre (620, 150 + 28 * std::max (1, rowLabels.size()));
-    auto r = box.reduced (16);
-    title.setBounds (r.removeFromTop (26));
-    r.removeFromTop (6);
-    for (int i = 0; i < rowLabels.size(); ++i)
+    const auto rows = std::max (1, rowButtons.size());
+    box = getLocalBounds().withSizeKeepingCentre (760, 170 + 32 * rows);
+    auto r = box.reduced (16, 14);
+    r.removeFromTop (theme::kTagHeight + 14 + 24);
+    for (int i = 0; i < rowButtons.size(); ++i)
     {
-        auto row = r.removeFromTop (26);
-        rowButtons[i]->setBounds (row.removeFromRight (90).reduced (0, 1));
-        rowLabels[i]->setBounds (row);
+        auto row = r.removeFromTop (30);
+        rowButtons[i]->setBounds (row.removeFromRight (84).withSizeKeepingCentre (84, 22));
+        rowLabels[i * 3]->setBounds (row.removeFromLeft (110));
+        rowLabels[i * 3 + 1]->setBounds (row.removeFromLeft (170));
+        rowLabels[i * 3 + 2]->setBounds (row.withTrimmedRight (10));
         r.removeFromTop (2);
     }
-    auto buttons = r.removeFromBottom (30);
-    closeButton.setBounds (buttons.removeFromRight (80));
-    buttons.removeFromRight (8);
-    againButton.setBounds (buttons.removeFromRight (100));
-    searchButton.setBounds (buttons.removeFromLeft (150));
-    status.setBounds (r.withTrimmedTop (4));
+    auto buttons = r.removeFromBottom (24);
+    searchButton.setBounds (buttons.removeFromLeft (160));
+    buttons.removeFromLeft (6);
+    againButton.setBounds (buttons.removeFromLeft (110));
+    buttons.removeFromLeft (6);
+    closeButton.setBounds (buttons.removeFromLeft (70));
+    status.setBounds (r.withTrimmedTop (8).removeFromTop (16));
 }
 
 // Controller ---------------------------------------------------------------------

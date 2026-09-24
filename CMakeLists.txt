@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Batida VERSION 0.5.0)
+project(Batida VERSION 0.6.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -71,28 +71,44 @@ juce_add_plugin(Batida
     AU_MAIN_TYPE kAudioUnitType_MusicDevice
     COPY_PLUGIN_AFTER_BUILD TRUE)
 
-target_sources(Batida
-    PRIVATE
-        Source/Plugin/PluginProcessor.cpp
-        Source/UI/PluginEditor.cpp
-        Source/UI/ParamControl.cpp
-        Source/UI/VoicePages.cpp
-        Source/UI/FmPage.cpp
-        Source/UI/KitPage.cpp
-        Source/UI/PatternGrid.cpp
-        Source/UI/SeqPage.cpp
-        Source/UI/DraggableNumber.cpp
-        Source/UI/ModPage.cpp
-        Source/UI/VaryPage.cpp
-        Source/UI/BrowseStrip.cpp
-        Source/UI/LibraryController.cpp
-        Source/UI/LibraryPage.cpp)
+# The editor, shared by the plugin and the snapshot tool.
+set(BATIDA_UI_SOURCES
+    Source/Plugin/PluginProcessor.cpp
+    Source/UI/Look/Theme.cpp
+    Source/UI/Look/Motion.mm
+    Source/UI/Widgets.cpp
+    Source/UI/Graphs.cpp
+    Source/UI/ParamControl.cpp
+    Source/UI/BrowseStrip.cpp
+    Source/UI/DraggableNumber.cpp
+    Source/UI/Frame.cpp
+    Source/UI/KitPage.cpp
+    Source/UI/SoundPage.cpp
+    Source/UI/SoundOverlays.cpp
+    Source/UI/PatternGrid.cpp
+    Source/UI/SeqPage.cpp
+    Source/UI/ModPage.cpp
+    Source/UI/LibraryController.cpp
+    Source/UI/LibraryPage.cpp
+    Source/UI/PluginEditor.cpp)
+
+# JetBrains Mono and Martian Mono (SIL Open Font License), embedded.
+juce_add_binary_data(BatidaFonts
+    SOURCES
+        resources/fonts/JetBrainsMono-Regular.ttf
+        resources/fonts/JetBrainsMono-Medium.ttf
+        resources/fonts/JetBrainsMono-Bold.ttf
+        resources/fonts/MartianMono-StdMd.ttf
+        resources/fonts/MartianMono-StdxBd.ttf)
+
+target_sources(Batida PRIVATE ${BATIDA_UI_SOURCES})
 
 target_compile_definitions(Batida PUBLIC ${BATIDA_DEFINITIONS})
 
 target_link_libraries(Batida
     PRIVATE
         BatidaEngine
+        BatidaFonts
         juce::juce_audio_utils
     PUBLIC
         juce::juce_recommended_config_flags
@@ -131,26 +147,14 @@ juce_add_console_app(BatidaSnapshot PRODUCT_NAME "BatidaSnapshot")
 target_sources(BatidaSnapshot
     PRIVATE
         tests/Snapshot.cpp
-        Source/Plugin/PluginProcessor.cpp
-        Source/UI/PluginEditor.cpp
-        Source/UI/ParamControl.cpp
-        Source/UI/VoicePages.cpp
-        Source/UI/FmPage.cpp
-        Source/UI/KitPage.cpp
-        Source/UI/PatternGrid.cpp
-        Source/UI/SeqPage.cpp
-        Source/UI/DraggableNumber.cpp
-        Source/UI/ModPage.cpp
-        Source/UI/VaryPage.cpp
-        Source/UI/BrowseStrip.cpp
-        Source/UI/LibraryController.cpp
-        Source/UI/LibraryPage.cpp)
+        ${BATIDA_UI_SOURCES})
 
 target_compile_definitions(BatidaSnapshot PRIVATE ${BATIDA_DEFINITIONS} JucePlugin_Name="Batida" JUCE_MODAL_LOOPS_PERMITTED=1)
 
 target_link_libraries(BatidaSnapshot
     PRIVATE
         BatidaEngine
+        BatidaFonts
         juce::juce_audio_utils
     PUBLIC
         juce::juce_recommended_config_flags)

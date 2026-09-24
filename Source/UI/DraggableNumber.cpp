@@ -1,8 +1,12 @@
 #include "DraggableNumber.h"
 
+#include "Look/Theme.h"
+
+using namespace theme;
+
 namespace
 {
-const juce::FontOptions kFont (17.0f, juce::Font::bold);
+juce::Font numberFont() { return mono (14.5f, Weight::Bold); }
 constexpr float kPixelsPerStep = 5.0f;
 } // namespace
 
@@ -10,8 +14,7 @@ DraggableNumber::DraggableNumber (juce::RangedAudioParameter& p, int d, juce::St
     : param (p), decimals (d), suffix (std::move (s)), scale (displayScale)
 {
     setMouseCursor (juce::MouseCursor::UpDownResizeCursor);
-    setTooltip ("Drag up/down" + juce::String (d > 0 ? " (whole part or decimals separately)" : "")
-                + "; double-click to type");
+    setTooltip (d > 0 ? "Whole number and decimals drag separately; click to type, double-click for the default" : juce::String());
     startTimerHz (15);
 }
 
@@ -52,7 +55,7 @@ juce::Rectangle<int> DraggableNumber::textArea() const
 int DraggableNumber::splitX() const
 {
     juce::GlyphArrangement ga;
-    ga.addLineOfText (juce::Font (kFont), integerText(), 0.0f, 0.0f);
+    ga.addLineOfText (numberFont(), integerText(), 0.0f, 0.0f);
     return textArea().getX() + juce::roundToInt (ga.getBoundingBox (0, -1, true).getRight());
 }
 
@@ -68,36 +71,43 @@ void DraggableNumber::paint (juce::Graphics& g)
     shown = param.getValue();
     shownOverride = overrideText ? overrideText() : std::nullopt;
 
-    g.setColour (juce::Colours::black.withAlpha (0.35f));
-    g.fillRoundedRectangle (getLocalBounds().toFloat(), 4.0f);
+    g.setColour (isMouseOver (true) || dragging ? ink : line);
+    g.drawRect (getLocalBounds(), 1);
 
     const auto area = textArea();
     if (shownOverride.has_value())
     {
-        g.setColour (juce::Colours::grey);
-        g.setFont (juce::FontOptions (13.0f));
-        g.drawText (*shownOverride, area, juce::Justification::centredLeft);
+        // Following the project's tempo: shown, not draggable.
+        g.setColour (muted);
+        g.setFont (numberFont());
+        g.drawText (shownOverride->upToFirstOccurrenceOf (" ", false, false), area, juce::Justification::centredLeft);
+        g.setFont (mono (8.5f));
+        g.drawText ("HOST", area, juce::Justification::centredRight);
         return;
     }
 
     const auto split = splitX();
-    auto highlight = [&] (bool fractionPart)
-    {
-        return dragging && dragFraction == fractionPart ? juce::Colours::orange : juce::Colours::white;
-    };
+    juce::GlyphArrangement ga;
+    ga.addLineOfText (numberFont(), fractionText(), 0.0f, 0.0f);
+    const auto end = split + juce::roundToInt (ga.getBoundingBox (0, -1, true).getRight());
 
-    g.setFont (kFont);
-    g.setColour (highlight (false));
+    // The part being dragged is inverted.
+    if (dragging)
+    {
+        const auto part = dragFraction ? juce::Rectangle<int> (split, 3, end - split + 1, getHeight() - 6)
+                                       : juce::Rectangle<int> (area.getX() - 2, 3, split - area.getX() + 2, getHeight() - 6);
+        g.setColour (ink);
+        g.fillRect (part);
+    }
+    g.setFont (numberFont());
+    g.setColour (dragging && ! dragFraction ? bg : ink);
     g.drawText (integerText(), area, juce::Justification::centredLeft);
-    g.setColour (highlight (true));
+    g.setColour (dragging && dragFraction ? bg : ink);
     g.drawText (fractionText(), area.withLeft (split), juce::Justification::centredLeft);
 
-    juce::GlyphArrangement ga;
-    ga.addLineOfText (juce::Font (kFont), fractionText(), 0.0f, 0.0f);
-    const auto end = split + juce::roundToInt (ga.getBoundingBox (0, -1, true).getRight());
-    g.setColour (juce::Colours::grey);
-    g.setFont (juce::FontOptions (12.0f));
-    g.drawText (suffix, area.withLeft (end + 4), juce::Justification::centredLeft);
+    g.setColour (muted);
+    g.setFont (mono (9.5f));
+    g.drawText (suffix.toUpperCase(), area.withLeft (end + 5), juce::Justification::centredLeft);
 }
 
 void DraggableNumber::mouseDown (const juce::MouseEvent& e)
@@ -121,20 +131,44 @@ void DraggableNumber::mouseDrag (const juce::MouseEvent& e)
     repaint();
 }
 
-void DraggableNumber::mouseUp (const juce::MouseEvent&)
+void DraggableNumber::mouseUp (const juce::MouseEvent& e)
 {
     if (dragging)
         param.endChangeGesture();
+    const auto wasClick = dragging && e.getDistanceFromDragStart() <= 2 && e.getNumberOfClicks() == 1;
     dragging = false;
     repaint();
+
+    // A click (no drag) opens a field to type into, unless it becomes a double-click.
+    if (wasClick)
+    {
+        const auto token = ++clickToken;
+        juce::Timer::callAfterDelay (juce::MouseEvent::getDoubleClickTimeout() + 20,
+                                     [safe = juce::Component::SafePointer<DraggableNumber> (this), token]
+                                     {
+                                         if (safe != nullptr && safe->clickToken == token)
+                                             safe->startEditing();
+                                     });
+    }
 }
 
 void DraggableNumber::mouseDoubleClick (const juce::MouseEvent&)
 {
     if (overrideText && overrideText().has_value())
         return;
+    ++clickToken; // back to the default instead of typing
+    param.beginChangeGesture();
+    param.setValueNotifyingHost (param.getDefaultValue());
+    param.endChangeGesture();
+    repaint();
+}
+
+void DraggableNumber::startEditing()
+{
+    if (overrideText && overrideText().has_value())
+        return;
     editor = std::make_unique<juce::TextEditor>();
-    editor->setFont (juce::FontOptions (16.0f));
+    editor->setFont (numberFont());
     editor->setText (juce::String (value(), decimals), false);
     editor->setBounds (getLocalBounds());
     editor->selectAll();

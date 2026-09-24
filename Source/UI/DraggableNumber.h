@@ -6,7 +6,8 @@
 // A number you drag up/down, always from its current value (never jumps to
 // where you clicked). With decimals, the integer part and the part after the
 // point drag separately: the integer in whole steps, the fraction in its last
-// digit. Double-click to type a value. Writes a host parameter with gestures.
+// digit. Click to type a value; double-click for the default. Writes a host
+// parameter with gestures.
 class DraggableNumber final : public juce::Component, public juce::SettableTooltipClient, private juce::Timer
 {
 public:
@@ -21,6 +22,7 @@ public:
     void mouseDrag (const juce::MouseEvent& e) override;
     void mouseUp (const juce::MouseEvent& e) override;
     void mouseDoubleClick (const juce::MouseEvent& e) override;
+    void startEditing();
 
 private:
     void timerCallback() override;
@@ -37,6 +39,7 @@ private:
     const double scale; // shown value = parameter value × scale (e.g. 100 for %)
 
     bool dragging = false, dragFraction = false;
+    int clickToken = 0;
     double startValue = 0.0;
     float shown = -1.0f;
     std::optional<juce::String> shownOverride;

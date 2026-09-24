@@ -15,8 +15,7 @@
 //   XY row:      tap locks the step to the pad's position (tap again clears);
 //                drag moves the lock: up/down = heat, left/right = character.
 //   Option-click a step: that track's length ends there (polymeter).
-//   Track names: double-click to rename; right-click for rename, swap,
-//   copy, paste, clear, fill. M / S under each name mute and solo the voice.
+// The track headers (name, mute, solo, menu) are sound cells beside it.
 class PatternGrid final : public juce::Component, private juce::Timer
 {
 public:
@@ -34,21 +33,23 @@ public:
     void mouseDown (const juce::MouseEvent& e) override;
     void mouseDrag (const juce::MouseEvent& e) override;
     void mouseUp (const juce::MouseEvent& e) override;
-    void mouseDoubleClick (const juce::MouseEvent& e) override;
-    void resized() override;
+
 
     static constexpr int kStepsPerPage = 16;
     static constexpr int kPages = batida::kMaxSteps / kStepsPerPage;
-    static constexpr int kHeaderWidth = 130;
+    static constexpr int kHeaderWidth = 0;
+
+    // A track's menu: rename, swap, copy, paste, clear, fill.
+    void trackMenu (int track, juce::Component& target);
+    std::function<void (int track)> onRename;
+    int rowHeight() const { return getHeight() / (batida::kNumTracks + 1); }
 
 private:
     void timerCallback() override;
 
-    int rowHeight() const { return getHeight() / (batida::kNumTracks + 1); }
     juce::Rectangle<int> cellBounds (int row, int step) const; // step within the page
     bool hitCell (juce::Point<int> p, int& row, int& step) const;
     int patternIndex() const;
-    void trackMenu (int track);
 
     BatidaProcessor& proc;
     Lane lane = Lane::Steps;
@@ -60,12 +61,6 @@ private:
     batida::Step startStep;
     batida::XyLock startLock;
     int lastPaintStep = -1;
-
-    std::array<juce::TextButton, batida::kNumTracks> muteButtons, soloButtons;
-    std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>, batida::kNumTracks> muteAttachments,
-        soloAttachments;
-    std::unique_ptr<juce::TextEditor> renameEditor;
-    void renameTrack (int track);
 
     int shownVersion = -1, shownPattern = -1, shownNames = -1;
     std::array<int, batida::kNumTracks + 1> shownSteps {};

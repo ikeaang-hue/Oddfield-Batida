@@ -128,7 +128,7 @@ std::vector<ParamSpec> buildGlobalSpecs()
     std::vector<ParamSpec> s (kNumGlobalParams);
     s[gp::MidiMode] = choice ("midi_mode", "MIDI Mode", { "Drum map", "Chromatic" });
     s[gp::Master]   = flt ("master", "Master", -60.0f, 6.0f, -8.0f, "dB", -12.0f, 0.1f); // headroom: overlapping hits sum hot
-    s[gp::KeysVoice] = choice ("keys_voice", "Keys Voice", { "1", "2", "3", "4", "5", "6", "7", "8" });
+    s[gp::KeysVoice] = choice ("keys_voice", "Keys Sound", { "1", "2", "3", "4", "5", "6", "7", "8" });
 
     s[gp::XyX] = flt ("xy_x", "XY Character", 0.0f, 1.0f, 0.5f, "%");
     s[gp::XyY] = flt ("xy_y", "XY Heat", 0.0f, 1.0f, 0.2f, "%");
@@ -180,9 +180,9 @@ std::vector<ParamSpec> buildGlobalSpecs()
         s[modParam (m, ModSmooth)]   = flt (k + "smooth", l + "Smooth", 0.0f, 1.0f, 0.0f, "%");
         s[modParam (m, ModHuman)]    = flt (k + "humanise", l + "Humanise", 0.0f, 1.0f, 0.0f, "%");
         s[modParam (m, ModAmount)]   = flt (k + "amount", l + "Amount", 0.0f, 1.0f, 1.0f, "%");
-        s[modParam (m, ModTrigger)]  = choice (k + "trigger", l + "Trigger", { "Any hit", "Pattern start", "Voice 1", "Voice 2",
-                                                                               "Voice 3", "Voice 4", "Voice 5", "Voice 6",
-                                                                               "Voice 7", "Voice 8" });
+        s[modParam (m, ModTrigger)]  = choice (k + "trigger", l + "Trigger", { "Any hit", "Pattern start", "Sound 1", "Sound 2",
+                                                                               "Sound 3", "Sound 4", "Sound 5", "Sound 6",
+                                                                               "Sound 7", "Sound 8" });
     }
 
     s[gp::SceneA]       = choice ("scene_a", "Scene Morph From", { "A", "B", "C", "D" }, 0);
@@ -212,7 +212,7 @@ std::string voiceParamID (int voice, int param)
 
 std::string voiceParamName (int voice, int param)
 {
-    return "V" + std::to_string (voice + 1) + " " + voiceParamSpecs()[(size_t) param].label;
+    return "S" + std::to_string (voice + 1) + " " + voiceParamSpecs()[(size_t) param].label; // "S" for sound
 }
 
 std::string globalParamID (int param)

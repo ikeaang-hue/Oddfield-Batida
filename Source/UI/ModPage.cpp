@@ -1,20 +1,19 @@
 #include "ModPage.h"
 
 using namespace batida;
+using namespace theme;
 
 namespace
 {
-const juce::Colour kModColour (0xff6fd08c);
-
 juce::String targetName (BatidaProcessor& proc, const ModTarget& t)
 {
     if (t.global)
         return globalParamSpecs()[(size_t) t.param].label;
-    return juce::String (t.voice + 1) + " " + proc.getVoiceName (t.voice) + ": " + voiceParamSpecs()[(size_t) t.param].label;
+    return juce::String (t.voice + 1) + " " + proc.getVoiceName (t.voice) + " " + voiceParamSpecs()[(size_t) t.param].label;
 }
 } // namespace
 
-// ShapeEditor -------------------------------------------------------------------
+// ShapeEditor ----------------------------------------------------------------------
 
 ShapeEditor::ShapeEditor (BatidaProcessor& p, int m) : proc (p), mod (m)
 {
@@ -48,19 +47,23 @@ int ShapeEditor::segmentAt (float x) const
 
 void ShapeEditor::paint (juce::Graphics& g)
 {
+    const auto frame = getLocalBounds().toFloat();
+    g.fillAll (bg);
     const auto r = area();
-    g.setColour (juce::Colours::black.withAlpha (0.35f));
-    g.fillRoundedRectangle (getLocalBounds().toFloat(), 4.0f);
-    g.setColour (juce::Colours::white.withAlpha (0.06f));
-    for (int i = 1; i < 4; ++i)
-        g.drawVerticalLine ((int) (r.getX() + r.getWidth() * i / 4.0f), r.getY(), r.getBottom());
-    g.drawHorizontalLine ((int) r.getCentreY(), r.getX(), r.getRight());
+    for (int i = 1; i < 16; ++i)
+    {
+        g.setColour (i % 4 == 0 ? juce::Colour (0xff333333) : juce::Colour (0xff1f1f1f));
+        g.fillRect (r.getX() + r.getWidth() * (float) i / 16.0f, frame.getY(), 1.0f, frame.getHeight());
+    }
+    const float dash[] = { 2.0f, 3.0f };
+    g.setColour (juce::Colour (0xff1a1a1a));
+    g.drawDashedLine ({ r.getX(), r.getCentreY(), r.getRight(), r.getCentreY() }, dash, 2);
 
     const auto& s = proc.movement().get().mods[(size_t) mod];
     juce::Path curve;
-    for (int i = 0; i <= 200; ++i)
+    for (int i = 0; i <= 240; ++i)
     {
-        const auto x = i / 200.0f;
+        const auto x = (float) i / 240.0f;
         const auto p = toScreen (x, evaluateShape (s, std::min (x, 0.9999f)));
         i == 0 ? curve.startNewSubPath (p) : curve.lineTo (p);
     }
@@ -68,23 +71,43 @@ void ShapeEditor::paint (juce::Graphics& g)
     fill.lineTo (r.getRight(), r.getBottom());
     fill.lineTo (r.getX(), r.getBottom());
     fill.closeSubPath();
-    g.setColour (kModColour.withAlpha (0.15f));
+    g.setColour (lime.withAlpha (0.08f));
     g.fillPath (fill);
-    g.setColour (kModColour);
-    g.strokePath (curve, juce::PathStrokeType (2.0f));
+    g.setColour (lime);
+    g.strokePath (curve, juce::PathStrokeType (1.6f));
 
+    // Curve handles halfway along each segment; points as squares.
     for (int i = 0; i < s.numPoints; ++i)
     {
-        const auto p = toScreen (s.points[(size_t) i].x, s.points[(size_t) i].y);
-        g.setColour (i == dragPoint ? juce::Colours::white : kModColour);
-        g.fillEllipse (juce::Rectangle<float> (9.0f, 9.0f).withCentre (p));
+        const auto x0 = s.points[(size_t) i].x;
+        const auto x1 = i + 1 < s.numPoints ? s.points[(size_t) i + 1].x : 1.0f;
+        const auto xm = 0.5f * (x0 + x1);
+        const auto h = juce::Rectangle<float> (6.5f, 6.5f).withCentre (toScreen (xm, evaluateShape (s, std::min (xm, 0.9999f))));
+        g.setColour (bg);
+        g.fillEllipse (h);
+        g.setColour (lime);
+        g.drawEllipse (h, 1.2f);
+    }
+    for (int i = 0; i < s.numPoints; ++i)
+    {
+        g.setColour (i == dragPoint ? ink : lime);
+        g.fillRect (juce::Rectangle<float> (7.0f, 7.0f).withCentre (toScreen (s.points[(size_t) i].x, s.points[(size_t) i].y)));
     }
 
-    // Where the modulator is now.
+    // Where the modulator is now, and its value.
     const auto phase = proc.getKit().getModulators().getUiPhase (mod);
-    const auto x = r.getX() + phase * r.getWidth();
-    g.setColour (juce::Colours::white.withAlpha (0.5f));
-    g.drawVerticalLine ((int) x, r.getY(), r.getBottom());
+    const auto value = evaluateShape (s, std::min (phase, 0.9999f));
+    const auto p = toScreen (phase, value);
+    g.setColour (ink);
+    g.fillRect (p.x, frame.getY(), 1.0f, frame.getHeight());
+    g.fillRect (juce::Rectangle<float> (6.0f, 6.0f).withCentre (p));
+    g.setFont (mono (9.5f, Weight::Medium));
+    g.drawText (juce::String (juce::roundToInt (value * 100.0f)) + "%",
+                juce::Rectangle<float> (std::min (p.x + 6.0f, frame.getRight() - 40.0f), frame.getY() + 6.0f, 36.0f, 12.0f),
+                juce::Justification::centredLeft);
+
+    g.setColour (line);
+    g.drawRect (frame, 1.0f);
 }
 
 void ShapeEditor::mouseDown (const juce::MouseEvent& e)
@@ -130,7 +153,7 @@ void ShapeEditor::mouseDrag (const juce::MouseEvent& e)
 {
     if (curveSegment >= 0)
     {
-        const auto c = juce::jlimit (-1.0f, 1.0f, curveStart - e.getDistanceFromDragStartY() / 80.0f);
+        const auto c = juce::jlimit (-1.0f, 1.0f, curveStart - (float) e.getDistanceFromDragStartY() / 80.0f);
         proc.movement().edit ([&] (MovementData& d) { d.mods[(size_t) mod].points[(size_t) curveSegment].curve = c; });
         return;
     }
@@ -171,52 +194,143 @@ void ShapeEditor::mouseDoubleClick (const juce::MouseEvent& e)
     dragPoint = -1;
 }
 
-// TargetList --------------------------------------------------------------------
+// DepthBar -------------------------------------------------------------------------
 
-TargetList::TargetList (BatidaProcessor& p, int m) : proc (p), mod (m)
+void DepthBar::paint (juce::Graphics& g)
 {
-    addAndMakeVisible (addButton);
-    addButton.onClick = [this] { showAddMenu(); };
+    auto r = getLocalBounds();
+    drawLabel (g, name, r.removeFromLeft (150), isMouseOver() || dragging ? ink : muted);
+    r.removeFromLeft (8);
+    auto value = r.removeFromRight (50);
+    r.removeFromRight (8);
+    const auto t = r.withSizeKeepingCentre (r.getWidth(), 8).toFloat();
+    g.setColour (isMouseOver() || dragging ? trackHover : track);
+    g.fillRect (t);
+    g.setColour (faint);
+    g.fillRect (t.getCentreX() - 0.5f, t.getY() - 2.0f, 1.0f, t.getHeight() + 4.0f);
+    const auto a = std::min (0.5f, 0.5f + depth * 0.5f), b = std::max (0.5f, 0.5f + depth * 0.5f);
+    g.setColour (ink);
+    g.fillRect (t.getX() + a * t.getWidth(), t.getY(), std::max (1.0f, (b - a) * t.getWidth()), t.getHeight());
+    const auto text = (depth > 0.005f ? "+" : "") + juce::String (juce::roundToInt (depth * 100.0f)) + "%";
+    const auto font = mono (10.5f, Weight::Medium);
+    if (dragging)
+    {
+        const auto w = (int) juce::GlyphArrangement::getStringWidth (font, text) + 10;
+        const auto box = value.withLeft (value.getRight() - w).withSizeKeepingCentre (w, 16);
+        g.setColour (ink);
+        g.fillRect (box);
+        g.setColour (bg);
+        g.setFont (font);
+        g.drawText (text, box, juce::Justification::centred);
+        return;
+    }
+    g.setColour (ink);
+    g.setFont (font);
+    g.drawText (text, value.withTrimmedRight (5), juce::Justification::centredRight);
+}
+
+void DepthBar::mouseDown (const juce::MouseEvent&)
+{
+    dragging = true;
+    start = depth;
+    repaint();
+}
+
+void DepthBar::mouseDrag (const juce::MouseEvent& e)
+{
+    const auto width = (float) std::max (60, getWidth() - 216);
+    const auto fine = e.mods.isShiftDown() ? 0.1f : 1.0f;
+    depth = juce::jlimit (-1.0f, 1.0f, start + fine * 2.0f * (float) (e.getDistanceFromDragStartX() - e.getDistanceFromDragStartY()) / width);
+    if (onChange)
+        onChange (depth);
+    repaint();
+}
+
+// ModPanel -------------------------------------------------------------------------
+
+ParamControl& ModPanel::add (int field, const juce::String& label)
+{
+    auto* c = controls.add (new ParamControl (proc.getState(), label));
+    c->bind (globalParamID (modParam (mod, field)));
+    addAndMakeVisible (c);
+    return *c;
+}
+
+ModPanel::ModPanel (BatidaProcessor& p, int m) : proc (p), mod (m), shape (p, m)
+{
+    addAndMakeVisible (shape);
+    shape.setComponentID ("shape" + juce::String (m + 1));
+
+    mode = &add (ModMode, {});
+    mode->withLabelWidth (0);
+    rate = &add (ModRate, "Rate");
+    rate->asMenu();
+    freeRate = &add (ModHz, "Free rate");
+    trigger = &add (ModTrigger, "Fire on");
+    trigger->asMenu();
+    polarity = &add (ModPolarity, "Polarity");
+    polarity->withOptionLabels ({ "Uni", "Bi" });
+    smooth = &add (ModSmooth, "Smooth");
+    humanise = &add (ModHuman, "Humanise");
+    amount = &add (ModAmount, "Amount");
+
+    shapes.onClick = [this]
+    {
+        juce::PopupMenu menu;
+        static const char* names[] = { "Sine", "Triangle", "Ramp up", "Ramp down", "Square", "Random steps" };
+        for (int i = 0; i < 6; ++i)
+            menu.addItem (i + 1, names[i]);
+        menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (shapes), [this] (int choice)
+        {
+            if (choice > 0)
+                proc.movement().edit ([&] (MovementData& d) { setPreset (d.mods[(size_t) mod], (ShapePreset) (choice - 1)); });
+        });
+    };
+    addAndMakeVisible (shapes);
+    addTarget.onClick = [this] { showAddMenu(); };
+    addAndMakeVisible (addTarget);
 
     for (int i = 0; i < kMaxModTargets; ++i)
     {
-        auto& d = depths[(size_t) i];
-        d.setSliderStyle (juce::Slider::LinearBar);
-        d.setRange (-1.0, 1.0, 0.01);
-        d.setTextValueSuffix ("");
-        d.textFromValueFunction = [] (double v) { return (v > 0 ? "+" : "") + juce::String (juce::roundToInt (v * 100)) + "%"; };
-        d.setColour (juce::Slider::trackColourId, kModColour.withAlpha (0.5f));
-        d.onValueChange = [this, i]
+        auto* d = depths.add (new DepthBar());
+        d->onChange = [this, i] (float v)
         {
             const auto slot = slotOf[(size_t) i];
-            const auto v = (float) depths[(size_t) i].getValue();
             proc.movement().edit ([&] (MovementData& data) { data.mods[(size_t) mod].targets[(size_t) slot].depth = v; });
         };
-        auto& rm = removeButtons[(size_t) i];
-        rm.setButtonText ("x");
-        rm.setTooltip ("Remove this target");
-        rm.onClick = [this, i]
+        auto* rm = removes.add (new TextLink (juce::String::fromUTF8 ("\xc3\x97")));
+        rm->setTooltip ("Remove this target");
+        rm->onClick = [this, i]
         {
             const auto slot = slotOf[(size_t) i];
             proc.movement().edit ([&] (MovementData& data) { data.mods[(size_t) mod].targets[(size_t) slot] = {}; });
         };
-        names[(size_t) i].setFont (juce::FontOptions (12.0f));
-        names[(size_t) i].setMinimumHorizontalScale (0.6f);
-        addChildComponent (names[(size_t) i]);
         addChildComponent (d);
         addChildComponent (rm);
     }
-    rebuild();
+    rebuildTargets();
+    timerCallback();
     startTimerHz (10);
 }
 
-void TargetList::timerCallback()
+ModPanel::~ModPanel()
 {
-    if (proc.movement().getVersion() != shownVersion || proc.getNamesVersion() != shownNames)
-        rebuild();
+    stopTimer();
 }
 
-void TargetList::rebuild()
+void ModPanel::timerCallback()
+{
+    // Dim what the current mode doesn't use: Sync and One-shot use the rate,
+    // Free uses Hz, only One-shot fires on hits.
+    const auto m = juce::roundToInt (proc.readGlobalParams()[(size_t) modParam (mod, ModMode)]);
+    rate->setAlpha (m == 1 ? 0.4f : 1.0f);
+    freeRate->setAlpha (m == 1 ? 1.0f : 0.4f);
+    trigger->setAlpha (m == 2 ? 1.0f : 0.4f);
+    if (proc.movement().getVersion() != shownVersion || proc.getNamesVersion() != shownNames)
+        rebuildTargets();
+}
+
+void ModPanel::rebuildTargets()
 {
     shownVersion = proc.movement().getVersion();
     shownNames = proc.getNamesVersion();
@@ -229,73 +343,43 @@ void TargetList::rebuild()
             continue;
         const auto row = rows++;
         slotOf[(size_t) row] = slot;
-        names[(size_t) row].setText (targetName (proc, t), juce::dontSendNotification);
-        if (! depths[(size_t) row].isMouseButtonDown())
-            depths[(size_t) row].setValue (t.depth, juce::dontSendNotification);
+        depths[row]->setLabel (targetName (proc, t));
+        if (! depths[row]->isMouseButtonDown())
+            depths[row]->setDepth (t.depth);
     }
     for (int i = 0; i < kMaxModTargets; ++i)
     {
-        names[(size_t) i].setVisible (i < rows);
-        depths[(size_t) i].setVisible (i < rows);
-        removeButtons[(size_t) i].setVisible (i < rows);
+        depths[i]->setVisible (i < rows);
+        removes[i]->setVisible (i < rows);
     }
-    addButton.setEnabled (rows < kMaxModTargets);
-    repaint();
+    addTarget.setEnabled (rows < kMaxModTargets);
+    repaint (targetsHeader);
 }
 
-void TargetList::resized()
-{
-    auto r = getLocalBounds();
-    auto header = r.removeFromTop (22);
-    addButton.setBounds (header.removeFromRight (110).reduced (0, 1));
-    const auto rowH = 15;
-    for (int i = 0; i < kMaxModTargets; ++i)
-    {
-        auto row = r.removeFromTop (rowH);
-        removeButtons[(size_t) i].setBounds (row.removeFromRight (20).reduced (1));
-        depths[(size_t) i].setBounds (row.removeFromRight (110).reduced (2, 1));
-        names[(size_t) i].setBounds (row);
-    }
-}
-
-void TargetList::paint (juce::Graphics& g)
-{
-    g.setColour (juce::Colours::lightgrey);
-    g.setFont (juce::FontOptions (13.0f, juce::Font::bold));
-    g.drawText ("Targets", getLocalBounds().removeFromTop (22), juce::Justification::centredLeft);
-    if (rows == 0)
-    {
-        g.setColour (juce::Colours::grey);
-        g.setFont (juce::FontOptions (12.0f));
-        g.drawText ("Right-click any knob > Modulate with Mod " + juce::String (mod + 1) + ", or Add target",
-                    getLocalBounds().withTrimmedTop (24).removeFromTop (20), juce::Justification::centredLeft);
-    }
-}
-
-void TargetList::showAddMenu()
+void ModPanel::showAddMenu()
 {
     juce::PopupMenu kitMenu;
     std::vector<juce::String> ids;
-    auto add = [&] (juce::PopupMenu& menu, const juce::String& id, const juce::String& name)
+    auto addItem = [&] (juce::PopupMenu& menu, const juce::String& id, const juce::String& name)
     {
         ids.push_back (id);
         menu.addItem ((int) ids.size(), name, true, proc.isModTarget (mod, id));
     };
     for (int g = 0; g < kNumGlobalParams; ++g)
         if (isModulatableGlobal (g))
-            add (kitMenu, globalParamID (g), globalParamSpecs()[(size_t) g].label);
+            addItem (kitMenu, globalParamID (g), globalParamSpecs()[(size_t) g].label);
 
     juce::PopupMenu m;
     m.addSubMenu ("Kit (pad and chain)", kitMenu);
     for (int v = 0; v < kNumVoices; ++v)
     {
-        juce::PopupMenu voiceMenu;
+        juce::PopupMenu soundMenu;
         for (int p = 0; p < kNumVoiceParams; ++p)
             if (isModulatableVoice (p))
-                add (voiceMenu, voiceParamID (v, p), voiceParamSpecs()[(size_t) p].label);
-        m.addSubMenu (juce::String (v + 1) + " " + proc.getVoiceName (v), voiceMenu);
+                addItem (soundMenu, voiceParamID (v, p), voiceParamSpecs()[(size_t) p].label);
+        m.addSubMenu (juce::String (v + 1) + " " + proc.getVoiceName (v), soundMenu);
     }
-    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (addButton),
+    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (addTarget),
                      [this, ids] (int choice)
                      {
                          if (choice > 0 && choice <= (int) ids.size())
@@ -303,79 +387,61 @@ void TargetList::showAddMenu()
                      });
 }
 
-// ModPanel ----------------------------------------------------------------------
-
-ModPanel::ModPanel (BatidaProcessor& p, int m) : VoicePage (p), mod (m), shape (p, m), targets (p, m)
-{
-    title.setText ("Mod " + juce::String (m + 1), juce::dontSendNotification);
-    title.setFont (juce::FontOptions (16.0f, juce::Font::bold));
-    title.setColour (juce::Label::textColourId, kModColour);
-    addAndMakeVisible (title);
-    addAndMakeVisible (shape);
-    addAndMakeVisible (targets);
-    shape.setComponentID ("shape" + juce::String (m + 1));
-    addAndMakeVisible (shapeButton);
-
-    shapeButton.onClick = [this]
-    {
-        juce::PopupMenu menu;
-        static const char* names[] = { "Sine", "Triangle", "Ramp up", "Ramp down", "Square", "Random steps" };
-        for (int i = 0; i < 6; ++i)
-            menu.addItem (i + 1, names[i]);
-        menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (shapeButton), [this] (int choice)
-        {
-            if (choice > 0)
-                proc.movement().edit ([&] (MovementData& d) { setPreset (d.mods[(size_t) mod], (ShapePreset) (choice - 1)); });
-        });
-    };
-
-    rateSection = addSection ("Timing");
-    addGlobal (rateSection, modParam (m, ModMode), "Mode").withWidth (96);
-    syncRate = &addGlobal (rateSection, modParam (m, ModRate), "Sync Rate").withWidth (84);
-    freeRate = &addGlobal (rateSection, modParam (m, ModHz), "Free Rate");
-    trigger = &addGlobal (rateSection, modParam (m, ModTrigger), "One-shot On").withWidth (110);
-
-    feelSection = addSection ("Output");
-    addGlobal (feelSection, modParam (m, ModPolarity), "Polarity").withWidth (96);
-    addGlobal (feelSection, modParam (m, ModSmooth), "Smooth");
-    addGlobal (feelSection, modParam (m, ModHuman), "Humanise");
-    addGlobal (feelSection, modParam (m, ModAmount), "Amount");
-
-    timerCallback();
-    startTimerHz (5);
-}
-
-void ModPanel::timerCallback()
-{
-    // Dim what the current mode doesn't use.
-    const auto mode = juce::roundToInt (proc.readGlobalParams()[(size_t) modParam (mod, ModMode)]);
-    syncRate->setAlpha (mode == 1 ? 0.35f : 1.0f);   // Sync and One-shot use the sync rate
-    freeRate->setAlpha (mode == 1 ? 1.0f : 0.35f);   // Free uses Hz
-    trigger->setAlpha (mode == 2 ? 1.0f : 0.35f);
-}
-
 void ModPanel::paint (juce::Graphics& g)
 {
-    g.setColour (juce::Colours::white.withAlpha (0.03f));
-    g.fillRoundedRectangle (getLocalBounds().toFloat(), 6.0f);
-    VoicePage::paint (g);
+    drawPanel (g, getLocalBounds(), juce::String (mod + 1).paddedLeft ('0', 2) + " Mod " + juce::String (mod + 1));
+    g.setColour (line);
+    g.fillRect (separator1);
+    g.fillRect (separator2);
+    g.setColour (ink);
+    g.setFont (head (8.5f));
+    g.drawText ("TARGETS " + juce::String::fromUTF8 ("\xc2\xb7 ") + juce::String (rows), targetsHeader, juce::Justification::centredLeft);
 }
 
 void ModPanel::resized()
 {
-    auto r = getLocalBounds().reduced (8);
-    auto top = r.removeFromTop (24);
-    title.setBounds (top.removeFromLeft (80));
-    shapeButton.setBounds (top.removeFromRight (80).reduced (0, 1));
-    r.removeFromTop (4);
-    shape.setBounds (r.removeFromTop (98));
+    auto header = getLocalBounds().reduced (8, 5).removeFromTop (20);
+    mode->setBounds (header.removeFromRight (mode->getIdealWidth()));
+    header.removeFromRight (8);
+    shapes.setBounds (header.removeFromRight (84));
+
+    auto r = panelContent (getLocalBounds());
+    shape.setBounds (r.removeFromTop (150));
+    r.removeFromTop (10);
+    const auto colW = (r.getWidth() - 16) / 2;
+    auto left = r.withWidth (colW), right = r.withTrimmedLeft (colW + 16);
+    rate->setBounds (left.removeFromTop (20).withWidth (colW));
+    left.removeFromTop (2);
+    trigger->setBounds (left.removeFromTop (20));
+    freeRate->setBounds (right.removeFromTop (20));
+    right.removeFromTop (2);
+    polarity->setBounds (right.removeFromTop (20).withWidth (polarity->getIdealWidth()));
+    r.removeFromTop (48);
+    separator1 = r.removeFromTop (1);
+    r.removeFromTop (8);
+    for (auto* c : { smooth, humanise, amount })
+    {
+        c->setBounds (r.removeFromTop (20));
+        r.removeFromTop (2);
+    }
     r.removeFromTop (6);
-    r.removeFromTop (layoutRow (r, { rateSection }) + 4);
-    r.removeFromTop (layoutRow (r, { feelSection }) + 4);
-    targets.setBounds (r);
+    separator2 = r.removeFromTop (1);
+    r.removeFromTop (8);
+    auto th = r.removeFromTop (22);
+    addTarget.setBounds (th.removeFromRight (108));
+    targetsHeader = th;
+    r.removeFromTop (4);
+    for (int i = 0; i < kMaxModTargets; ++i)
+    {
+        auto row = r.removeFromTop (20);
+        removes[i]->setBounds (row.removeFromRight (20));
+        row.removeFromRight (4);
+        depths[i]->setBounds (row);
+        r.removeFromTop (2);
+    }
 }
 
-// ModPage -----------------------------------------------------------------------
+// ModPage --------------------------------------------------------------------------
 
 ModPage::ModPage (BatidaProcessor& p) : one (p, 0), two (p, 1)
 {
@@ -383,14 +449,10 @@ ModPage::ModPage (BatidaProcessor& p) : one (p, 0), two (p, 1)
     addAndMakeVisible (two);
 }
 
-void ModPage::paint (juce::Graphics& g)
-{
-    g.fillAll (juce::Colour (0xff2a2d31));
-}
-
 void ModPage::resized()
 {
-    auto r = getLocalBounds().reduced (6);
-    one.setBounds (r.removeFromLeft (r.getWidth() / 2).reduced (4, 0));
-    two.setBounds (r.reduced (4, 0));
+    auto r = getLocalBounds();
+    one.setBounds (r.removeFromLeft ((r.getWidth() - 10) / 2));
+    r.removeFromLeft (10);
+    two.setBounds (r);
 }

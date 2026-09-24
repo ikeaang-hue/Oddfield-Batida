@@ -65,6 +65,9 @@ public:
     double getHostBpm() const { return uiHostBpm.load(); }
     const Voice& getVoice (int voice) const { return voices[(size_t) voice]; }
 
+    // Counts every hit per voice (sequencer, MIDI and auditions), for the editor's hit lights.
+    uint32_t getHitCount (int voice) const { return hitCounts[(size_t) voice].load (std::memory_order_relaxed); }
+
 private:
     void handle (const juce::MidiMessage& message);
     void handle (const SeqEvent& e);
@@ -101,6 +104,7 @@ private:
     std::atomic<bool> uiXyLocked { false };
     std::atomic<float> uiLockX { 0.5f }, uiLockY { 0.0f };
     std::atomic<bool> uiFollowingHost { false };
+    std::array<std::atomic<uint32_t>, kNumVoices> hitCounts {};
     std::atomic<double> uiHostBpm { 120.0 };
 
     // Voices whose sounds are being replaced (see beginSwitch).

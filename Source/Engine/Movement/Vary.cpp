@@ -122,6 +122,40 @@ VaryGroup varyGroupOf (int p)
     return VaryGroup::None;
 }
 
+std::vector<float> renderPeaks (const VoiceParams& params, const SampleData* sample, int bins, double seconds, double sampleRate)
+{
+    constexpr int block = 256;
+    const auto total = std::max (bins, (int) (seconds * sampleRate));
+    const auto offAt = (int) (0.25 * sampleRate);
+
+    Voice voice;
+    voice.prepare (sampleRate);
+    voice.setSampleData (sample);
+    voice.setParameters (params);
+    voice.noteOn (Voice::kBaseKey, 0.85f);
+
+    std::vector<float> l ((size_t) total, 0.0f), r ((size_t) total, 0.0f);
+    for (int pos = 0; pos < total; pos += block)
+    {
+        const auto n = std::min (block, total - pos);
+        if (offAt >= pos && offAt < pos + n)
+            voice.noteOff (Voice::kBaseKey);
+        voice.render (l.data() + pos, r.data() + pos, l.data() + pos, r.data() + pos, n);
+        if (! voice.isActive())
+            break;
+    }
+
+    std::vector<float> peaks ((size_t) bins, 0.0f);
+    for (int i = 0; i < total; ++i)
+    {
+        const auto x = std::max (std::abs (l[(size_t) i]), std::abs (r[(size_t) i]));
+        auto& p = peaks[(size_t) std::min (bins - 1, i * bins / total)];
+        if (std::isfinite (x))
+            p = std::max (p, x);
+    }
+    return peaks;
+}
+
 SoundFeatures measureVoice (const VoiceParams& params, const SampleData* sample, double sampleRate)
 {
     constexpr int block = 256;
@@ -250,7 +284,7 @@ std::vector<VaryCandidate> vary (const VaryRequest& req)
                 continue; // sounds like the original
             if (! movedTheRightWay (f, baseFeatures, req.direction))
                 continue;
-            valid.push_back ({ p, f, gainDb });
+            valid.push_back ({ p, f, gainDb, {} });
         }
     }
 
@@ -278,7 +312,71 @@ std::vector<VaryCandidate> vary (const VaryRequest& req)
         chosen.push_back (valid[best]);
         valid.erase (valid.begin() + (long) best);
     }
+    for (auto& c : chosen)
+        c.note = describeChanges (req.base, c.params);
     return chosen;
+}
+
+std::string describeChanges (const VoiceParams& base, const VoiceParams& changed)
+{
+    struct Change { float size; std::string text; };
+    std::vector<Change> changes;
+
+    // Only what can be heard: the sample's settings on an FM sound (and the
+    // other way round) and silent operators are left out.
+    const auto source = base.choice (vp::SrcMode); // 0 FM, 1 Sample, 2 Layer
+    auto audible = [&] (int k)
+    {
+        const auto isSample = (k >= vp::SmpTune && k <= vp::SmpSliceSens) || k == vp::Balance;
+        const auto isFm = k >= vp::FmPitch && k < vp::SmpTune;
+        const auto isOp = k >= vp::OpBase;
+        if (isSample && source == 0)
+            return false;
+        if ((isFm || isOp) && source == 1)
+            return false;
+        if (k == vp::Balance && source != 2)
+            return false;
+        if (isOp)
+        {
+            const auto op = (k - vp::OpBase) / kNumOpFields;
+            const auto field = (k - vp::OpBase) % kNumOpFields;
+            if (field != OpLevel && base.op (op, OpLevel) <= 1.0e-3f && changed.op (op, OpLevel) <= 1.0e-3f)
+                return false;
+        }
+        return true;
+    };
+
+    for (int k = 0; k < kNumVoiceParams; ++k)
+    {
+        const auto& spec = voiceParamSpecs()[(size_t) k];
+        if (k == vp::Level || ! isContinuous (spec) || ! audible (k))
+            continue;
+        const auto& range = voiceRanges()[(size_t) k];
+        const auto size = std::abs (range.convertTo0to1 (changed[k]) - range.convertTo0to1 (base[k]));
+        if (size < 0.01f)
+            continue;
+
+        // Times and frequencies change by a ratio; everything else by its share of the range.
+        float percent;
+        if ((spec.unit == "ms" || spec.unit == "Hz" || spec.unit == "x") && std::abs (base[k]) > 1.0e-6f)
+            percent = (changed[k] / base[k] - 1.0f) * 100.0f;
+        else
+            percent = (changed[k] - base[k]) / std::max (1.0e-6f, spec.max - spec.min) * 100.0f;
+        const auto rounded = (int) std::lround (percent);
+        if (rounded == 0)
+            continue;
+
+        auto label = juce::String (spec.label).toLowerCase();
+        if (label.startsWith ("amp "))
+            label = label.fromFirstOccurrenceOf (" ", false, false); // "amp decay" -> "decay"
+        const auto sign = rounded > 0 ? juce::String ("+") : juce::String::fromUTF8 ("\xe2\x88\x92"); // + or −
+        changes.push_back ({ size, (label + " " + sign + juce::String (std::abs (rounded)) + "%").toStdString() });
+    }
+    std::sort (changes.begin(), changes.end(), [] (const Change& a, const Change& b) { return a.size > b.size; });
+    std::string note;
+    for (size_t i = 0; i < std::min<size_t> (2, changes.size()); ++i)
+        note += (i > 0 ? " \xc2\xb7 " : "") + changes[i].text;
+    return note;
 }
 
 } // namespace batida

@@ -290,7 +290,7 @@ do {
     r.silence(seconds: 0.2)
     check(peakDb(r.play(channel: 2, note: 64)) < -100, "drum map: channel 2 note 64 is silent")
     r.param("MIDI Mode").value = 1.0 // Chromatic
-    r.param("Keys Voice").value = 1 // voice 2 (menus are indexes)
+    r.param("Keys Sound").value = 1 // voice 2 (menus are indexes)
     r.silence(seconds: 0.1)
     let rim = r.play(channel: 2, note: 64)
     check(peakDb(rim) > -30, String(format: "chromatic: channel 2 note 64 plays the keys voice (%.1f dB)", peakDb(rim)))
@@ -304,7 +304,7 @@ print("Chromatic play (keys voice 6 = bass, channel 1):")
 do {
     let r = Renderer(instantiate())
     r.param("MIDI Mode").value = 1.0
-    r.param("Keys Voice").value = 5
+    r.param("Keys Sound").value = 5
     let low = zeroCrossingHz(Array(r.play(channel: 1, note: 60, seconds: 0.6, noteSeconds: 0.5)[4800..<19200]))
     r.silence(seconds: 0.3)
     let high = zeroCrossingHz(Array(r.play(channel: 1, note: 72, seconds: 0.6, noteSeconds: 0.5)[4800..<19200]))
@@ -379,20 +379,20 @@ do {
 print("State round trip (parameters):")
 do {
     let a = Renderer(instantiate())
-    a.param("V1 FM Pitch").value = 0.75
-    a.param("V1 Drive").value = 0.8
-    a.param("V1 Drive Type").value = 1.0
+    a.param("S1 FM Pitch").value = 0.75
+    a.param("S1 Drive").value = 0.8
+    a.param("S1 Drive Type").value = 1.0
     a.param("XY Character").value = 0.9
     a.param("XY Heat").value = 0.7
-    a.param("V3 Chain").value = 0.25
+    a.param("S3 Chain").value = 0.25
     a.param("EQ Follow XY").value = 0
     let original = a.play(channel: 1, note: 36)
     let state = a.unit.auAudioUnit.fullState
 
     let b = Renderer(instantiate())
     b.unit.auAudioUnit.fullState = state
-    check(abs(b.param("V1 FM Pitch").value - 0.75) < 1e-4, "restored V1 FM Pitch = \(b.param("V1 FM Pitch").value)")
-    check(abs(b.param("XY Heat").value - 0.7) < 1e-4 && abs(b.param("V3 Chain").value - 0.25) < 1e-4
+    check(abs(b.param("S1 FM Pitch").value - 0.75) < 1e-4, "restored S1 FM Pitch = \(b.param("S1 FM Pitch").value)")
+    check(abs(b.param("XY Heat").value - 0.7) < 1e-4 && abs(b.param("S3 Chain").value - 0.25) < 1e-4
               && b.param("EQ Follow XY").value == 0, "restored pad position, Chain amount and Follow XY")
     let restored = b.play(channel: 1, note: 36)
     let diff = zip(original, restored).map { abs($0 - $1) }.max() ?? 1

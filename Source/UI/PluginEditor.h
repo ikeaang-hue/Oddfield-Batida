@@ -1,22 +1,16 @@
 #pragma once
 
-#include "FmPage.h"
+#include "Frame.h"
 #include "KitPage.h"
 #include "LibraryPage.h"
 #include "ModPage.h"
 #include "SeqPage.h"
-#include "VaryPage.h"
-#include "VoicePages.h"
+#include "SoundPage.h"
 
-// Minimal demo UI (stock JUCE controls). Views: KIT, the main panel for the
-// whole kit (XY pad, chain, Chain amounts), which opens first; SEQ, the
-// sequencer; MOD, the modulators; VOICE, the selected sound's Source / FM /
-// Voice FX / Envelope / Vary pages; LIB, the library. ◀ name ▶ strips step
-// through the library for the kit (header), sound (VOICE) and pattern (SEQ).
-// Above them: the voice buttons (select + audition; double-click to rename;
-// drag onto another to swap slots; right-click for a menu) with a Mute and
-// Solo button under each. Kept apart from the engine so a proper
-// visual design can replace it later.
+// Batida's editor, direction C "Signal": the top bar and sound row around
+// five pages (KIT, SEQ, MOD, SOUND, LIB). Everything is laid out at 980×640
+// inside one content component that is scaled for the 100/125/150% zoom.
+// Kept apart from the engine: it only talks to the processor.
 class BatidaEditor final : public juce::AudioProcessorEditor,
                            public juce::FileDragAndDropTarget,
                            public juce::DragAndDropContainer,
@@ -25,6 +19,14 @@ class BatidaEditor final : public juce::AudioProcessorEditor,
 public:
     explicit BatidaEditor (BatidaProcessor&);
     ~BatidaEditor() override;
+
+    static constexpr int kWidth = 980, kHeight = 640;
+    enum Page { Kit, Seq, Mod, Sound, Lib };
+    void showPage (int page);
+    int getPage() const { return page; }
+    void setZoom (int percent);
+    juce::Component& getContent() { return content; }
+    void selectVoice (int voice);
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -36,70 +38,49 @@ public:
     void filesDropped (const juce::StringArray& files, int x, int y) override;
 
 private:
-    // Shows the voice's name and slot; plays the voice while held.
-    struct VoiceButton final : juce::TextButton, juce::DragAndDropTarget
+    struct Content final : juce::Component
     {
-        int index = 0;
-        juce::String name, slot;
-        bool missing = false, audible = true, dropHover = false, dragStarted = false;
-        std::function<void()> onPress, onRelease, onRename, onMenu;
-        std::function<void (int from)> onSwapFrom;
-
-        void paintButton (juce::Graphics& g, bool over, bool down) override;
-        void mouseDown (const juce::MouseEvent& e) override;
-        void mouseDrag (const juce::MouseEvent& e) override;
-        void mouseUp (const juce::MouseEvent& e) override;
-        void mouseDoubleClick (const juce::MouseEvent& e) override;
-
-        bool isInterestedInDragSource (const SourceDetails& d) override;
-        void itemDragEnter (const SourceDetails&) override { dropHover = true; repaint(); }
-        void itemDragExit (const SourceDetails&) override { dropHover = false; repaint(); }
-        void itemDropped (const SourceDetails& d) override;
+        void paint (juce::Graphics& g) override { g.fillAll (theme::bg); }
+    };
+    struct Scrim final : juce::Component
+    {
+        std::function<void()> onClick;
+        void mouseDown (const juce::MouseEvent&) override { if (onClick) onClick(); }
     };
 
-    void selectVoice (int voice);
-    enum class View { Kit, Seq, Mod, Voice, Lib };
-    void showView (View view);
-    int voiceAt (int x, int y) const;
     void timerCallback() override;
-    void updateInfo();
-    void refreshVoiceButtons();
-    void renameVoice (int voice);
+    void wireCell (SoundCell& cell, bool inSequencer);
+    void refreshCells();
+    void renameVoice (int voice, juce::Component& over);
     void swapVoices (int from, int to);
-    void voiceMenu (int voice);
+    void voiceMenu (int voice, juce::Component& target);
+    void toggleMute (int voice, int param);
     void updateStrips();
     void libraryChanged();
+    int voiceAt (juce::Point<int> contentPoint) const;
+    void setDropTarget (int voice);
+    std::vector<SoundCell*> allCells();
 
+    juce::SharedResourcePointer<theme::SharedLook> look;
     BatidaProcessor& proc;
+    Content content;
     LibraryController library; // before the pages that use it
 
-    juce::Label title, info;
-    ParamControl midiMode, keysVoice, master;
-    std::array<VoiceButton, batida::kNumVoices> voiceButtons;
-    std::array<juce::TextButton, batida::kNumVoices> muteButtons, soloButtons;
-    std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>, batida::kNumVoices> muteAttachments,
-        soloAttachments;
-    juce::TextButton kitViewButton { "KIT" }, seqViewButton { "SEQ" }, modViewButton { "MOD" }, voiceViewButton { "VOICE" },
-        libViewButton { "LIB" };
-    BrowseStrip kitStrip, soundStrip;
-    juce::TextButton missingButton;
-    View currentView = View::Kit;
-    juce::TextButton undoButton { "Undo" }, redoButton { "Redo" };
+    TopBar top;
+    SoundRow row;
     KitPage kitPage;
     SeqPage seqPage;
     ModPage modPage;
+    SoundPage soundPage;
     LibraryPage libraryPage;
-    juce::TabbedComponent tabs { juce::TabbedButtonBar::TabsAtTop };
+    Scrim settingsScrim;
+    SettingsPanel settings;
+    AboutCard about;
+    juce::TooltipWindow tooltips { &content, 700 };
     std::unique_ptr<juce::TextEditor> renameEditor;
 
-    SourcePage* sourcePage = nullptr;
-    FmPage* fmPage = nullptr;
-    ChainPage* chainPage = nullptr;
-    EnvelopePage* envelopePage = nullptr;
-    VaryPage* varyPage = nullptr;
-
-    int selected = 0;
-    int dropTarget = -1;
+    int selected = 0, page = Kit, dropTarget = -1, zoom = 100, ticks = 0;
+    std::array<uint32_t, batida::kNumVoices> hitCounts {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BatidaEditor)
 };

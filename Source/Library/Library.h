@@ -82,6 +82,8 @@ public:
     // Settings.
     juce::String getAuthor() const { return author; }
     void setAuthor (const juce::String& name);
+    int getZoom() const { return zoom; } // editor size in percent: 100, 125 or 150
+    void setZoom (int percent);
     juce::Array<juce::File> getSampleFolders() const { return sampleFolders; }
     void addSampleFolder (const juce::File& folder);
     void removeSampleFolder (const juce::File& folder);
@@ -101,6 +103,7 @@ private:
     std::array<LibraryFilter, kNumPresetTypes> filters {};
     juce::StringArray favourites; // paths relative to the root
     juce::String author;
+    int zoom = 100;
     juce::Array<juce::File> sampleFolders, relinkFolders;
     int version = 0, scanGeneration = 0;
     bool scanning = false, prepared = false;
