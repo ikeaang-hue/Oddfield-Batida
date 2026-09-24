@@ -280,7 +280,7 @@ public:
             expectEquals (back.mods[1].numPoints, 4);
             expect (back.mods[1].targets[0] == d.mods[1].targets[0]);
             expectWithinAbsoluteError (back.mods[1].targets[0].depth, -0.4f, 1.0e-4f);
-            expect (back.mods[0].targets[0].active && back.mods[0].targets[0].param == gp::XyY, "demo target kept");
+            expect (back.mods[0].targets[0].active == kShipDemoModulation, "Mod 1's demo target only in demo builds");
             expect (back.scenes[2].stored && std::abs (back.scenes[2].values[gp::DistDrive] - 0.66f) < 1.0e-4f);
         }
     }

@@ -74,9 +74,12 @@ const std::vector<int>& sceneParams();
 bool isModulatableGlobal (int param);
 bool isModulatableVoice (int param);
 
-// Development default: Mod 1 slowly moves XY Heat. RELEASE: set
-// kShipDemoModulation to false so both modulators start empty.
-constexpr bool kShipDemoModulation = true;
+// Both modulators start empty, as in a release. Built with -DBATIDA_DEMO=ON,
+// Mod 1 slowly moves XY Heat (development).
+#ifndef BATIDA_DEMO
+ #define BATIDA_DEMO 0
+#endif
+constexpr bool kShipDemoModulation = BATIDA_DEMO != 0;
 MovementData defaultMovement();
 
 } // namespace batida

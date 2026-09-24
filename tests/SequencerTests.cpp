@@ -279,6 +279,7 @@ public:
         {
             auto params = defaultKitParams();
             Kit kit;
+            kit.patternStore().edit ([] (PatternBank& b) { b.patterns[0] = breakbeatPattern(); });
             kit.setParameters (params);
             kit.prepare (kRate, 512);
             juce::AudioBuffer<float> buf (2, 512);
@@ -367,10 +368,11 @@ public:
                 expectWithinAbsoluteError (sliceRegion (*d, spec, 0.0, 48000.0, k).first, 12000.0 * k, 64.0);
         }
 
-        beginTest ("Patterns survive XML; the default bank has the breakbeat in pattern 1 only");
+        beginTest ("Patterns survive XML; the default bank is empty (the demo: pattern 1 only)");
         {
-            const auto bank = defaultPatternBank();
-            expect (! bank.patterns[0].isEmpty());
+            expect (defaultPatternBank().patterns[0].isEmpty() != kShipDemoPattern);
+            PatternBank bank = defaultPatternBank();
+            bank.patterns[0] = breakbeatPattern();
             for (int p = 1; p < kNumPatterns; ++p)
                 expect (bank.patterns[(size_t) p].isEmpty());
 

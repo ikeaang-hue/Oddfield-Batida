@@ -53,6 +53,8 @@ int main (int argc, char* argv[])
 
     BatidaProcessor proc;
     proc.prepareToPlay (48000.0, 512);
+    // The step checks below edit the breakbeat in pattern 1.
+    proc.patterns().edit ([] (batida::PatternBank& b) { b.patterns[0] = batida::breakbeatPattern(); });
 
     if (argc > 2)
         proc.loadSample (0, cwd.getChildFile (argv[2]));
