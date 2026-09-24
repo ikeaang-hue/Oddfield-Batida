@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.0">
   <INFO name="Round Kick" author="Negative Space" category="kick" tags="warm,organic"/>
-  <VOICE src_mode="Sample" balance="0.5" level="4.43565369" pan="0" vel_sens="0.699999988"
+  <VOICE src_mode="Sample" balance="0.5" level="3.61653876" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="8000"
          amp_sustain="0" amp_release="60" pitch_amt="0" pitch_decay="60"
          fm_pitch="0" fm_algo="1" fm_feedback="0" fm_harm="0" fm_bright="0"
@@ -10,7 +10,7 @@
          smp_end="1" smp_reverse="0" smp_fade_in="0" smp_fade_out="0"
          smp_gain="0" smp_loop="0" smp_loop_start="0" smp_loop_end="1"
          smp_slice_mode="Off" smp_slices="8" smp_slice_sens="0.5" punch="0"
-         drive="0" drive_type="Soft" flt_type="Low-pass" flt_cutoff="3421.6792"
+         drive="0.0710937455" drive_type="Soft" flt_type="Low-pass" flt_cutoff="3421.6792"
          flt_res="0.100000001" chain_amt="1" mute="0" solo="0" op1_ratio="1"
          op1_fixed="0" op1_freq="1000" op1_level="1" op1_wave="0" op1_fold="0"
          op1_attack="0" op1_decay="600" op1_sustain="1" op1_release="1500"

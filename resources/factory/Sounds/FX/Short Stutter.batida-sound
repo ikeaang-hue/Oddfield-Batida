@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.0">
   <INFO name="Short Stutter" author="Negative Space" category="fx" tags="digital"/>
-  <VOICE src_mode="Sample" balance="0.5" level="-5.23594189" pan="0" vel_sens="0.699999988"
+  <VOICE src_mode="Sample" balance="0.5" level="-5.23594284" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="8000"
          amp_sustain="0" amp_release="60" pitch_amt="0" pitch_decay="60"
          fm_pitch="0" fm_algo="1" fm_feedback="0" fm_harm="0" fm_bright="0"

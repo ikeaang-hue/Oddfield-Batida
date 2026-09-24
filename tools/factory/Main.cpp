@@ -108,14 +108,17 @@ bool writeCandidate (const juce::File& root, const Candidate& c, juce::String& r
     return writeSound (file, s);
 }
 
-std::vector<Candidate> makeNamed()
+std::vector<Candidate> makeNamed (const ReviewState& state)
 {
     auto all = makeCandidates();
     std::vector<Candidate*> named;
     for (auto& c : all)
         if (c.dropped.isEmpty())
             named.push_back (&c);
-    nameCandidates (named);
+    std::map<juce::String, juce::String> fixed; // names from the last round keep their candidates
+    for (const auto& [id, path] : state.pathOfId)
+        fixed[id] = path.fromLastOccurrenceOf ("/", false, false).upToLastOccurrenceOf (".batida-sound", false, false);
+    nameCandidates (named, fixed);
     return all;
 }
 
@@ -148,7 +151,7 @@ int runCandidates (const juce::File& library)
                 entry.getFile().deleteFile();
         }
 
-    auto all = makeNamed();
+    auto all = makeNamed (state);
     juce::Array<juce::var> manifest;
     std::map<std::string, std::pair<int, int>> counts; // archetype → made, dropped
     std::map<juce::String, int> reasons;
@@ -299,13 +302,41 @@ void setKitLevel (BuiltKit& b, float targetDb, bool report)
     };
     // Chain Out matches the loudness, but no hit peaks above -0.5 dBFS (the
     // safety clip stays out of it). Three passes, as the chain reacts.
-    if (! b.idea->neutral)
+    auto level = [&]
+    {
         for (int pass = 0; pass < 3; ++pass)
         {
             const auto [loud, peak] = measure ({});
             const auto change = std::min (targetDb - loud, kPeakLimitDb - peak);
             b.kit.globals[gp::ChainOut] = std::clamp (b.kit.globals[gp::ChainOut] + change, -24.0f, 12.0f);
         }
+        return measure ({}).first;
+    };
+    if (! b.idea->neutral)
+    {
+        // A kit its peaks hold back gets glue: more compression (up to +0.25)
+        // with a faster attack, kept only where it makes the kit louder and
+        // full heat stays within 4 dB of it.
+        auto loud = level();
+        const auto start = b.kit.globals;
+        auto best = start;
+        auto bestLoud = loud;
+        for (float extra = 0.05f; bestLoud < targetDb - 1.0f && extra <= 0.251f; extra += 0.05f)
+        {
+            b.kit.globals = start;
+            b.kit.globals[gp::CompAmount] = std::min (1.0f, start[gp::CompAmount] + extra);
+            b.kit.globals[gp::CompAttack] = std::min (start[gp::CompAttack], 2.0f);
+            const auto l = level();
+            const auto hot = std::min (measure ({ { "xy_x", 0.0f }, { "xy_y", 1.0f } }).first,
+                                       measure ({ { "xy_x", 1.0f }, { "xy_y", 1.0f } }).first);
+            if (l > bestLoud + 0.3f && hot > l - 4.0f) // and full heat stays about as loud
+            {
+                bestLoud = l;
+                best = b.kit.globals;
+            }
+        }
+        b.kit.globals = best;
+    }
     if (! report)
         return;
     const auto [loud, peak] = measure ({});
@@ -322,7 +353,7 @@ int runBuild (const juce::File& library, const juce::File& out)
 {
     const auto review = library.getChildFile ("Review");
     const auto state = readReview (review);
-    auto all = makeNamed();
+    auto all = makeNamed (state);
 
     // The pool: what was kept, then the best of the rest where a recipe is short.
     std::vector<PoolSound> pool;

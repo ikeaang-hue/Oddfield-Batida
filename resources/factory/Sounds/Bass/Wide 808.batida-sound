@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.0">
   <INFO name="Wide 808" author="Negative Space" category="bass" tags="warm"/>
-  <VOICE src_mode="FM" balance="0.5" level="0.494749069" pan="0" vel_sens="0.699999988"
+  <VOICE src_mode="FM" balance="0.5" level="0.494748116" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="69.7106018" amp_attack="0" amp_decay="1012.72412"
          amp_sustain="0" amp_release="200" pitch_amt="2.31181121" pitch_decay="70.1956787"
          fm_pitch="-24" fm_algo="1" fm_feedback="0" fm_harm="0" fm_bright="0"

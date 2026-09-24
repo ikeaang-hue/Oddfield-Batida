@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.0">
   <INFO name="Burnt Kick" author="Negative Space" category="kick" tags="harsh"/>
-  <VOICE src_mode="FM" balance="0.5" level="1.39413738" pan="0" vel_sens="0.699999988"
+  <VOICE src_mode="FM" balance="0.5" level="1.39413643" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="461.330688"
          amp_sustain="0" amp_release="40" pitch_amt="31.0492821" pitch_decay="43.7907867"
          fm_pitch="-26.9957142" fm_algo="4" fm_feedback="0" fm_harm="0"

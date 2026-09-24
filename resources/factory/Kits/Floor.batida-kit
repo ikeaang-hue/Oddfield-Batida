@@ -6,7 +6,7 @@
        comp_attack="10" comp_release="120" comp_mix="0.699999988" comp_detector="Internal"
        comp_follow="1" dist_drive="0" dist_type="0.5" dist_low_keep="90"
        exc_amount="0" exc_tone="5000" dist_follow="1" eq_hp="20" eq_lp="20000"
-       eq_low="0" eq_mid="0" eq_high="0" eq_follow="1" chain_out="0.0556497574"
+       eq_low="0" eq_mid="0" eq_high="0" eq_follow="1" chain_out="0.0500049591"
        safety_clip="1" mod1_mode="Sync" mod1_rate="1 bar" mod1_hz="1"
        mod1_polarity="Unipolar" mod1_smooth="0" mod1_humanise="0" mod1_amount="1"
        mod1_trigger="Any hit" mod2_mode="Sync" mod2_rate="1 bar" mod2_hz="1"
@@ -70,7 +70,7 @@
            op3_sustain="0" op3_release="60" op4_ratio="1" op4_fixed="0"
            op4_freq="1000" op4_level="0" op4_wave="0" op4_fold="0" op4_attack="0"
            op4_decay="600" op4_sustain="1" op4_release="1500"/>
-    <VOICE index="3" name="Wide Hands" src_mode="Sample" balance="0.5" level="1.68125916"
+    <VOICE index="3" name="Wide Hands" src_mode="Sample" balance="0.5" level="1.6812582"
            pan="0" vel_sens="0.699999988" play_mode="One-shot" glide="0"
            amp_attack="0" amp_decay="8000" amp_sustain="0" amp_release="60"
            pitch_amt="0" pitch_decay="60" fm_pitch="0" fm_algo="1" fm_feedback="0"
@@ -90,7 +90,7 @@
            op4_fold="0" op4_attack="0" op4_decay="600" op4_sustain="1" op4_release="1500">
       <SAMPLE file="../Samples/Snare/Wide Hands.flac" bytes="32665"/>
     </VOICE>
-    <VOICE index="4" name="Dry Conga" src_mode="FM" balance="0.5" level="-8.61981678"
+    <VOICE index="4" name="Dry Conga" src_mode="FM" balance="0.5" level="-7.11981678"
            pan="-0.300000012" vel_sens="0.699999988" play_mode="One-shot"
            glide="0" amp_attack="0" amp_decay="198.505066" amp_sustain="0"
            amp_release="40" pitch_amt="6.81113148" pitch_decay="21.8385658"
@@ -109,7 +109,7 @@
            op3_fold="0" op3_attack="0" op3_decay="600" op3_sustain="1" op3_release="1500"
            op4_ratio="1" op4_fixed="0" op4_freq="1000" op4_level="0" op4_wave="0"
            op4_fold="0" op4_attack="0" op4_decay="600" op4_sustain="1" op4_release="1500"/>
-    <VOICE index="5" name="Short Sub" src_mode="FM" balance="0.5" level="-5.53948593"
+    <VOICE index="5" name="Short Sub" src_mode="FM" balance="0.5" level="-5.53948641"
            pan="0" vel_sens="0.699999988" play_mode="Gate" glide="21.7074852"
            amp_attack="3.59996414" amp_decay="400" amp_sustain="0.793350637"
            amp_release="79.4855881" pitch_amt="0" pitch_decay="60" fm_pitch="-24"
@@ -128,7 +128,7 @@
            op3_decay="600" op3_sustain="1" op3_release="1500" op4_ratio="1"
            op4_fixed="0" op4_freq="1000" op4_level="0" op4_wave="0" op4_fold="0"
            op4_attack="0" op4_decay="600" op4_sustain="1" op4_release="1500"/>
-    <VOICE index="6" name="Glass Hat" src_mode="FM" balance="0.5" level="1.82647514"
+    <VOICE index="6" name="Glass Hat" src_mode="FM" balance="0.5" level="1.82647324"
            pan="-0.100000001" vel_sens="0.699999988" play_mode="One-shot"
            glide="0" amp_attack="0" amp_decay="73.7805176" amp_sustain="0"
            amp_release="25" pitch_amt="0" pitch_decay="60" fm_pitch="0"
@@ -147,7 +147,7 @@
            op3_decay="600" op3_sustain="1" op3_release="1500" op4_ratio="1"
            op4_fixed="0" op4_freq="1000" op4_level="1" op4_wave="1" op4_fold="0"
            op4_attack="0" op4_decay="600" op4_sustain="1" op4_release="1500"/>
-    <VOICE index="7" name="Low Open Hat" src_mode="FM" balance="0.5" level="-1.83778858"
+    <VOICE index="7" name="Low Open Hat" src_mode="FM" balance="0.5" level="-1.83778954"
            pan="0.100000001" vel_sens="0.699999988" play_mode="One-shot"
            glide="0" amp_attack="0" amp_decay="493.43103" amp_sustain="0"
            amp_release="60" pitch_amt="0" pitch_decay="60" fm_pitch="0"
@@ -174,28 +174,28 @@
              comp_mix="0.699999988079071" comp_detector="0.0" comp_follow="1.0"
              dist_drive="0.0" dist_type="0.5" dist_low_keep="90.0" exc_amount="0.0"
              exc_tone="5000.0" dist_follow="1.0" eq_hp="20.0" eq_lp="20000.0"
-             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="0.05564975738525391"
+             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="0.05000495910644531"
              safety_clip="1.0"/>
       <SCENE index="1" xy_x="0.3499999940395355" xy_y="0.6000000238418579"
              comp_amount="0.4500000178813934" comp_attack="10.0" comp_release="120.0"
              comp_mix="0.699999988079071" comp_detector="0.0" comp_follow="1.0"
              dist_drive="0.0" dist_type="0.5" dist_low_keep="90.0" exc_amount="0.0"
              exc_tone="5000.0" dist_follow="1.0" eq_hp="20.0" eq_lp="20000.0"
-             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="0.05564975738525391"
+             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="0.05000495910644531"
              safety_clip="1.0"/>
       <SCENE index="2" xy_x="0.7999999523162842" xy_y="0.300000011920929"
              comp_amount="0.300000011920929" comp_attack="10.0" comp_release="120.0"
              comp_mix="0.699999988079071" comp_detector="0.0" comp_follow="1.0"
              dist_drive="0.0" dist_type="0.5" dist_low_keep="90.0" exc_amount="0.1500000059604645"
              exc_tone="5000.0" dist_follow="1.0" eq_hp="20.0" eq_lp="20000.0"
-             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="0.05564975738525391"
+             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="0.05000495910644531"
              safety_clip="1.0"/>
       <SCENE index="3" xy_x="0.3499999940395355" xy_y="0.1500000059604645"
              comp_amount="0.300000011920929" comp_attack="10.0" comp_release="120.0"
              comp_mix="0.699999988079071" comp_detector="0.0" comp_follow="1.0"
              dist_drive="0.0" dist_type="0.5" dist_low_keep="90.0" exc_amount="0.0"
              exc_tone="5000.0" dist_follow="1.0" eq_hp="220.0" eq_lp="3500.0"
-             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="0.05564975738525391"
+             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="0.05000495910644531"
              safety_clip="1.0"/>
     </MOVEMENT>
   </KIT>

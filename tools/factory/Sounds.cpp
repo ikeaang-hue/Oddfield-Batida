@@ -596,6 +596,142 @@ std::vector<Archetype> build()
              { "op4_decay", 250.0f, 700.0f, true }, { "amp_decay", 250.0f, 600.0f, true },
              { "op1_wave", 0.0f, 0.4f }, { "op2_wave", 0.0f, 0.4f }, { "op3_wave", 0.0f, 0.4f }, { "op4_wave", 0.0f, 0.4f } },
            13, 4, { "warm" } });
+
+    // Aggressive (added after the first listen): hotter, driven, punchy. They
+    // sit 3 dB above their category and use the Drive stage's Hard, Fold or
+    // Crush, or a crushed transient layered over the body.
+    auto hot = [&] (Archetype x) { x.hotDb = 3.0f; add (std::move (x)); };
+
+    hot ({ "kick.hard", "kick", { "Kick", "Slam" },
+           { { "fm_algo", 3 }, { "op2_ratio", 2.0f }, { "op2_sustain", 0.0f }, { "op2_release", 10.0f }, { "drive_type", 1 },
+             { "amp_release", 40.0f } },
+           { { "fm_pitch", -29.0f, -25.0f }, { "pitch_amt", 24.0f, 36.0f }, { "pitch_decay", 25.0f, 60.0f, true },
+             { "amp_decay", 250.0f, 450.0f, true }, { "op2_level", 0.1f, 0.2f }, { "op2_decay", 8.0f, 15.0f },
+             { "punch", 0.5f, 0.8f }, { "drive", 0.35f, 0.65f }, { "flt_cutoff", 4000.0f, 10000.0f, true } },
+           14, 4, { "harsh" } });
+    hot ({ "kick.gabber", "kick", { "Kick", "Hammer" },
+           { { "fm_algo", 3 }, { "op2_ratio", 1.0f }, { "op2_level", 0.1f }, { "op2_decay", 40.0f }, { "op2_sustain", 0.0f },
+             { "amp_release", 60.0f }, { "punch", 0.4f } },
+           { { "fm_pitch", -26.0f, -21.0f }, { "pitch_amt", 18.0f, 30.0f }, { "pitch_decay", 40.0f, 100.0f, true },
+             { "amp_decay", 400.0f, 900.0f, true }, { "drive", 0.6f, 0.9f }, { "drive_type", 0.0f, 1.49f },
+             { "flt_cutoff", 2500.0f, 6000.0f, true }, { "flt_res", 0.1f, 0.3f } },
+           11, 3, { "harsh" } });
+    hot ({ "kick.fold", "kick", { "Kick" },
+           { { "fm_algo", 3 }, { "op2_ratio", 1.5f }, { "op2_level", 0.1f }, { "op2_decay", 25.0f }, { "op2_sustain", 0.0f },
+             { "drive_type", 2 }, { "amp_release", 40.0f }, { "punch", 0.4f } },
+           { { "fm_pitch", -30.0f, -26.0f }, { "pitch_amt", 20.0f, 32.0f }, { "pitch_decay", 30.0f, 90.0f, true },
+             { "amp_decay", 250.0f, 500.0f, true }, { "drive", 0.3f, 0.6f }, { "flt_cutoff", 3000.0f, 8000.0f, true } },
+           11, 3, { "harsh", "digital" } });
+    hot ({ "kick.punch", "kick", { "Punch", "Kick" },
+           { { "src_mode", 2 }, { "fm_algo", 3 }, { "op2_ratio", 2.0f }, { "op2_level", 0.1f }, { "op2_decay", 15.0f },
+             { "op2_sustain", 0.0f }, { "amp_release", 40.0f }, { "drive_type", 0 } },
+           { { "balance", 0.55f, 0.7f }, { "fm_pitch", -29.0f, -25.0f }, { "pitch_amt", 20.0f, 32.0f },
+             { "pitch_decay", 30.0f, 80.0f, true }, { "amp_decay", 250.0f, 500.0f, true }, { "punch", 0.5f, 0.8f },
+             { "drive", 0.2f, 0.4f } },
+           11, 3, { "harsh" }, [] (uint32_t seed) { return makeTransient (seed); } });
+
+    hot ({ "snare.slam", "snare", { "Snare", "Slam" }, join (snareBody, { { "drive_type", 1 } }),
+           { { "fm_pitch", -6.0f, 0.0f }, { "op1_level", 0.5f, 0.7f }, { "op1_decay", 80.0f, 160.0f, true },
+             { "op2_ratio", 1.4f, 1.9f }, { "op2_level", 0.2f, 0.35f }, { "op2_decay", 50.0f, 100.0f, true },
+             { "op3_level", 0.9f, 1.0f }, { "op3_decay", 160.0f, 300.0f, true }, { "pitch_amt", 6.0f, 12.0f },
+             { "pitch_decay", 20.0f, 45.0f }, { "amp_decay", 180.0f, 320.0f, true }, { "punch", 0.5f, 0.8f },
+             { "drive", 0.35f, 0.7f } },
+           14, 4, { "harsh" } });
+    hot ({ "snare.fold", "snare", { "Snare" }, join (snareBody, { { "drive_type", 2 } }),
+           { { "fm_pitch", -8.0f, 2.0f }, { "op1_level", 0.5f, 0.7f }, { "op1_decay", 80.0f, 160.0f, true },
+             { "op2_ratio", 1.4f, 2.2f }, { "op2_level", 0.2f, 0.4f }, { "op2_decay", 50.0f, 100.0f, true },
+             { "op3_level", 0.8f, 1.0f }, { "op3_decay", 150.0f, 300.0f, true }, { "amp_decay", 150.0f, 300.0f, true },
+             { "punch", 0.4f, 0.7f }, { "drive", 0.2f, 0.5f } },
+           9, 2, { "harsh", "digital" } });
+    hot ({ "snare.clapdist", "snare", { "Clap" }, join (kSamplePlays, { { "drive_type", 1 }, { "flt_type", 1 } }),
+           { { "drive", 0.3f, 0.6f }, { "flt_cutoff", 250.0f, 600.0f, true }, { "punch", 0.3f, 0.6f } },
+           11, 3, { "harsh" }, [] (uint32_t seed) { return makeClap (seed + 101); } });
+    hot ({ "snare.rimhard", "snare", { "Rim" },
+           { { "fm_algo", 7 }, { "op1_sustain", 0.0f }, { "op1_release", 20.0f }, { "op2_sustain", 0.0f }, { "op2_release", 20.0f },
+             { "op3_wave", 1.0f }, { "op3_sustain", 0.0f }, { "op3_release", 10.0f }, { "amp_release", 30.0f }, { "flt_type", 1 },
+             { "drive_type", 1 } },
+           { { "fm_pitch", 6.0f, 14.0f }, { "op1_level", 0.8f, 1.0f }, { "op1_decay", 30.0f, 70.0f },
+             { "op2_ratio", 2.9f, 3.9f }, { "op2_level", 0.6f, 0.9f }, { "op2_decay", 25.0f, 50.0f },
+             { "op3_level", 0.5f, 0.8f }, { "op3_decay", 10.0f, 20.0f }, { "amp_decay", 60.0f, 110.0f },
+             { "flt_cutoff", 250.0f, 500.0f, true }, { "drive", 0.4f, 0.7f }, { "punch", 0.3f, 0.6f } },
+           9, 2, { "harsh" } });
+
+    hot ({ "hat.hard", "hat", { "Hat" }, join (hatBase, { { "drive_type", 1 }, { "amp_release", 20.0f } }),
+           { { "op2_freq", 480.0f, 620.0f }, { "op3_freq", 740.0f, 900.0f }, { "op2_level", 0.05f, 0.2f }, { "op3_level", 0.05f, 0.2f },
+             { "amp_decay", 30.0f, 90.0f, true }, { "flt_cutoff", 7000.0f, 11000.0f, true }, { "flt_res", 0.1f, 0.3f },
+             { "drive", 0.4f, 0.8f } },
+           11, 3, { "harsh" } });
+    hot ({ "hat.openhard", "hat", { "Open Hat" }, join (hatBase, { { "drive_type", 2 }, { "amp_release", 60.0f } }),
+           { { "op2_freq", 480.0f, 620.0f }, { "op3_freq", 740.0f, 900.0f }, { "op2_level", 0.05f, 0.2f }, { "op3_level", 0.05f, 0.2f },
+             { "amp_decay", 250.0f, 600.0f, true }, { "flt_cutoff", 6000.0f, 10000.0f, true }, { "flt_res", 0.1f, 0.3f },
+             { "drive", 0.2f, 0.5f } },
+           9, 2, { "harsh" } });
+    hot ({ "hat.metalhard", "hat", { "Hat" },
+           { { "fm_algo", 4 }, { "op1_level", 0.6f }, { "op2_level", 0.5f }, { "op2_ratio", 1.41f }, { "op3_level", 0.4f },
+             { "op3_ratio", 2.23f }, { "flt_type", 1 }, { "amp_release", 30.0f }, { "drive_type", 1 } },
+           { { "fm_pitch", 24.0f, 36.0f }, { "op4_ratio", 1.4f, 3.3f }, { "op4_level", 0.5f, 0.9f }, { "fm_harm", 0.5f, 1.0f },
+             { "fm_feedback", 0.3f, 0.6f }, { "amp_decay", 30.0f, 120.0f, true }, { "flt_cutoff", 5000.0f, 8000.0f, true },
+             { "drive", 0.4f, 0.7f } },
+           9, 2, { "harsh", "metallic" } });
+
+    hot ({ "perc.tomhard", "perc", { "Tom" },
+           { { "fm_algo", 3 }, { "op2_ratio", 1.5f }, { "op2_decay", 60.0f }, { "op2_sustain", 0.0f }, { "op2_release", 40.0f },
+             { "amp_release", 60.0f } },
+           { { "fm_pitch", -20.0f, -4.0f }, { "pitch_amt", 8.0f, 18.0f }, { "pitch_decay", 80.0f, 250.0f, true },
+             { "amp_decay", 250.0f, 600.0f, true }, { "op2_level", 0.1f, 0.3f }, { "punch", 0.4f, 0.7f },
+             { "drive", 0.4f, 0.8f }, { "drive_type", 0.5f, 2.49f } },
+           11, 3, { "harsh" } });
+    hot ({ "perc.clang", "perc", { "Clang" },
+           { { "fm_algo", 4 }, { "op1_ratio", 1.0f }, { "op1_level", 0.6f }, { "op2_level", 0.5f }, { "op3_level", 0.5f },
+             { "op1_sustain", 0.0f }, { "op2_sustain", 0.0f }, { "op3_sustain", 0.0f }, { "op4_sustain", 0.0f },
+             { "drive_type", 1 }, { "amp_release", 60.0f } },
+           { { "fm_pitch", 0.0f, 12.0f }, { "fm_harm", 0.6f, 1.0f }, { "op2_ratio", 1.3f, 1.7f }, { "op3_ratio", 2.0f, 2.9f },
+             { "op4_ratio", 2.5f, 4.5f }, { "op4_level", 0.4f, 0.8f }, { "op1_decay", 100.0f, 300.0f, true },
+             { "op2_decay", 100.0f, 300.0f, true }, { "op3_decay", 80.0f, 250.0f, true }, { "op4_decay", 50.0f, 150.0f, true },
+             { "amp_decay", 100.0f, 300.0f, true }, { "drive", 0.3f, 0.6f } },
+           11, 3, { "harsh", "metallic" } });
+    hot ({ "perc.zaphard", "perc", { "Zap" },
+           { { "fm_algo", 3 }, { "op2_sustain", 0.0f }, { "op2_decay", 60.0f }, { "amp_release", 30.0f }, { "drive_type", 3 } },
+           { { "fm_pitch", -2.0f, 14.0f }, { "pitch_amt", 30.0f, 48.0f }, { "pitch_decay", 20.0f, 80.0f, true },
+             { "amp_decay", 80.0f, 220.0f, true }, { "op2_ratio", 1.0f, 2.0f }, { "op2_level", 0.2f, 0.5f },
+             { "drive", 0.4f, 0.8f } },
+           9, 2, { "harsh", "digital" } });
+
+    hot ({ "bass.reese", "bass", { "Reese" },
+           { { "play_mode", 1 }, { "fm_pitch", -24.0f }, { "fm_algo", 7 }, { "op1_wave", 0.5f }, { "op1_ratio", 1.0f },
+             { "op2_wave", 0.5f }, { "op2_level", 0.9f }, { "op1_level", 0.9f }, { "amp_sustain", 0.9f }, { "amp_decay", 300.0f },
+             { "amp_release", 80.0f }, { "drive_type", 0 } },
+           { { "op2_ratio", 1.006f, 1.015f }, { "drive", 0.3f, 0.6f }, { "flt_cutoff", 600.0f, 2000.0f, true },
+             { "flt_res", 0.2f, 0.4f }, { "glide", 0.0f, 60.0f } },
+           11, 3, { "harsh" } });
+    hot ({ "bass.808clip", "bass", { "808" },
+           { { "fm_pitch", -24.0f }, { "amp_release", 200.0f }, { "op1_decay", 8000.0f }, { "drive_type", 1 } },
+           { { "pitch_amt", 4.0f, 14.0f }, { "pitch_decay", 25.0f, 80.0f, true }, { "amp_decay", 600.0f, 1600.0f, true },
+             { "glide", 40.0f, 120.0f, true }, { "drive", 0.6f, 0.95f }, { "punch", 0.4f, 0.6f },
+             { "flt_cutoff", 3000.0f, 8000.0f, true } },
+           11, 3, { "harsh" } });
+    hot ({ "bass.growlhard", "bass", { "Growl", "Bass" },
+           { { "play_mode", 1 }, { "fm_pitch", -24.0f }, { "fm_algo", 3 }, { "fm_harm", -1.0f }, { "amp_sustain", 0.8f },
+             { "amp_decay", 300.0f }, { "amp_release", 90.0f }, { "op2_sustain", 0.7f }, { "drive_type", 2 } },
+           { { "op2_ratio", 0.5f, 2.49f }, { "op2_level", 0.5f, 0.9f }, { "op2_decay", 150.0f, 600.0f, true },
+             { "fm_feedback", 0.4f, 0.7f }, { "flt_cutoff", 800.0f, 2500.0f, true }, { "flt_res", 0.2f, 0.5f },
+             { "drive", 0.3f, 0.6f } },
+           9, 2, { "harsh" } });
+
+    hot ({ "fx.blast", "fx", { "Blast", "Hit" },
+           { { "fm_algo", 7 }, { "op2_wave", 1.0f }, { "op1_sustain", 0.0f }, { "op2_sustain", 0.0f }, { "op1_decay", 1500.0f },
+             { "drive_type", 1 }, { "amp_release", 200.0f } },
+           { { "fm_pitch", -34.0f, -26.0f }, { "op2_level", 0.4f, 0.8f }, { "op2_decay", 200.0f, 600.0f, true },
+             { "pitch_amt", 18.0f, 36.0f }, { "pitch_decay", 60.0f, 250.0f, true }, { "amp_decay", 500.0f, 1500.0f, true },
+             { "drive", 0.5f, 0.85f }, { "flt_cutoff", 3000.0f, 9000.0f, true } },
+           9, 2, { "harsh" } });
+    hot ({ "fx.screech", "fx", { "Screech" },
+           { { "fm_algo", 0 }, { "op2_level", 0.5f }, { "op3_level", 0.4f }, { "op4_level", 0.4f }, { "drive_type", 1 },
+             { "amp_release", 100.0f } },
+           { { "fm_pitch", 12.0f, 24.0f }, { "pitch_amt", -12.0f, 12.0f }, { "pitch_decay", 200.0f, 800.0f, true },
+             { "fm_feedback", 0.5f, 0.9f }, { "op2_ratio", 1.0f, 3.0f }, { "op3_ratio", 0.5f, 2.0f },
+             { "amp_decay", 300.0f, 800.0f, true }, { "drive", 0.4f, 0.7f } },
+           9, 2, { "harsh", "digital" } });
     return a;
 }
 
@@ -698,7 +834,68 @@ juce::StringArray guessTags (const Archetype& a, const VoiceParams& p, const Fea
 
 // Candidates ------------------------------------------------------------------------
 
-constexpr float kPeakCeilingDb = 1.5f;
+constexpr float kPeakCeilingDb = 1.5f;  // for sorting out duds (as the recipes were first tuned)
+constexpr float kFinalCeilingDb = 3.0f;  // the shipped level: a little more headroom for spiky hits
+
+// The final level. A sound that still can't reach its loudness under the
+// ceiling (a spiky kick, a thin clap) gets punch: soft saturation in its
+// Drive stage, just enough to get there (at most +0.35). Sounds that already
+// use Hard, Fold or Crush keep their drive as it is.
+void finishLevel (Candidate& c, float target)
+{
+    const auto* sample = c.sample != nullptr ? c.sample->getDisplayData() : nullptr;
+    const auto& levelSpec = voiceParamSpecs()[(size_t) vp::Level];
+    auto levelled = [&] (VoiceParams& p)
+    {
+        auto m = p;
+        m[vp::SmpSliceMode] = 0.0f; // a sliced loop is measured whole
+        auto f = analyse (m, sample);
+        auto level = p[vp::Level] + std::min (target - f.loudnessDb, kFinalCeilingDb - f.peakDb);
+        if (level > levelSpec.max && sample != nullptr)
+        {
+            p[vp::SmpGain] = std::min (24.0f, p[vp::SmpGain] + level - levelSpec.max);
+            level = levelSpec.max;
+        }
+        p[vp::Level] = std::clamp (level, levelSpec.min, levelSpec.max);
+        m[vp::Level] = p[vp::Level];
+        m[vp::SmpGain] = p[vp::SmpGain];
+        return analyse (m, sample);
+    };
+
+    auto p = c.params;
+    auto f = levelled (p);
+    const auto soft = p.choice (vp::DriveType) == 0 || p[vp::Drive] < 0.001f;
+    if (target - f.loudnessDb > 2.0f && soft)
+    {
+        const auto d0 = p[vp::Drive];
+        auto lo = d0, hi = std::min (1.0f, d0 + 0.35f);
+        auto tryDrive = [&] (float d, VoiceParams& q)
+        {
+            q = c.params;
+            q[vp::Drive] = d;
+            q[vp::DriveType] = 0.0f;
+            return levelled (q);
+        };
+        VoiceParams q;
+        auto fq = tryDrive (hi, q);
+        if (target - fq.loudnessDb <= 1.5f)
+            for (int i = 0; i < 6; ++i) // the least drive that gets there
+            {
+                VoiceParams m;
+                const auto mid = 0.5f * (lo + hi);
+                const auto fm = tryDrive (mid, m);
+                if (target - fm.loudnessDb <= 1.5f) { hi = mid; q = m; fq = fm; }
+                else lo = mid;
+            }
+        if (fq.loudnessDb > f.loudnessDb + 1.0f && fq.finite)
+        {
+            p = q;
+            f = fq;
+        }
+    }
+    c.params = p;
+    c.features = f;
+}
 
 std::vector<Candidate> makeCandidates()
 {
@@ -755,7 +952,7 @@ std::vector<Candidate> makeCandidates()
 
             // Level to the recipe's loudness; a very short hit sits a little lower.
             // Peaks stay below +1.5 dB, which can leave a spiky sound a bit quieter.
-            auto target = loudnessTarget (a.id);
+            auto target = loudnessTarget (a.id) + a.hotDb;
             if (f.lengthMs < 50.0f)
                 target -= 5.0f * std::log10 (50.0f / std::max (5.0f, f.lengthMs));
             auto gain = std::min (target - f.loudnessDb, kPeakCeilingDb - f.peakDb);
@@ -833,6 +1030,16 @@ std::vector<Candidate> makeCandidates()
         for (size_t i = 0; i < order.size(); ++i)
             order[i]->score = (float) (order.size() - i);
 
+        // The final level (and punch), after the picks: they go by the shape.
+        for (auto* c : order)
+        {
+            c->shape = c->features;
+            auto target = loudnessTarget (a.id) + a.hotDb;
+            if (c->shape.lengthMs < 50.0f)
+                target -= 5.0f * std::log10 (50.0f / std::max (5.0f, c->shape.lengthMs));
+            finishLevel (*c, target);
+        }
+
         for (auto& c : made)
             all.push_back (std::move (c));
     }
@@ -841,15 +1048,15 @@ std::vector<Candidate> makeCandidates()
 
 // Names ---------------------------------------------------------------------------------
 
-void nameCandidates (std::vector<Candidate*>& list)
+void nameCandidates (std::vector<Candidate*>& list, const std::map<juce::String, juce::String>& fixed)
 {
     // Medians per category, to say what's unusual about each sound.
     std::map<std::string, std::vector<float>> lengths, brightness;
     for (auto* c : list)
     {
         const auto& cat = findArchetype (c->archetype)->category;
-        lengths[cat].push_back (c->features.lengthMs);
-        brightness[cat].push_back (c->features.centroidHz);
+        lengths[cat].push_back (c->shape.lengthMs);
+        brightness[cat].push_back (c->shape.centroidHz);
     }
     auto median = [] (std::vector<float> v) { std::sort (v.begin(), v.end()); return v.empty() ? 0.0f : v[v.size() / 2]; };
     std::map<std::string, float> medLength, medBright;
@@ -874,11 +1081,27 @@ void nameCandidates (std::vector<Candidate*>& list)
     used["kick"] = { "Kick" }; used["snare"] = { "Rim", "Snare", "Clap" }; used["perc"] = { "Tom" };
     used["bass"] = { "Bass" }; used["hat"] = { "Closed Hat", "Open Hat" };
 
+    // Names given before stay.
+    std::set<Candidate*> named;
+    for (auto* c : list)
+        if (const auto it = fixed.find (juce::String (c->archetype) + "#" + juce::String (c->index)); it != fixed.end())
+        {
+            const auto& cat = findArchetype (c->archetype)->category;
+            if (! used[cat].count (it->second))
+            {
+                c->name = it->second;
+                used[cat].insert (c->name);
+                named.insert (c);
+            }
+        }
+
     for (auto* c : list)
     {
+        if (named.count (c))
+            continue;
         const auto& a = *findArchetype (c->archetype);
-        const auto len = std::log2 ((c->features.lengthMs + 20.0f) / (medLength[a.category] + 20.0f));
-        const auto bright = std::log2 ((c->features.centroidHz + 50.0f) / (medBright[a.category] + 50.0f));
+        const auto len = std::log2 ((c->shape.lengthMs + 20.0f) / (medLength[a.category] + 20.0f));
+        const auto bright = std::log2 ((c->shape.centroidHz + 50.0f) / (medBright[a.category] + 50.0f));
 
         // Descriptors, most telling first.
         std::vector<std::pair<float, const std::vector<const char*>*>> axes;

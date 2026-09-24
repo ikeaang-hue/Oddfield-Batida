@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.0">
   <INFO name="Glass Block" author="Negative Space" category="perc" tags="organic"/>
-  <VOICE src_mode="FM" balance="0.5" level="3.78569484" pan="0" vel_sens="0.699999988"
+  <VOICE src_mode="FM" balance="0.5" level="5.06382084" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="56.3425255"
          amp_sustain="0" amp_release="15" pitch_amt="0" pitch_decay="60"
          fm_pitch="24.7364502" fm_algo="4" fm_feedback="0" fm_harm="0"

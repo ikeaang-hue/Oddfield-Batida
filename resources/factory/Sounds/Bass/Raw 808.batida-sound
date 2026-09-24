@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.0">
   <INFO name="Raw 808" author="Negative Space" category="bass" tags="harsh"/>
-  <VOICE src_mode="FM" balance="0.5" level="-2.58324814" pan="0" vel_sens="0.699999988"
+  <VOICE src_mode="FM" balance="0.5" level="-2.58324909" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="109.377197" amp_attack="0" amp_decay="2149.08862"
          amp_sustain="0" amp_release="200" pitch_amt="6.38015556" pitch_decay="43.9876785"
          fm_pitch="-24" fm_algo="1" fm_feedback="0" fm_harm="0" fm_bright="0"

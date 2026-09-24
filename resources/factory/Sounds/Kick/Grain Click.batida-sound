@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.0">
   <INFO name="Grain Click" author="Negative Space" category="kick" tags="digital"/>
-  <VOICE src_mode="FM" balance="0.5" level="-4.387115" pan="0" vel_sens="0.699999988"
+  <VOICE src_mode="FM" balance="0.5" level="1.31050348" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="309.75592"
          amp_sustain="0" amp_release="30" pitch_amt="33.3316345" pitch_decay="16.0193939"
          fm_pitch="-24.7537899" fm_algo="4" fm_feedback="0" fm_harm="0"
@@ -10,7 +10,7 @@
          smp_end="1" smp_reverse="0" smp_fade_in="0" smp_fade_out="0"
          smp_gain="0" smp_loop="0" smp_loop_start="0" smp_loop_end="1"
          smp_slice_mode="Off" smp_slices="8" smp_slice_sens="0.5" punch="0.300000012"
-         drive="0" drive_type="Soft" flt_type="Low-pass" flt_cutoff="20000"
+         drive="0.038281247" drive_type="Soft" flt_type="Low-pass" flt_cutoff="20000"
          flt_res="0" chain_amt="1" mute="0" solo="0" op1_ratio="1" op1_fixed="0"
          op1_freq="1000" op1_level="1" op1_wave="0" op1_fold="0" op1_attack="0"
          op1_decay="600" op1_sustain="1" op1_release="1500" op2_ratio="3.83064437"

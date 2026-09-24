@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.0">
   <INFO name="Skin Rim" author="Negative Space" category="snare" tags="organic"/>
-  <VOICE src_mode="FM" balance="0.5" level="1.56908417" pan="0" vel_sens="0.699999988"
+  <VOICE src_mode="FM" balance="0.5" level="1.56908226" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="80.8975906"
          amp_sustain="0" amp_release="30" pitch_amt="0" pitch_decay="60"
          fm_pitch="13.2034979" fm_algo="8" fm_feedback="0" fm_harm="0"

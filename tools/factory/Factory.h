@@ -78,6 +78,7 @@ struct Archetype
     std::vector<std::string> hints; // character tags the recipe aims for
     SampleMaker sample;   // set for Sample and Layer sounds
     bool loop = false;    // the sample is a loop (for Slice or looping)
+    float hotDb = 0.0f;   // louder than the category (the aggressive recipes)
 };
 
 const std::vector<Archetype>& archetypes();
@@ -101,14 +102,17 @@ struct Candidate
     std::shared_ptr<SampleSlot> sample;   // the same audio, loaded as the engine would
     float score = 0.0f;                   // auto-pick order within the archetype (higher first)
     Features raw;                         // before levelling
+    Features shape;                       // before the final level and punch: what picks and names go by
     juce::String dropped;                 // why it never reaches review (empty = fine)
 };
 
 // Makes every candidate of every archetype, with duds marked as dropped.
 std::vector<Candidate> makeCandidates();
 
-// Names: descriptive, unique within a category.
-void nameCandidates (std::vector<Candidate*>& list);
+// Names: descriptive, unique within a category. `fixed` keeps names already
+// given (by candidate id, "kick.drop#3"), so a sound keeps its name when the
+// candidates are made again.
+void nameCandidates (std::vector<Candidate*>& list, const std::map<juce::String, juce::String>& fixed = {});
 
 // Kits, patterns and sets ------------------------------------------------------
 

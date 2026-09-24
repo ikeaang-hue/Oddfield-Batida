@@ -106,7 +106,7 @@ public:
                 const auto what = e.info.name + " (" + e.info.category + ")";
                 expect (f.finite, what + " is finite");
                 expect (f.peakDb > -40.0f, what + " makes sound");
-                expect (f.peakDb < 2.0f, what + " peaks " + juce::String (f.peakDb, 1) + " dB");
+                expect (f.peakDb < 3.5f, what + " peaks " + juce::String (f.peakDb, 1) + " dB");
                 expect (soundCategories().contains (e.info.category), what + " has a category");
                 expect (! e.info.tags.isEmpty(), what + " has a character");
 

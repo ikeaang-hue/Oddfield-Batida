@@ -6,14 +6,14 @@
        comp_attack="10" comp_release="120" comp_mix="1" comp_detector="Internal"
        comp_follow="1" dist_drive="0" dist_type="0.5" dist_low_keep="90"
        exc_amount="0" exc_tone="5000" dist_follow="1" eq_hp="20" eq_lp="20000"
-       eq_low="0" eq_mid="0" eq_high="0" eq_follow="1" chain_out="-0.0798768997"
+       eq_low="0" eq_mid="0" eq_high="0" eq_follow="1" chain_out="-0.0708494186"
        safety_clip="1" mod1_mode="Sync" mod1_rate="4 bars" mod1_hz="1"
        mod1_polarity="Unipolar" mod1_smooth="0" mod1_humanise="0" mod1_amount="1"
        mod1_trigger="Any hit" mod2_mode="Sync" mod2_rate="1 bar" mod2_hz="1"
        mod2_polarity="Unipolar" mod2_smooth="0" mod2_humanise="0" mod2_amount="1"
        mod2_trigger="Any hit" scene_a="A" scene_b="B" scene_morph="0"
        scene_morph_on="0">
-    <VOICE index="0" name="Dull Thump" src_mode="FM" balance="0.5" level="1.08757877"
+    <VOICE index="0" name="Dull Thump" src_mode="FM" balance="0.5" level="1.0875783"
            pan="0" vel_sens="0.699999988" play_mode="One-shot" glide="0"
            amp_attack="0" amp_decay="635.198303" amp_sustain="0" amp_release="50"
            pitch_amt="18.3657322" pitch_decay="45.4760475" fm_pitch="-28.9509335"
@@ -32,7 +32,7 @@
            op3_attack="0" op3_decay="12.391943" op3_sustain="0" op3_release="8"
            op4_ratio="1" op4_fixed="0" op4_freq="1000" op4_level="0" op4_wave="0"
            op4_fold="0" op4_attack="0" op4_decay="600" op4_sustain="1" op4_release="1500"/>
-    <VOICE index="1" name="Clipped Rim" src_mode="FM" balance="0.5" level="-2.28039551"
+    <VOICE index="1" name="Clipped Rim" src_mode="FM" balance="0.5" level="-0.850375175"
            pan="0.25" vel_sens="0.699999988" play_mode="One-shot" glide="0"
            amp_attack="0" amp_decay="84.6486816" amp_sustain="0" amp_release="30"
            pitch_amt="0" pitch_decay="60" fm_pitch="12.4343948" fm_algo="8"
@@ -52,7 +52,7 @@
            op3_release="10" op4_ratio="1" op4_fixed="0" op4_freq="1000"
            op4_level="0" op4_wave="0" op4_fold="0" op4_attack="0" op4_decay="600"
            op4_sustain="1" op4_release="1500"/>
-    <VOICE index="2" name="Glass Snap" src_mode="FM" balance="0.5" level="-6.29502296"
+    <VOICE index="2" name="Glass Snap" src_mode="FM" balance="0.5" level="-4.79502392"
            pan="0" vel_sens="0.699999988" play_mode="One-shot" glide="0"
            amp_attack="0" amp_decay="52.5595551" amp_sustain="0" amp_release="20"
            pitch_amt="0" pitch_decay="60" fm_pitch="0" fm_algo="8" fm_feedback="0"
@@ -91,7 +91,7 @@
            op4_fold="0" op4_attack="0" op4_decay="600" op4_sustain="1" op4_release="1500">
       <SAMPLE file="../Samples/Snare/Glass Hands.flac" bytes="21778"/>
     </VOICE>
-    <VOICE index="4" name="Dark Conga" src_mode="FM" balance="0.5" level="-7.95987892"
+    <VOICE index="4" name="Dark Conga" src_mode="FM" balance="0.5" level="-6.45987988"
            pan="-0.25" vel_sens="0.699999988" play_mode="One-shot" glide="0"
            amp_attack="0" amp_decay="162.514832" amp_sustain="0" amp_release="40"
            pitch_amt="6.54017782" pitch_decay="29.1630135" fm_pitch="1.70627534"
@@ -110,7 +110,7 @@
            op3_sustain="1" op3_release="1500" op4_ratio="1" op4_fixed="0"
            op4_freq="1000" op4_level="0" op4_wave="0" op4_fold="0" op4_attack="0"
            op4_decay="600" op4_sustain="1" op4_release="1500"/>
-    <VOICE index="5" name="Tape Pluck" src_mode="FM" balance="0.5" level="0.576418877"
+    <VOICE index="5" name="Tape Pluck" src_mode="FM" balance="0.5" level="0.5764184"
            pan="0" vel_sens="0.699999988" play_mode="One-shot" glide="0"
            amp_attack="0" amp_decay="376.584076" amp_sustain="0" amp_release="60"
            pitch_amt="0" pitch_decay="60" fm_pitch="-23.8446712" fm_algo="4"
@@ -129,7 +129,7 @@
            op3_sustain="1" op3_release="1500" op4_ratio="1" op4_fixed="0"
            op4_freq="1000" op4_level="0" op4_wave="0" op4_fold="0" op4_attack="0"
            op4_decay="600" op4_sustain="1" op4_release="1500"/>
-    <VOICE index="6" name="Dull Hat" src_mode="FM" balance="0.5" level="3.45951843"
+    <VOICE index="6" name="Dull Hat" src_mode="FM" balance="0.5" level="3.45951653"
            pan="0" vel_sens="0.699999988" play_mode="One-shot" glide="0"
            amp_attack="0" amp_decay="43.8489723" amp_sustain="0" amp_release="25"
            pitch_amt="0" pitch_decay="60" fm_pitch="0" fm_algo="8" fm_feedback="0"
@@ -148,7 +148,7 @@
            op3_decay="600" op3_sustain="1" op3_release="1500" op4_ratio="1"
            op4_fixed="0" op4_freq="1000" op4_level="1" op4_wave="1" op4_fold="0"
            op4_attack="0" op4_decay="600" op4_sustain="1" op4_release="1500"/>
-    <VOICE index="7" name="Wide Open Hat" src_mode="FM" balance="0.5" level="-1.35113907"
+    <VOICE index="7" name="Wide Open Hat" src_mode="FM" balance="0.5" level="-1.35113811"
            pan="0" vel_sens="0.699999988" play_mode="One-shot" glide="0"
            amp_attack="0" amp_decay="328.456787" amp_sustain="0" amp_release="60"
            pitch_amt="0" pitch_decay="60" fm_pitch="0" fm_algo="8" fm_feedback="0"
@@ -177,28 +177,28 @@
              comp_mix="1.0" comp_detector="0.0" comp_follow="1.0" dist_drive="0.0"
              dist_type="0.5" dist_low_keep="90.0" exc_amount="0.0" exc_tone="5000.0"
              dist_follow="1.0" eq_hp="20.0" eq_lp="20000.0" eq_low="0.0" eq_mid="0.0"
-             eq_high="0.0" eq_follow="1.0" chain_out="-0.07987689971923828"
+             eq_high="0.0" eq_follow="1.0" chain_out="-0.07084941864013672"
              safety_clip="1.0"/>
       <SCENE index="1" xy_x="0.449999988079071" xy_y="0.6499999761581421"
              comp_amount="0.4500000178813934" comp_attack="10.0" comp_release="120.0"
              comp_mix="1.0" comp_detector="0.0" comp_follow="1.0" dist_drive="0.0"
              dist_type="0.5" dist_low_keep="90.0" exc_amount="0.0" exc_tone="5000.0"
              dist_follow="1.0" eq_hp="20.0" eq_lp="20000.0" eq_low="0.0" eq_mid="0.0"
-             eq_high="0.0" eq_follow="1.0" chain_out="-0.07987689971923828"
+             eq_high="0.0" eq_follow="1.0" chain_out="-0.07084941864013672"
              safety_clip="1.0"/>
       <SCENE index="2" xy_x="0.8999999761581421" xy_y="0.3499999940395355"
              comp_amount="0.300000011920929" comp_attack="10.0" comp_release="120.0"
              comp_mix="1.0" comp_detector="0.0" comp_follow="1.0" dist_drive="0.0"
              dist_type="0.5" dist_low_keep="90.0" exc_amount="0.1500000059604645"
              exc_tone="5000.0" dist_follow="1.0" eq_hp="20.0" eq_lp="20000.0"
-             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="-0.07987689971923828"
+             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="-0.07084941864013672"
              safety_clip="1.0"/>
       <SCENE index="3" xy_x="0.449999988079071" xy_y="0.199999988079071" comp_amount="0.300000011920929"
              comp_attack="10.0" comp_release="120.0" comp_mix="1.0" comp_detector="0.0"
              comp_follow="1.0" dist_drive="0.0" dist_type="0.5" dist_low_keep="90.0"
              exc_amount="0.0" exc_tone="5000.0" dist_follow="1.0" eq_hp="220.0"
              eq_lp="3500.0" eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0"
-             chain_out="-0.07987689971923828" safety_clip="1.0"/>
+             chain_out="-0.07084941864013672" safety_clip="1.0"/>
     </MOVEMENT>
   </KIT>
 </BATIDA>

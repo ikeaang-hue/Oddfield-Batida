@@ -10,7 +10,7 @@
          smp_end="1" smp_reverse="0" smp_fade_in="0" smp_fade_out="0"
          smp_gain="0" smp_loop="0" smp_loop_start="0" smp_loop_end="1"
          smp_slice_mode="Off" smp_slices="8" smp_slice_sens="0.5" punch="0"
-         drive="0" drive_type="Soft" flt_type="High-pass" flt_cutoff="696.096558"
+         drive="0.0492187515" drive_type="Soft" flt_type="High-pass" flt_cutoff="696.096558"
          flt_res="0.252353519" chain_amt="1" mute="0" solo="0" op1_ratio="1"
          op1_fixed="0" op1_freq="1000" op1_level="0.800000012" op1_wave="1"
          op1_fold="0" op1_attack="0" op1_decay="600" op1_sustain="1" op1_release="1500"

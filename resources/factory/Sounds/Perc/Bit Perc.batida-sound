@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.0">
   <INFO name="Bit Perc" author="Negative Space" category="perc" tags="digital"/>
-  <VOICE src_mode="Layer" balance="0.591132581" level="0.420064688" pan="0"
+  <VOICE src_mode="Layer" balance="0.591132581" level="1.3570745" pan="0"
          vel_sens="0.699999988" play_mode="One-shot" glide="0" amp_attack="0"
          amp_decay="173.612793" amp_sustain="0" amp_release="50" pitch_amt="11.2602253"
          pitch_decay="79.8823624" fm_pitch="0.983233571" fm_algo="4" fm_feedback="0"

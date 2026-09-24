@@ -6,7 +6,7 @@
        comp_attack="10" comp_release="120" comp_mix="1" comp_detector="Internal"
        comp_follow="1" dist_drive="0.150000006" dist_type="0.5" dist_low_keep="90"
        exc_amount="0" exc_tone="5000" dist_follow="1" eq_hp="20" eq_lp="20000"
-       eq_low="0" eq_mid="0" eq_high="0" eq_follow="1" chain_out="0.366839409"
+       eq_low="0" eq_mid="0" eq_high="0" eq_follow="1" chain_out="0.368213654"
        safety_clip="1" mod1_mode="Sync" mod1_rate="4 bars" mod1_hz="1"
        mod1_polarity="Unipolar" mod1_smooth="0" mod1_humanise="0" mod1_amount="1"
        mod1_trigger="Any hit" mod2_mode="Sync" mod2_rate="1 bar" mod2_hz="1"
@@ -32,7 +32,7 @@
            op3_sustain="1" op3_release="1500" op4_ratio="1" op4_fixed="0"
            op4_freq="1000" op4_level="0" op4_wave="0" op4_fold="0" op4_attack="0"
            op4_decay="600" op4_sustain="1" op4_release="1500"/>
-    <VOICE index="1" name="Clipped Rim" src_mode="FM" balance="0.5" level="-2.28039551"
+    <VOICE index="1" name="Clipped Rim" src_mode="FM" balance="0.5" level="-0.850375175"
            pan="0" vel_sens="0.699999988" play_mode="One-shot" glide="0"
            amp_attack="0" amp_decay="84.6486816" amp_sustain="0" amp_release="30"
            pitch_amt="0" pitch_decay="60" fm_pitch="12.4343948" fm_algo="8"
@@ -80,7 +80,7 @@
            fm_grit="0" smp_tune="0" smp_start="0" smp_end="1" smp_reverse="0"
            smp_fade_in="0" smp_fade_out="0" smp_gain="0" smp_loop="0" smp_loop_start="0"
            smp_loop_end="1" smp_slice_mode="Off" smp_slices="8" smp_slice_sens="0.5"
-           punch="0.200000003" drive="0" drive_type="Soft" flt_type="Band-pass"
+           punch="0.200000003" drive="0.0546875" drive_type="Soft" flt_type="Band-pass"
            flt_cutoff="1101.94482" flt_res="0.262924582" chain_amt="1" mute="0"
            solo="0" op1_ratio="1" op1_fixed="0" op1_freq="1000" op1_level="1"
            op1_wave="1" op1_fold="0" op1_attack="0" op1_decay="600" op1_sustain="1"
@@ -91,7 +91,7 @@
            op3_decay="600" op3_sustain="1" op3_release="1500" op4_ratio="1"
            op4_fixed="0" op4_freq="1000" op4_level="0" op4_wave="0" op4_fold="0"
            op4_attack="0" op4_decay="600" op4_sustain="1" op4_release="1500"/>
-    <VOICE index="4" name="Glass Acid" src_mode="FM" balance="0.5" level="-12.4040766"
+    <VOICE index="4" name="Glass Acid" src_mode="FM" balance="0.5" level="-12.4040775"
            pan="0.300000012" vel_sens="0.699999988" play_mode="Gate" glide="45.4572754"
            amp_attack="0" amp_decay="300" amp_sustain="0.699999988" amp_release="50"
            pitch_amt="0" pitch_decay="60" fm_pitch="0" fm_algo="4" fm_feedback="0"
@@ -110,7 +110,7 @@
            op3_decay="600" op3_sustain="1" op3_release="1500" op4_ratio="1"
            op4_fixed="0" op4_freq="1000" op4_level="0" op4_wave="0" op4_fold="0"
            op4_attack="0" op4_decay="600" op4_sustain="1" op4_release="1500"/>
-    <VOICE index="5" name="Bright Acid" src_mode="FM" balance="0.5" level="-8.99685478"
+    <VOICE index="5" name="Bright Acid" src_mode="FM" balance="0.5" level="-8.99685669"
            pan="0" vel_sens="0.699999988" play_mode="Gate" glide="84.3662262"
            amp_attack="0" amp_decay="300" amp_sustain="0.699999988" amp_release="50"
            pitch_amt="0" pitch_decay="60" fm_pitch="-12" fm_algo="4" fm_feedback="0"
@@ -129,7 +129,7 @@
            op3_decay="600" op3_sustain="1" op3_release="1500" op4_ratio="1"
            op4_fixed="0" op4_freq="1000" op4_level="0" op4_wave="0" op4_fold="0"
            op4_attack="0" op4_decay="600" op4_sustain="1" op4_release="1500"/>
-    <VOICE index="6" name="Glass Hat" src_mode="FM" balance="0.5" level="2.82647514"
+    <VOICE index="6" name="Glass Hat" src_mode="FM" balance="0.5" level="2.82647324"
            pan="-0.150000006" vel_sens="0.699999988" play_mode="One-shot"
            glide="0" amp_attack="0" amp_decay="73.7805176" amp_sustain="0"
            amp_release="25" pitch_amt="0" pitch_decay="60" fm_pitch="0"
@@ -148,7 +148,7 @@
            op3_decay="600" op3_sustain="1" op3_release="1500" op4_ratio="1"
            op4_fixed="0" op4_freq="1000" op4_level="1" op4_wave="1" op4_fold="0"
            op4_attack="0" op4_decay="600" op4_sustain="1" op4_release="1500"/>
-    <VOICE index="7" name="Low Open Hat" src_mode="FM" balance="0.5" level="-2.83778858"
+    <VOICE index="7" name="Low Open Hat" src_mode="FM" balance="0.5" level="-2.83778954"
            pan="0.150000006" vel_sens="0.699999988" play_mode="One-shot"
            glide="0" amp_attack="0" amp_decay="493.43103" amp_sustain="0"
            amp_release="60" pitch_amt="0" pitch_decay="60" fm_pitch="0"
@@ -179,26 +179,26 @@
              comp_follow="1.0" dist_drive="0.1500000059604645" dist_type="0.5"
              dist_low_keep="90.0" exc_amount="0.0" exc_tone="5000.0" dist_follow="1.0"
              eq_hp="20.0" eq_lp="20000.0" eq_low="0.0" eq_mid="0.0" eq_high="0.0"
-             eq_follow="1.0" chain_out="0.3668394088745117" safety_clip="1.0"/>
+             eq_follow="1.0" chain_out="0.3682136535644531" safety_clip="1.0"/>
       <SCENE index="1" xy_x="0.550000011920929" xy_y="0.75" comp_amount="0.550000011920929"
              comp_attack="10.0" comp_release="120.0" comp_mix="1.0" comp_detector="0.0"
              comp_follow="1.0" dist_drive="0.1500000059604645" dist_type="0.5"
              dist_low_keep="90.0" exc_amount="0.0" exc_tone="5000.0" dist_follow="1.0"
              eq_hp="20.0" eq_lp="20000.0" eq_low="0.0" eq_mid="0.0" eq_high="0.0"
-             eq_follow="1.0" chain_out="0.3668394088745117" safety_clip="1.0"/>
+             eq_follow="1.0" chain_out="0.3682136535644531" safety_clip="1.0"/>
       <SCENE index="2" xy_x="0.1000000238418579" xy_y="0.449999988079071"
              comp_amount="0.4000000059604645" comp_attack="10.0" comp_release="120.0"
              comp_mix="1.0" comp_detector="0.0" comp_follow="1.0" dist_drive="0.1500000059604645"
              dist_type="0.5" dist_low_keep="90.0" exc_amount="0.1500000059604645"
              exc_tone="5000.0" dist_follow="1.0" eq_hp="20.0" eq_lp="20000.0"
-             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="0.3668394088745117"
+             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="0.3682136535644531"
              safety_clip="1.0"/>
       <SCENE index="3" xy_x="0.550000011920929" xy_y="0.2999999821186066"
              comp_amount="0.4000000059604645" comp_attack="10.0" comp_release="120.0"
              comp_mix="1.0" comp_detector="0.0" comp_follow="1.0" dist_drive="0.1500000059604645"
              dist_type="0.5" dist_low_keep="90.0" exc_amount="0.0" exc_tone="5000.0"
              dist_follow="1.0" eq_hp="220.0" eq_lp="3500.0" eq_low="0.0" eq_mid="0.0"
-             eq_high="0.0" eq_follow="1.0" chain_out="0.3668394088745117"
+             eq_high="0.0" eq_follow="1.0" chain_out="0.3682136535644531"
              safety_clip="1.0"/>
     </MOVEMENT>
   </KIT>

@@ -7,7 +7,7 @@
          amp_sustain="0" amp_release="60" pitch_amt="0" pitch_decay="60"
          fm_pitch="0" fm_algo="1" fm_feedback="0" fm_harm="0" fm_bright="0"
          fm_bdecay="0" fm_grit="0" smp_tune="0" smp_start="0" smp_end="1"
-         smp_reverse="0" smp_fade_in="0" smp_fade_out="0" smp_gain="5.59581757"
+         smp_reverse="0" smp_fade_in="0" smp_fade_out="0" smp_gain="6.52508068"
          smp_loop="0" smp_loop_start="0" smp_loop_end="1" smp_slice_mode="Grid"
          smp_slices="16" smp_slice_sens="0.5" punch="0" drive="0" drive_type="Soft"
          flt_type="Low-pass" flt_cutoff="20000" flt_res="0" chain_amt="1"

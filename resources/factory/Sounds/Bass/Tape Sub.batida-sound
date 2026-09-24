@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.0">
   <INFO name="Tape Sub" author="Negative Space" category="bass" tags="warm"/>
-  <VOICE src_mode="FM" balance="0.5" level="-4.55844402" pan="0" vel_sens="0.699999988"
+  <VOICE src_mode="FM" balance="0.5" level="-4.5584445" pan="0" vel_sens="0.699999988"
          play_mode="Gate" glide="11.9621868" amp_attack="4.14187145" amp_decay="400"
          amp_sustain="0.998032033" amp_release="185.940811" pitch_amt="0"
          pitch_decay="60" fm_pitch="-24" fm_algo="4" fm_feedback="0" fm_harm="0"
