@@ -58,9 +58,9 @@ public:
         const auto patterns = lib.filtered (PresetType::Pattern, all);
         const auto sets = lib.filtered (PresetType::Set, all);
         expect (sounds.size() >= 150, juce::String ((int) sounds.size()) + " sounds");
-        expectEquals ((int) kits.size(), 22, "kits");
-        expectEquals ((int) patterns.size(), 22, "patterns");
-        expectEquals ((int) sets.size(), 8, "sets");
+        expectEquals ((int) kits.size(), 36, "kits");
+        expectEquals ((int) patterns.size(), 50, "patterns");
+        expectEquals ((int) sets.size(), 15, "sets");
         expect (Library::archiveVersion() >= 2, "a version-2 factory or newer");
         expect (FactoryData::Factory_zipSize < 12 * 1024 * 1024, "the archive stays small");
         for (const auto* name : { "Kits/Neutral.batida-kit", "Sounds/Kick/Kick.batida-sound", "Patterns/Breakbeat.batida-pattern",
@@ -68,8 +68,8 @@ public:
             expect (root.getChildFile ("Factory").getChildFile (name).existsAsFile(), name);
 
         beginTest ("Styles are found by search");
-        for (const auto& [style, least] : { std::pair { "techno", 5 }, { "breaks", 4 }, { "glitch", 3 }, { "house", 3 },
-                                            { "garage", 2 }, { "hip hop", 2 }, { "trap", 2 } })
+        for (const auto& [style, least] : { std::pair { "techno", 8 }, { "breaks", 7 }, { "glitch", 5 }, { "house", 5 },
+                                            { "garage", 3 }, { "hip hop", 3 }, { "trap", 4 } })
         {
             LibraryFilter f;
             f.search = style;
@@ -161,7 +161,9 @@ public:
             }
         }
 
-        beginTest ("Every pattern makes sound in every kit");
+        // Every pattern in five kits spread over the list (all of them would
+        // take minutes); the sets above play each pattern in its own kit.
+        beginTest ("Every pattern makes sound in other kits");
         {
             std::vector<LoadedKit> loaded;
             for (const auto& e : kits)
@@ -174,8 +176,10 @@ public:
                 expect (p.has_value(), e.file.getFileName());
                 if (! p)
                     continue;
-                for (const auto& k : loaded)
+                const auto index = (size_t) (&e - patterns.data());
+                for (size_t n = 0; n < 5 && ! loaded.empty(); ++n)
                 {
+                    const auto& k = loaded[(index * 7 + n * 5) % loaded.size()];
                     const auto audio = renderKit (k.kit, k.slots, p->pattern, 120.0f, 0.5f, 1);
                     const auto peak = factory::peakDb (audio);
                     expect (peak > -40.0f && peak <= 0.01f, e.info.name + " in " + k.kit.info.name + " peaks " + juce::String (peak, 1));

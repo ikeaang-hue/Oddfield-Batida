@@ -98,7 +98,7 @@ master level. Click **BATIDA/** for the version.
 - Browse sounds, kits, patterns and sets. **Clicking one loads it right away**, even while a
   pattern plays. One **UNDO** takes back a whole run of clicks.
 - ♥ marks a favourite. Use **SAVE AS…** to keep your own.
-- The factory library: about 220 sounds, 22 kits, 22 patterns and 8 sets, all made with Batida's
+- The factory library: about 220 sounds, 36 kits, 50 patterns and 15 sets, all made with Batida's
   own engine (no outside samples). Techno, breakbeat and glitch at the core, plus house, garage,
   hip hop and trap: search a style's name to find its kits, patterns and sets.
 - Files live in `~/Music/Negative Space/Batida/`, with *Factory* and *User* folders you can open

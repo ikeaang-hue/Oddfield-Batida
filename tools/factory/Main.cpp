@@ -522,6 +522,14 @@ int runBuild (const juce::File& library, const juce::File& out)
         patterns[b.idea->patternName] = b.pattern;
         writePattern (out.getChildFile ("Patterns/" + safeFileName (p.info.name) + ".batida-pattern"), p);
     }
+    for (const auto& extra : extraPatterns())
+    {
+        PatternPreset p;
+        p.info = { extra.name, kAuthor, {}, { extra.style }, {} };
+        p.pattern = extra.pattern();
+        patterns[extra.name] = p.pattern;
+        writePattern (out.getChildFile ("Patterns/" + safeFileName (p.info.name) + ".batida-pattern"), p);
+    }
 
     std::vector<SetPreset> sets;
     for (const auto& spec : setSpecs())
@@ -620,6 +628,13 @@ int runBuild (const juce::File& library, const juce::File& out)
             PatternPreset p;
             p.info = { b.idea->patternName, kAuthor, {}, { b.idea->style }, {} };
             p.pattern = b.pattern;
+            writePattern (review.getChildFile ("Patterns/" + safeFileName (p.info.name) + ".batida-pattern"), p);
+        }
+        for (const auto& extra : extraPatterns())
+        {
+            PatternPreset p;
+            p.info = { extra.name, kAuthor, {}, { extra.style }, {} };
+            p.pattern = extra.pattern();
             writePattern (review.getChildFile ("Patterns/" + safeFileName (p.info.name) + ".batida-pattern"), p);
         }
         for (auto set : sets)

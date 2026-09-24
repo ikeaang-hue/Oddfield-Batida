@@ -143,6 +143,15 @@ struct KitConcept
 
 const std::vector<KitConcept>& kitConcepts();
 
+// Patterns beyond each kit's own (the B patterns), for the sets.
+struct ExtraPattern
+{
+    std::string name, style;
+    std::function<Pattern()> pattern;
+};
+
+const std::vector<ExtraPattern>& extraPatterns();
+
 struct SetSpec
 {
     std::string name;
