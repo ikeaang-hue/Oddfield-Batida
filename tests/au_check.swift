@@ -193,6 +193,18 @@ func renderWithHostTransport(runTransportMode: Bool, seconds: Double) -> [Float]
                          UInt32(MemoryLayout<HostCallbackInfo>.size))
     AudioUnitInitialize(au)
 
+    // Builds start with every pattern empty: give pattern 1 its test beat.
+    var classInfo: Unmanaged<CFPropertyList>?
+    var infoSize = UInt32(MemoryLayout<Unmanaged<CFPropertyList>>.size)
+    if AudioUnitGetProperty(au, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0, &classInfo, &infoSize) == noErr,
+       let dict = classInfo?.takeRetainedValue() as? [String: Any],
+       let data = dict["jucePluginState"] as? Data {
+        var withBeat = dict
+        withBeat["jucePluginState"] = encodeState(withTestBeat(decodeState(data)))
+        var plist: CFPropertyList = withBeat as CFDictionary
+        AudioUnitSetProperty(au, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0, &plist, infoSize)
+    }
+
     if runTransportMode { // find "Run Mode" and set it to Transport (menus are indexes)
         var listSize: UInt32 = 0
         AudioUnitGetPropertyInfo(au, kAudioUnitProperty_ParameterList, kAudioUnitScope_Global, 0, &listSize, nil)
@@ -249,6 +261,22 @@ func writeWav(_ x: [Float], _ name: String) {
     try! file.write(from: buf)
 }
 
+// Pattern 1 as the checks expect it (a kick on steps 1, 3, 11 and 12, like
+// the breakbeat's), unless the build already starts with the demo breakbeat.
+func withTestBeat(_ xml: String) -> String {
+    if xml.contains("<PATTERN index=\"0\"") { return xml }
+    let beat = "<PATTERN index=\"0\" length=\"16\" xy=\"\"><TRACK voice=\"0\" length=\"16\" noteLength=\"0.5\" gate=\"1010000000110000\"/></PATTERN>"
+    if xml.contains("<PATTERNS/>") { return xml.replacingOccurrences(of: "<PATTERNS/>", with: "<PATTERNS>" + beat + "</PATTERNS>") }
+    return xml.replacingOccurrences(of: "</PATTERNS>", with: beat + "</PATTERNS>")
+}
+
+func giveTestBeat(_ r: Renderer) {
+    guard let data = r.unit.auAudioUnit.fullState?["jucePluginState"] as? Data else { return }
+    var state = r.unit.auAudioUnit.fullState!
+    state["jucePluginState"] = encodeState(withTestBeat(decodeState(data)))
+    r.unit.auAudioUnit.fullState = state
+}
+
 // JUCE state blob: magic, length, UTF-8 XML, 0.
 func decodeState(_ data: Data) -> String {
     String(decoding: data.subdata(in: 8..<(data.count - 1)), as: UTF8.self)
@@ -287,6 +315,7 @@ do {
 print("MIDI mode (host parameters):")
 do {
     let r = Renderer(instantiate())
+    giveTestBeat(r)
     r.silence(seconds: 0.2)
     check(peakDb(r.play(channel: 2, note: 64)) < -100, "drum map: channel 2 note 64 is silent")
     r.param("MIDI Mode").value = 1.0 // Chromatic
@@ -339,6 +368,7 @@ print("Sequencer (pattern keys, Transport mode, saved patterns):")
 do {
     // Pattern key through the real AU, host stopped: internal tempo.
     let r = Renderer(instantiate())
+    giveTestBeat(r)
     let beat = r.play(channel: 1, note: 60, seconds: 2.0, noteSeconds: 1.5) // hold C3: pattern 1
     let playing = energy(beat[24000..<72000]), after = energy(beat[84000...])
     check(playing > 1 && after < playing * 0.01,
@@ -367,7 +397,8 @@ do {
     var xml = decodeState(data)
     check(xml.contains("<PATTERNS"), "state XML contains the patterns")
     let kick = "<PATTERN index=\"1\" length=\"16\" xy=\"\"><TRACK voice=\"0\" length=\"16\" noteLength=\"0.5\" gate=\"1000100010001000\"/></PATTERN>"
-    xml = xml.replacingOccurrences(of: "</PATTERNS>", with: kick + "</PATTERNS>")
+    xml = xml.contains("<PATTERNS/>") ? xml.replacingOccurrences(of: "<PATTERNS/>", with: "<PATTERNS>" + kick + "</PATTERNS>")
+                                     : xml.replacingOccurrences(of: "</PATTERNS>", with: kick + "</PATTERNS>")
     var state = r.unit.auAudioUnit.fullState!
     state["jucePluginState"] = encodeState(xml)
     let restored = Renderer(instantiate())

@@ -65,9 +65,12 @@ void patternFromXml (const juce::XmlElement& xml, Pattern& pattern);
 // The breakbeat for the default kit (a factory pattern, and the dev default).
 Pattern breakbeatPattern();
 
-// Development default: pattern 1 is a breakbeat demo, 2-16 empty.
-// RELEASE: set kShipDemoPattern to false, so every pattern starts empty.
-constexpr bool kShipDemoPattern = true;
+// Every pattern starts empty, as in a release. Built with -DBATIDA_DEMO=ON,
+// pattern 1 starts with the breakbeat demo (development).
+#ifndef BATIDA_DEMO
+ #define BATIDA_DEMO 0
+#endif
+constexpr bool kShipDemoPattern = BATIDA_DEMO != 0;
 PatternBank defaultPatternBank();
 
 } // namespace batida

@@ -5,8 +5,9 @@ sounds run into one shared **kit chain**, and an **XY pad** plays that chain as 
 are also a step sequencer, drawn modulators, guided variations and a library. It works for any
 style but is built for synthetic and heavy music: techno, breakbeat, glitch.
 
-Version **0.6.0**, pre-release. Audio Unit only for now; VST3 comes later. The design is in
-[SPEC.md](SPEC.md), and each build phase has a plan in [docs/](docs/).
+Version **0.6.1**, pre-release. Audio Unit only for now; VST3 comes later. The design is in
+[SPEC.md](SPEC.md), and each build phase has a plan in [docs/](docs/). Testers: start with
+[TESTING.md](TESTING.md).
 
 ## What's in it
 
@@ -132,9 +133,9 @@ build/BatidaSnapshot_artefacts/Release/BatidaSnapshot build/snapshots  # screens
   is the value bar and its relatives.
 - `tests/`: unit tests and tools.
 
-**Before a release:** set `kShipDemoPattern` (`Source/Engine/Sequencer/Pattern.h`) and
-`kShipDemoModulation` (`Source/Engine/Movement/Movement.h`) to `false`. In development, pattern 1
-holds a breakbeat and Mod 1 moves XY Heat.
+**Demo defaults:** builds start like a release (every pattern and modulator empty). For
+development, `cmake -B build -DBATIDA_DEMO=ON` puts the breakbeat in pattern 1 and has Mod 1 move
+XY Heat. The tests pass either way.
 
 ## Licence
 

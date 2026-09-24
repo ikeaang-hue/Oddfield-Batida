@@ -219,6 +219,7 @@ int runBeat (const juce::File& outDir)
         constexpr int block = 256;
         const auto total = (int) (48000.0 * 8.5);
         Kit kit;
+        kit.patternStore().edit ([] (PatternBank& b) { b.patterns[0] = breakbeatPattern(); });
         kit.setParameters (params);
         kit.prepare (48000.0, block);
         juce::AudioBuffer<float> out (2, total), buf (2, block);

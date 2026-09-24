@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Batida VERSION 0.6.0)
+project(Batida VERSION 0.6.1)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -45,7 +45,18 @@ target_include_directories(BatidaEngine INTERFACE Source)
 
 target_link_libraries(BatidaEngine INTERFACE juce::juce_audio_formats juce::juce_dsp juce::juce_events)
 
+# Development defaults (a breakbeat in pattern 1, Mod 1 moving XY Heat). Off
+# by default, so every build starts like a release: patterns and modulators
+# empty. cmake -B build -DBATIDA_DEMO=ON to turn them on.
+option(BATIDA_DEMO "Start with the development demo pattern and modulation" OFF)
+if(BATIDA_DEMO)
+    set(BATIDA_DEMO_VALUE 1)
+else()
+    set(BATIDA_DEMO_VALUE 0)
+endif()
+
 set(BATIDA_DEFINITIONS
+    BATIDA_DEMO=${BATIDA_DEMO_VALUE}
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_DISPLAY_SPLASH_SCREEN=0
