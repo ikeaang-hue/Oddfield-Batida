@@ -290,6 +290,7 @@ void Library::loadSettings()
     if (xml == nullptr)
         return;
     author = xml->getStringAttribute ("author");
+    zoom = juce::jlimit (100, 150, xml->getIntAttribute ("zoom", 100));
     for (auto* e : xml->getChildWithTagNameIterator ("SAMPLE_FOLDER"))
         sampleFolders.addIfNotAlreadyThere (juce::File (e->getStringAttribute ("path")));
     for (auto* e : xml->getChildWithTagNameIterator ("RELINK_FOLDER"))
@@ -302,6 +303,7 @@ void Library::saveSettings() const
     if (xml == nullptr)
         xml = std::make_unique<juce::XmlElement> ("SETTINGS");
     xml->setAttribute ("author", author);
+    xml->setAttribute ("zoom", zoom);
     xml->deleteAllChildElementsWithTagName ("SAMPLE_FOLDER");
     xml->deleteAllChildElementsWithTagName ("RELINK_FOLDER");
     for (const auto& f : sampleFolders)
@@ -334,6 +336,15 @@ void Library::setAuthor (const juce::String& name)
     if (name == author)
         return;
     author = name;
+    saveSettings();
+}
+
+void Library::setZoom (int percent)
+{
+    percent = percent >= 138 ? 150 : percent >= 113 ? 125 : 100;
+    if (percent == zoom)
+        return;
+    zoom = percent;
     saveSettings();
 }
 

@@ -1,28 +1,32 @@
 #pragma once
 
-#include <juce_gui_basics/juce_gui_basics.h>
+#include "Look/Theme.h"
 
-// A button with a drawn triangle (text arrows don't fit narrow buttons).
-struct ArrowTextButton final : juce::TextButton
-{
-    explicit ArrowTextButton (bool pointsLeft) : left (pointsLeft) {}
-    void paintButton (juce::Graphics& g, bool over, bool down) override;
-    const bool left;
-};
-
-// ◀ name ▾ ▶ : steps through the library (the LIB page's list for that kind,
-// with its filters) and opens the menu for that level (Init, Load, Save...).
-class BrowseStrip final : public juce::Component
+// ‹ name › : steps through the library (the LIB list for that kind, with its
+// filters); the name opens that level's menu (Init, Load, Save...).
+// Compact: one line ("kit: Default Kit"). Large: a name in the heading face
+// with a line under it ("slot 1 · C1 · Kick (Factory)").
+class BrowseStrip final : public juce::Component, public juce::SettableTooltipClient
 {
 public:
-    BrowseStrip();
+    enum class Style { Compact, Large };
+    explicit BrowseStrip (Style style = Style::Compact);
 
     std::function<void()> onPrevious, onNext, onMenu;
-    void setName (const juce::String& name, const juce::String& tooltip = {});
-    void resized() override;
+    void setText (const juce::String& name, const juce::String& tooltip = {});
+    void setPrefix (const juce::String& prefix) { prefixText = prefix; repaint(); } // "kit: "
+    void setSubtitle (const juce::String& subtitle);
+
+    void paint (juce::Graphics&) override;
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseEnter (const juce::MouseEvent&) override { repaint(); }
+    void mouseExit (const juce::MouseEvent&) override { repaint(); }
+    void mouseMove (const juce::MouseEvent&) override { repaint(); }
 
 private:
-    ArrowTextButton previous { true }, next { false };
-    juce::TextButton name;
-    juce::String shown;
+    enum class Part { None, Previous, Name, Next };
+    Part partAt (juce::Point<int> p) const;
+
+    const Style style;
+    juce::String shown, prefixText, subtitle;
 };

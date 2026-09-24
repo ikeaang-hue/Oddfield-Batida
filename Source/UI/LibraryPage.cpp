@@ -6,23 +6,23 @@ using namespace batida;
 
 namespace
 {
-const juce::Colour kPanel (0xff2a2d31), kAccent (0xffc0632a), kBlue (0xff2b7bb9);
-const char* kModeNames[] = { "Sounds", "Kits", "Patterns", "Sets", "Samples" };
-const char* kSourceNames[] = { "All", "Factory", "User", "\xe2\x99\xa5 Favs" };
-constexpr int kRowHeight = 22, kHeart = 24;
+const char* kModeNames[] = { "SOUNDS", "KITS", "PATTERNS", "SETS", "SAMPLES" };
+const char* kSourceNames[] = { "ALL", "FACTORY", "USER", "\xe2\x99\xa5" };
+constexpr int kRowHeight = 25, kHeart = 26;
+constexpr int kNameW = 190, kCategoryW = 80, kTagsW = 110, kAuthorW = 130;
 
-void styleLabel (juce::Label& l, float size = 13.0f, bool bold = false, juce::Colour c = juce::Colours::lightgrey)
+void styleLabel (juce::Label& l, float size = 10.5f, bool bold = false, juce::Colour c = theme::ink)
 {
-    l.setFont (juce::FontOptions (size, bold ? juce::Font::bold : juce::Font::plain));
+    l.setFont (bold ? theme::mono (size, theme::Weight::Bold) : theme::mono (size));
     l.setColour (juce::Label::textColourId, c);
     l.setJustificationType (juce::Justification::topLeft);
+    l.setBorderSize ({});
 }
 
 void styleChip (juce::TextButton& b, const juce::String& text)
 {
     b.setButtonText (text);
     b.setClickingTogglesState (false);
-    b.setColour (juce::TextButton::buttonOnColourId, kBlue);
 }
 
 juce::String sizeText (juce::int64 bytes)
@@ -38,14 +38,13 @@ LibraryPage::LibraryPage (BatidaProcessor& p, LibraryController& c) : proc (p), 
     {
         auto& b = modeButtons[(size_t) i];
         b.setButtonText (kModeNames[i]);
-        b.setColour (juce::TextButton::buttonOnColourId, kAccent);
-        b.setComponentID (juce::String ("lib") + kModeNames[i]);
+        b.setComponentID (juce::String ("lib") + juce::String (kModeNames[i]).toLowerCase().substring (0, 1).toUpperCase()
+                          + juce::String (kModeNames[i]).toLowerCase().substring (1));
         b.onClick = [this, i] { setMode ((Mode) i); };
         addAndMakeVisible (b);
     }
 
-    showLabel.setText ("Show", juce::dontSendNotification);
-    styleLabel (showLabel, 12.0f, false, juce::Colours::grey);
+    showLabel.setText ("", juce::dontSendNotification);
     addAndMakeVisible (showLabel);
     for (int i = 0; i < 4; ++i)
     {
@@ -55,12 +54,12 @@ LibraryPage::LibraryPage (BatidaProcessor& p, LibraryController& c) : proc (p), 
         addAndMakeVisible (b);
     }
 
-    styleChip (categoryButtons[0], "All");
+    styleChip (categoryButtons[0], "all");
     categoryButtons[0].onClick = [this] { filter().category = {}; rebuild(); };
     for (int i = 0; i < soundCategories().size(); ++i)
     {
         auto& b = categoryButtons[(size_t) i + 1];
-        styleChip (b, Library::categoryFolder (soundCategories()[i]));
+        styleChip (b, Library::categoryFolder (soundCategories()[i]).toLowerCase());
         b.onClick = [this, i]
         {
             const auto cat = soundCategories()[i];
@@ -88,7 +87,9 @@ LibraryPage::LibraryPage (BatidaProcessor& p, LibraryController& c) : proc (p), 
         addAndMakeVisible (b);
     }
 
-    search.setTextToShowWhenEmpty ("Search", juce::Colours::grey);
+    search.setTextToShowWhenEmpty ("/  search name, tag, author", theme::faint);
+    search.setFont (theme::mono (10.5f));
+    search.setIndents (8, 6);
     search.setComponentID ("libSearch");
     search.onTextChange = [this] { filter().search = search.getText(); rebuild(); };
     search.onEscapeKey = [this] { search.clear(); filter().search = {}; rebuild(); };
@@ -96,13 +97,13 @@ LibraryPage::LibraryPage (BatidaProcessor& p, LibraryController& c) : proc (p), 
 
     for (auto* l : { &countLabel, &hint })
     {
-        styleLabel (*l, 12.0f, false, juce::Colours::grey);
+        styleLabel (*l, 9.5f, false, theme::muted);
         addAndMakeVisible (*l);
     }
     countLabel.setJustificationType (juce::Justification::centredLeft);
 
     list.setRowHeight (kRowHeight);
-    list.setColour (juce::ListBox::backgroundColourId, juce::Colour (0xff232529));
+    list.setColour (juce::ListBox::backgroundColourId, theme::bg);
     list.setOutlineThickness (0);
     list.setComponentID ("libList");
     addAndMakeVisible (list);
@@ -145,10 +146,11 @@ LibraryPage::LibraryPage (BatidaProcessor& p, LibraryController& c) : proc (p), 
                              (juce::Button*) &saveAs, (juce::Button*) &init, (juce::Button*) &reveal })
         addAndMakeVisible (*b);
 
-    styleLabel (detailName, 16.0f, true, juce::Colours::white);
-    styleLabel (detailWhat, 12.0f, false, juce::Colours::grey);
-    styleLabel (detailInfo, 12.0f);
-    styleLabel (detailPath, 11.0f, false, juce::Colours::grey);
+    styleLabel (detailName, 16.0f, true, theme::ink);
+    detailName.setFont (theme::head (15.0f, true));
+    styleLabel (detailWhat, 9.5f, false, theme::muted);
+    styleLabel (detailInfo, 10.0f);
+    styleLabel (detailPath, 9.5f, false, theme::muted);
     for (auto* l : { &detailName, &detailWhat, &detailInfo, &detailPath })
         addAndMakeVisible (*l);
 
@@ -171,7 +173,6 @@ LibraryPage::LibraryPage (BatidaProcessor& p, LibraryController& c) : proc (p), 
     {
         auto& b = detailTags[(size_t) i];
         b.setButtonText (characterTags()[i]);
-        b.setColour (juce::TextButton::buttonOnColourId, kBlue);
         b.onClick = [this, i]
         {
             const auto r = list.getSelectedRow();
@@ -209,9 +210,9 @@ LibraryPage::LibraryPage (BatidaProcessor& p, LibraryController& c) : proc (p), 
             setFolder (proc.library().getRoot());
         }
     };
-    for (auto* c : { (juce::Component*) &rootBox, (juce::Component*) &upButton, (juce::Component*) &addFolderButton,
-                     (juce::Component*) &removeFolderButton })
-        addChildComponent (c);
+    for (auto* comp : { (juce::Component*) &rootBox, (juce::Component*) &upButton, (juce::Component*) &addFolderButton,
+                        (juce::Component*) &removeFolderButton })
+        addChildComponent (comp);
 
     proc.library().addChangeListener (this);
     folder = proc.library().getRoot();
@@ -257,6 +258,8 @@ void LibraryPage::setMode (Mode m)
 
 void LibraryPage::visibilityChanged()
 {
+    if (! isVisible())
+        tries = 0;
     if (isVisible())
     {
         proc.library().prepare();
@@ -337,15 +340,15 @@ void LibraryPage::updateDetails()
         switch (mode)
         {
             case Mode::Sounds:
-            case Mode::Samples:  return "voice " + juce::String (controller.voice() + 1) + " (" + proc.getVoiceName (controller.voice()) + ")";
-            case Mode::Kits:     return juce::String ("the whole kit (the patterns stay)");
+            case Mode::Samples:  return juce::String (controller.voice() + 1).paddedLeft ('0', 2) + " " + proc.getVoiceName (controller.voice()).toUpperCase();
+            case Mode::Kits:     return juce::String ("the kit");
             case Mode::Patterns: return "pattern " + juce::String (controller.pattern() + 1);
-            case Mode::Sets:     return juce::String ("everything: kit, patterns and settings");
+            case Mode::Sets:     return juce::String ("everything");
         }
         return juce::String();
     };
-    hint.setText ("Click to try it: it loads into " + target() + ", live. Undo goes back to before you started browsing.",
-                  juce::dontSendNotification);
+    // What a click loads into, and how many tries Undo would take back.
+    hint.setText ("loads into " + target(), juce::dontSendNotification);
 
     if (mode == Mode::Samples)
     {
@@ -362,8 +365,7 @@ void LibraryPage::updateDetails()
             detailWhat.setText ("Folder", juce::dontSendNotification);
             detailPath.setText (folder.getFullPathName(), juce::dontSendNotification);
         }
-        detailInfo.setText ("Drag a WAV, AIFF or FLAC from Finder onto a voice, or add your sample folders here.",
-                            juce::dontSendNotification);
+        detailInfo.setText ({}, juce::dontSendNotification);
         return;
     }
 
@@ -372,9 +374,7 @@ void LibraryPage::updateDetails()
         detailName.setText ({}, juce::dontSendNotification);
         detailWhat.setText ({}, juce::dontSendNotification);
         detailPath.setText ({}, juce::dontSendNotification);
-        detailInfo.setText (rows.empty() ? juce::String ("Nothing here yet. Save one with Save..., or change the filters.")
-                                         : juce::String ("Click one to try it."),
-                            juce::dontSendNotification);
+        detailInfo.setText (rows.empty() ? juce::String ("nothing here") : juce::String(), juce::dontSendNotification);
         return;
     }
 
@@ -393,8 +393,6 @@ void LibraryPage::updateDetails()
         lines.add ("By " + e.info.author);
     if (e.info.madeWith.isNotEmpty())
         lines.add ("Made with Batida " + e.info.madeWith);
-    if (! e.factory)
-        lines.add (juce::String ("Edit its character below."));
     detailInfo.setText (lines.joinIntoString ("\n"), juce::dontSendNotification);
     detailPath.setText (e.file.getRelativePathFrom (proc.library().getRoot()), juce::dontSendNotification);
 
@@ -434,6 +432,7 @@ juce::Component* LibraryPage::refreshComponentForRow (int row, bool, juce::Compo
 
 void LibraryPage::Row::paint (juce::Graphics& g)
 {
+    using namespace theme;
     auto& p = page;
     if (row < 0 || row >= p.getNumRows())
         return;
@@ -441,49 +440,48 @@ void LibraryPage::Row::paint (juce::Graphics& g)
     const auto current = p.isCurrent (row);
     auto r = getLocalBounds();
     if (selected)
-        g.fillAll (kBlue.withAlpha (0.35f));
-    else if (row % 2 == 1)
-        g.fillAll (juce::Colours::white.withAlpha (0.02f));
+        g.fillAll (ink);
+    g.setColour (selected ? ink : surface);
+    g.fillRect (r.removeFromBottom (1));
+    const auto fg = selected ? bg : ink;
+    const auto dim = selected ? bg : muted;
 
     if (p.mode == Mode::Samples)
     {
         const auto& f = p.sampleRows[(size_t) row];
-        r.removeFromLeft (8);
-        g.setFont (juce::FontOptions (13.0f, current ? juce::Font::bold : juce::Font::plain));
-        g.setColour (current ? kAccent.brighter (0.3f) : juce::Colours::white.withAlpha (0.9f));
+        r.removeFromLeft (10);
         if (f.isDirectory())
         {
-            g.setColour (juce::Colours::lightgrey);
+            g.setColour (dim);
+            g.setFont (mono (10.5f));
             g.drawText (juce::String::fromUTF8 ("\xe2\x96\xb8 ") + f.getFileName(), r, juce::Justification::centredLeft);
             return;
         }
+        g.setColour (fg);
+        g.setFont (mono (10.5f, current ? Weight::Bold : Weight::Medium));
         g.drawText (f.getFileName(), r.withTrimmedRight (70), juce::Justification::centredLeft);
-        g.setColour (juce::Colours::grey);
-        g.setFont (juce::FontOptions (11.0f));
-        g.drawText (sizeText (f.getSize()), r.removeFromRight (66), juce::Justification::centredRight);
+        g.setColour (dim);
+        g.setFont (mono (9.5f));
+        g.drawText (sizeText (f.getSize()), r.removeFromRight (70), juce::Justification::centredRight);
         return;
     }
 
     const auto& e = p.rows[(size_t) row];
     const auto fav = p.proc.library().isFavourite (e.file);
-    g.setFont (juce::FontOptions (14.0f));
-    g.setColour (fav ? kAccent : juce::Colours::white.withAlpha (0.25f));
-    g.drawText (juce::String::fromUTF8 (fav ? "\xe2\x99\xa5" : "\xe2\x99\xa1"), r.removeFromLeft (kHeart), juce::Justification::centred);
+    r.removeFromLeft (4);
+    g.setFont (mono (11.0f));
+    g.setColour (fav ? (selected ? bg : lime) : (selected ? bg.withAlpha (0.4f) : faint));
+    g.drawText (juce::String::fromUTF8 (fav ? "\xe2\x99\xa5" : "\xe2\x99\xa1"), r.removeFromLeft (kHeart - 4), juce::Justification::centredLeft);
 
-    auto badge = r.removeFromRight (58);
-    g.setFont (juce::FontOptions (10.0f));
-    g.setColour (e.factory ? juce::Colours::grey : kBlue.brighter (0.4f));
-    g.drawText (e.factory ? "Factory" : "User", badge.withTrimmedRight (6), juce::Justification::centredRight);
-
-    g.setFont (juce::FontOptions (13.0f, current ? juce::Font::bold : juce::Font::plain));
-    g.setColour (current ? kAccent.brighter (0.3f) : juce::Colours::white.withAlpha (0.9f));
-    g.drawText (e.info.name, r.removeFromLeft (220), juce::Justification::centredLeft);
-    g.setFont (juce::FontOptions (11.0f));
-    g.setColour (juce::Colours::lightgrey);
-    if (e.type == PresetType::Sound)
-        g.drawText (Library::categoryFolder (e.info.category), r.removeFromLeft (70), juce::Justification::centredLeft);
-    g.setColour (juce::Colours::grey);
-    g.drawText (e.info.tags.joinIntoString (", "), r, juce::Justification::centredLeft);
+    g.setColour (fg);
+    g.setFont (mono (10.5f, current || selected ? Weight::Bold : Weight::Medium));
+    g.drawText (e.info.name, r.removeFromLeft (kNameW), juce::Justification::centredLeft);
+    g.setFont (mono (10.0f));
+    g.setColour (dim);
+    g.drawText (e.type == PresetType::Sound ? e.info.category : juce::String(), r.removeFromLeft (kCategoryW), juce::Justification::centredLeft);
+    g.drawText (e.info.tags.joinIntoString (", "), r.removeFromLeft (kTagsW), juce::Justification::centredLeft);
+    g.drawText (e.info.author, r.removeFromLeft (kAuthorW), juce::Justification::centredLeft);
+    g.drawText (e.factory ? "FACTORY" : "USER", r.withTrimmedRight (10), juce::Justification::centredRight);
 }
 
 void LibraryPage::clickRow (int row, int x)
@@ -520,6 +518,8 @@ void LibraryPage::selectedRowsChanged (int row)
 void LibraryPage::tryRow (int row)
 {
     shownRow = row;
+    ++tries;
+    repaint (detailBounds);
     if (mode == Mode::Samples)
         controller.trySample (sampleRows[(size_t) row]);
     else
@@ -641,96 +641,135 @@ void LibraryPage::addFolder()
 
 void LibraryPage::paint (juce::Graphics& g)
 {
-    g.fillAll (kPanel);
-    g.setColour (juce::Colours::black.withAlpha (0.25f));
-    g.fillRect (getLocalBounds().removeFromRight (250));
+    using namespace theme;
+    g.fillAll (bg);
+
+    // The list: a frame and its column headings.
+    const auto listFrame = list.getBounds().expanded (1).withTop (list.getY() - 25).withBottom (previous.getBottom() + 5);
+    g.setColour (line);
+    g.drawRect (listFrame, 1);
+    g.fillRect (listFrame.getX(), list.getY() - 1, listFrame.getWidth(), 1);
+    g.fillRect (listFrame.getX(), previous.getY() - 5, listFrame.getWidth(), 1);
+    auto head = juce::Rectangle<int> (list.getX(), list.getY() - 24, list.getWidth(), 22);
+    if (mode != Mode::Samples)
+    {
+        head.removeFromLeft (kHeart);
+        drawLabel (g, "Name", head.removeFromLeft (kNameW));
+        drawLabel (g, "Category", head.removeFromLeft (kCategoryW));
+        drawLabel (g, "Character", head.removeFromLeft (kTagsW));
+        drawLabel (g, "Author", head.removeFromLeft (kAuthorW));
+        drawLabel (g, "Source", head.withTrimmedRight (10), muted, juce::Justification::centredRight);
+    }
+    else
+        drawLabel (g, "File", head.withTrimmedLeft (10));
+
+    if (mode == Mode::Sounds)
+        drawLabel (g, "Category", categoryButtons[0].getBounds().translated (-70, 0).withWidth (66));
+    if (mode != Mode::Samples)
+        drawLabel (g, "Character", tagButtons[0].getBounds().translated (-74, 0).withWidth (70));
+
+    // Details
+    g.setColour (line);
+    g.drawRect (detailBounds, 1);
+    drawTag (g, detailBounds.reduced (8, 7).withHeight (kTagHeight), "Selected");
+    if (tries > 0 && mode != Mode::Samples)
+        drawTag (g, hint.getBounds().translated (0, -20).withHeight (kTagHeight),
+                 juce::String (tries) + (tries == 1 ? " try" : " tries"), lime, bg);
 }
 
 void LibraryPage::resized()
 {
-    auto r = getLocalBounds().reduced (10);
+    auto r = getLocalBounds();
 
-    auto left = r.removeFromLeft (132);
-    r.removeFromLeft (10);
+    // Row 1: what to browse, where from, search.
+    auto top = r.removeFromTop (24);
     for (auto& b : modeButtons)
     {
-        b.setBounds (left.removeFromTop (30).reduced (0, 2));
+        const auto w = (int) juce::GlyphArrangement::getStringWidth (theme::mono (10.0f, theme::Weight::Bold), b.getButtonText()) + 16;
+        b.setBounds (top.removeFromLeft (w));
+        top.removeFromLeft (-1);
     }
-    left.removeFromTop (14);
-    showLabel.setBounds (left.removeFromTop (18));
-    for (int row = 0; row < 2; ++row)
+    top.removeFromLeft (14);
+    for (auto& b : sourceButtons)
     {
-        auto line = left.removeFromTop (26);
-        sourceButtons[(size_t) row * 2].setBounds (line.removeFromLeft (line.getWidth() / 2).reduced (1, 1));
-        sourceButtons[(size_t) row * 2 + 1].setBounds (line.reduced (1, 1));
+        const auto w = (int) juce::GlyphArrangement::getStringWidth (theme::mono (10.0f, theme::Weight::Bold), b.getButtonText()) + 16;
+        b.setBounds (top.removeFromLeft (w));
+        top.removeFromLeft (-1);
     }
-
-    auto right = r.removeFromRight (230);
-    r.removeFromRight (20);
-    detailName.setBounds (right.removeFromTop (24));
-    detailWhat.setBounds (right.removeFromTop (18));
-    right.removeFromTop (6);
-    detailInfo.setBounds (right.removeFromTop (92));
-    auto tagRow = right.removeFromTop (48);
-    for (int i = 0; i < 5; ++i)
-    {
-        auto cell = i < 3 ? tagRow.withHeight (22).withTrimmedLeft (i * 77).withWidth (74)
-                          : tagRow.withTrimmedTop (25).withHeight (22).withTrimmedLeft ((i - 3) * 77).withWidth (74);
-        detailTags[(size_t) i].setBounds (cell);
-    }
-    right.removeFromTop (4);
-    detailCategory.setBounds (right.removeFromTop (24).withWidth (150));
-    right.removeFromTop (8);
-    reveal.setBounds (right.removeFromBottom (26).withWidth (120));
-    right.removeFromBottom (4);
-    detailPath.setBounds (right.removeFromBottom (42));
-    right.removeFromBottom (6);
-    hint.setBounds (right.removeFromBottom (46));
-
-    // Middle: filters, the list, the actions.
-    auto top = r.removeFromTop (28);
+    search.setBounds (top.removeFromRight (250));
     if (mode == Mode::Samples)
     {
-        rootBox.setBounds (top.removeFromLeft (250).reduced (0, 2));
-        top.removeFromLeft (6);
-        upButton.setBounds (top.removeFromLeft (44).reduced (0, 2));
-        top.removeFromLeft (4);
-        addFolderButton.setBounds (top.removeFromLeft (100).reduced (0, 2));
-        top.removeFromLeft (4);
-        removeFolderButton.setBounds (top.removeFromLeft (70).reduced (0, 2));
+        auto t = r.withHeight (24).withTrimmedLeft (modeButtons[4].getRight() + 14);
+        rootBox.setBounds (t.removeFromLeft (250));
+        t.removeFromLeft (6);
+        upButton.setBounds (t.removeFromLeft (44));
+        t.removeFromLeft (4);
+        addFolderButton.setBounds (t.removeFromLeft (104));
+        t.removeFromLeft (4);
+        removeFolderButton.setBounds (t.removeFromLeft (70));
     }
-    else
-    {
-        search.setBounds (top.removeFromLeft (220).reduced (0, 2));
-    }
-    top.removeFromLeft (10);
-    countLabel.setBounds (top);
+    r.removeFromTop (10);
 
+    // Row 2: category and character chips.
+    auto chips = r.removeFromTop (22);
     if (mode == Mode::Sounds)
     {
-        auto cats = r.removeFromTop (26);
-        const auto w = cats.getWidth() / 8;
+        chips.removeFromLeft (70);
         for (auto& b : categoryButtons)
-            b.setBounds (cats.removeFromLeft (w).reduced (1, 2));
+        {
+            const auto w = (int) juce::GlyphArrangement::getStringWidth (theme::mono (10.0f), b.getButtonText()) + 14;
+            b.setBounds (chips.removeFromLeft (w));
+            chips.removeFromLeft (4);
+        }
+        chips.removeFromLeft (14);
     }
     if (mode != Mode::Samples)
     {
-        auto tags = r.removeFromTop (26);
-        const auto w = std::min (80, tags.getWidth() / 5);
+        chips.removeFromLeft (74);
         for (auto& b : tagButtons)
-            b.setBounds (tags.removeFromLeft (w).reduced (1, 2));
+        {
+            const auto w = (int) juce::GlyphArrangement::getStringWidth (theme::mono (10.0f), b.getButtonText()) + 14;
+            b.setBounds (chips.removeFromLeft (w));
+            chips.removeFromLeft (4);
+        }
     }
-    r.removeFromTop (6);
+    r.removeFromTop (10);
 
-    auto bottom = r.removeFromBottom (30);
-    previous.setBounds (bottom.removeFromLeft (30).reduced (0, 2));
-    next.setBounds (bottom.removeFromLeft (30).reduced (0, 2));
-    bottom.removeFromLeft (8);
-    init.setBounds (bottom.removeFromRight (50).reduced (0, 2));
-    bottom.removeFromRight (4);
-    saveAs.setBounds (bottom.removeFromRight (70).reduced (0, 2));
-    bottom.removeFromRight (4);
-    loadFile.setBounds (bottom.removeFromRight (90).reduced (0, 2));
-    r.removeFromBottom (6);
-    list.setBounds (r);
+    // Details on the right.
+    detailBounds = r.removeFromRight (300);
+    r.removeFromRight (10);
+    auto d = detailBounds.reduced (10, 8).withTrimmedTop (theme::kTagHeight + 10);
+    detailName.setBounds (d.removeFromTop (22));
+    detailWhat.setBounds (d.removeFromTop (16));
+    d.removeFromTop (6);
+    detailInfo.setBounds (d.removeFromTop (78));
+    auto tagRow = d.removeFromTop (46);
+    for (int i = 0; i < 5; ++i)
+    {
+        auto cell = i < 3 ? tagRow.withHeight (20).withTrimmedLeft (i * 90).withWidth (86)
+                          : tagRow.withTrimmedTop (24).withHeight (20).withTrimmedLeft ((i - 3) * 90).withWidth (86);
+        detailTags[(size_t) i].setBounds (cell);
+    }
+    d.removeFromTop (4);
+    detailCategory.setBounds (d.removeFromTop (22).withWidth (150));
+    reveal.setBounds (d.removeFromBottom (22));
+    d.removeFromBottom (6);
+    auto actions = d.removeFromBottom (22);
+    const auto aw = (actions.getWidth() - 8) / 3;
+    loadFile.setBounds (actions.removeFromLeft (aw));
+    actions.removeFromLeft (4);
+    saveAs.setBounds (actions.removeFromLeft (aw));
+    actions.removeFromLeft (4);
+    init.setBounds (actions);
+    d.removeFromBottom (8);
+    detailPath.setBounds (d.removeFromBottom (28));
+    hint.setBounds (d.removeFromBottom (16));
+
+    // The list, with its footer.
+    auto listArea = r.reduced (1).withTrimmedTop (24);
+    auto footer = listArea.removeFromBottom (28);
+    countLabel.setBounds (footer.withTrimmedLeft (10).withTrimmedTop (8));
+    next.setBounds (footer.removeFromRight (64).reduced (4));
+    previous.setBounds (footer.removeFromRight (64).reduced (4));
+    list.setBounds (listArea.withTrimmedBottom (1));
 }

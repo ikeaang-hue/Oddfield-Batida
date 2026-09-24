@@ -27,12 +27,14 @@ juce::String formatValue (const ParamSpec& spec, float v)
     if (std::abs (v) < 1.0e-4f)
         v = 0.0f;
 
+    // juce::String (v, 0) would print every digit; whole numbers are rounded.
+    auto fixed = [] (float x, int decimals) { return decimals == 0 ? juce::String (juce::roundToInt (x)) : juce::String (x, decimals); };
     if (u == "ms")
         return v >= 1000.0f ? juce::String (v / 1000.0f, 2) + " s"
-                            : juce::String (v, v < 10.0f ? 2 : (v < 100.0f ? 1 : 0)) + " ms";
+                            : fixed (v, v < 10.0f ? 2 : (v < 100.0f ? 1 : 0)) + " ms";
     if (u == "Hz")
         return v >= 1000.0f ? juce::String (v / 1000.0f, 2) + " kHz"
-                            : juce::String (v, v < 100.0f ? 1 : 0) + " Hz";
+                            : fixed (v, v < 100.0f ? 1 : 0) + " Hz";
     if (u == "st")
         return (v > 0.0f ? "+" : "") + juce::String (v, 2) + " st";
     if (u == "dB")
@@ -254,6 +256,20 @@ void BatidaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
         }
 
     kit.process (buffer, midi, sidechain, transport);
+
+    // Peak hold for the editor's meter: the highest level until it's read.
+    for (int ch = 0; ch < std::min (2, buffer.getNumChannels()); ++ch)
+    {
+        const auto level = buffer.getMagnitude (ch, 0, buffer.getNumSamples());
+        auto& held = outputPeaks[(size_t) ch];
+        auto was = held.load (std::memory_order_relaxed);
+        while (level > was && ! held.compare_exchange_weak (was, level, std::memory_order_relaxed)) {}
+    }
+}
+
+std::array<float, 2> BatidaProcessor::takeOutputPeaks()
+{
+    return { outputPeaks[0].exchange (0.0f), outputPeaks[1].exchange (0.0f) };
 }
 
 int BatidaProcessor::displayPattern() const

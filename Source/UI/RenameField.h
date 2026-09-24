@@ -1,6 +1,6 @@
 #pragma once
 
-#include <juce_gui_basics/juce_gui_basics.h>
+#include "Look/Theme.h"
 
 // An inline text field for renaming: Return or clicking away keeps the text,
 // Escape cancels. `holder` (owned by the parent) keeps it alive while open.
@@ -10,7 +10,8 @@ inline void startRename (std::unique_ptr<juce::TextEditor>& holder, juce::Compon
     holder = std::make_unique<juce::TextEditor>();
     auto* ed = holder.get();
     ed->setText (current, false);
-    ed->setFont (juce::FontOptions (14.0f));
+    ed->setFont (theme::mono (10.5f, theme::Weight::Bold));
+    ed->setIndents (6, 4);
     ed->setJustification (juce::Justification::centredLeft);
     ed->setBounds (area);
 
