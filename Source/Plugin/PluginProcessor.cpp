@@ -3,6 +3,8 @@
 #include "Engine/ParamRange.h"
 #include "Library/SampleLocator.h"
 
+#include <FactoryData.h>
+
 using namespace batida;
 
 namespace
@@ -158,6 +160,7 @@ BatidaProcessor::BatidaProcessor()
                           .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       state (*this, nullptr, "BATIDA", createLayout())
 {
+    batida::Library::setFactoryArchive (FactoryData::Factory_zip, (size_t) FactoryData::Factory_zipSize);
     formats.registerBasicFormats();
 
     for (int v = 0; v < kNumVoices; ++v)

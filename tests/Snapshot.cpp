@@ -377,7 +377,7 @@ int main (int argc, char* argv[])
                    "the factory library is installed");
             editor->showPage (BatidaEditor::Lib);
             libPage->setMode (LibraryPage::Mode::Sounds);
-            check (libPage->getNumShown() == 8, "the 8 factory sounds are listed");
+            check (libPage->getNumShown() >= 150, "the factory sounds are listed");
             auto rowOf = [&] (PresetType type, const juce::String& n)
             {
                 const auto list = lib.shown (type);
@@ -409,7 +409,11 @@ int main (int argc, char* argv[])
             save ("09-Lib-Kits");
             if (auto* strip = dynamic_cast<BrowseStrip*> (findDeep (&content, "kitStrip")))
                 strip->onNext();
-            check (proc.getOrigins().kitName == "Neutral" && proc.getOrigins().kitFile.existsAsFile(), "the kit strip steps to a library kit");
+            check (proc.getOrigins().kitName == lib.shown (PresetType::Kit).front().info.name && proc.getOrigins().kitFile.existsAsFile(),
+                   "the kit strip steps to a library kit");
+            // The checks below expect the neutral kit's sounds.
+            proc.loadPresetFile (lib.getRoot().getChildFile ("Factory/Kits/Neutral.batida-kit"), 0, 0, BatidaProcessor::LoadMode::Step);
+            check (proc.getVoiceName (3) == "Clap", "and the neutral kit loads back");
 
             // Save a sound through the panel; the same name asks before replacing.
             libPage->setMode (LibraryPage::Mode::Sounds);
@@ -478,6 +482,42 @@ int main (int argc, char* argv[])
             // A pattern file into slot 2.
             proc.loadPresetFile (lib.getRoot().getChildFile ("Factory/Patterns/Breakbeat.batida-pattern"), 0, 1, BatidaProcessor::LoadMode::Step);
             check (! proc.patterns().get().patterns[1].isEmpty() && proc.getPatternName (1) == "Breakbeat", "a pattern loads into its slot");
+
+            // Review builds: candidates under REVIEW, kept or rejected with K / R.
+            if (Library::kReviewBuild)
+            {
+                const auto review = lib.getRoot().getChildFile ("Review/Sounds/Kick");
+                review.createDirectory();
+                int copied = 0;
+                for (const auto& e : juce::RangedDirectoryIterator (lib.getRoot().getChildFile ("Factory/Sounds/Kick"), false, "*.batida-sound"))
+                    if (copied++ < 4)
+                        e.getFile().copyFileTo (review.getChildFile (e.getFile().getFileName()));
+                lib.scanNow();
+                libPage->setMode (LibraryPage::Mode::Sounds);
+                if (auto* chip = findButton (*libPage, "REVIEW"))
+                {
+                    check (chip->isVisible(), "a review build shows REVIEW");
+                    chip->onClick();
+                }
+                else
+                    check (false, "a review build shows REVIEW");
+                check (libPage->getNumShown() == 4, "REVIEW lists only the candidates");
+                libPage->clickRow (0);
+                const auto first = lib.shown (PresetType::Sound)[0].file;
+                libPage->keyPressed (juce::KeyPress ('K', {}, 'k'));
+                check (lib.getDecision (first) == Decision::Keep, "K keeps it");
+                check (proc.getOrigins().soundFiles[(size_t) proc.selectedVoice.load()] == lib.shown (PresetType::Sound)[1].file,
+                       "and tries the next one");
+                if (auto* reject = findButton (*libPage, "REJECT"))
+                    reject->onClick();
+                check (lib.getDecision (lib.shown (PresetType::Sound)[1].file) == Decision::Reject, "REJECT rejects it");
+                juce::MessageManager::getInstance()->runDispatchLoopUntil (300);
+                save ("09-Lib-Review");
+                libPage->setMode (LibraryPage::Mode::Sounds);
+                lib.filterFor (PresetType::Sound).source = LibraryFilter::Source::All;
+                lib.getRoot().getChildFile ("Review").deleteRecursively();
+                lib.scanNow();
+            }
 
             // Missing samples: move a sample away, reopen, relink.
             const auto tone = writeTone (sampleDir.getChildFile ("a/relink-me.wav"), 330.0f);
