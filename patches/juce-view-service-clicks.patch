@@ -1,0 +1,28 @@
+diff --git a/modules/juce_gui_basics/native/juce_NSViewComponentPeer_mac.mm b/modules/juce_gui_basics/native/juce_NSViewComponentPeer_mac.mm
+index 68e85cb..6e1a472 100644
+--- a/modules/juce_gui_basics/native/juce_NSViewComponentPeer_mac.mm
++++ b/modules/juce_gui_basics/native/juce_NSViewComponentPeer_mac.mm
+@@ -515,8 +515,23 @@ bool isKioskMode() const override
+         return isFullScreen() && ComponentPeer::isKioskMode();
+     }
+ 
++    // Batida patch (patches/juce-view-service-clicks.patch): in a view service
++    // (an AU hosted out of process, as Logic does through AUHostingService),
++    // the plugin's window is a hidden stand-in that is never the front window
++    // on screen, so this check dropped every click. The host has already sent
++    // the event to this view, so it is ours.
++    static bool isInViewService()
++    {
++        static const bool result = [NSStringFromClass ([NSApp class]) containsString: @"ViewService"]
++                                || [[[NSProcessInfo processInfo] processName] hasPrefix: @"AUHostingService"];
++        return result;
++    }
++
+     static bool isWindowAtPoint (NSWindow* w, NSPoint screenPoint)
+     {
++        if (isInViewService())
++            return true;
++
+         if ([NSWindow respondsToSelector: @selector (windowNumberAtPoint:belowWindowWithWindowNumber:)])
+             return [NSWindow windowNumberAtPoint: screenPoint belowWindowWithWindowNumber: 0] == [w windowNumber];
+ 

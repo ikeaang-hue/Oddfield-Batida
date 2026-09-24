@@ -1,10 +1,31 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Batida VERSION 0.7.0)
+project(Batida VERSION 0.7.1)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "Minimum macOS version")
+
+# Local fixes to JUCE, kept as patches (patches/) and applied to the
+# submodule once, when configuring:
+#   juce-view-service-clicks: clicks work when a host runs the AU out of
+#   process (Logic, through AUHostingService).
+find_package(Git REQUIRED)
+foreach(patch juce-view-service-clicks)
+    set(patch_file ${CMAKE_SOURCE_DIR}/patches/${patch}.patch)
+    execute_process(COMMAND ${GIT_EXECUTABLE} apply --reverse --check ${patch_file}
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/JUCE
+                    RESULT_VARIABLE patch_present OUTPUT_QUIET ERROR_QUIET)
+    if(NOT patch_present EQUAL 0)
+        execute_process(COMMAND ${GIT_EXECUTABLE} apply ${patch_file}
+                        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/JUCE
+                        RESULT_VARIABLE patch_result)
+        if(NOT patch_result EQUAL 0)
+            message(FATAL_ERROR "Couldn't apply patches/${patch}.patch to external/JUCE")
+        endif()
+        message(STATUS "Applied patches/${patch}.patch to JUCE")
+    endif()
+endforeach()
 
 add_subdirectory(external/JUCE)
 
@@ -97,6 +118,7 @@ set(BATIDA_UI_SOURCES
     Source/Plugin/PluginProcessor.cpp
     Source/UI/Look/Theme.cpp
     Source/UI/Look/Motion.mm
+    Source/UI/MouseLog.mm
     Source/UI/Widgets.cpp
     Source/UI/Graphs.cpp
     Source/UI/ParamControl.cpp

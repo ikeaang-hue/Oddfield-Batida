@@ -3,6 +3,7 @@
 // reviewed without a host; then runs gesture checks on the real editor.
 //
 //   BatidaSnapshot <out-dir> [sample.wav]
+//   BatidaSnapshot --startup     how long opening Batida blocks the UI, on the real library
 
 #include "Plugin/PluginProcessor.h"
 #include "UI/PluginEditor.h"
@@ -34,11 +35,100 @@ juce::Button* findButton (juce::Component& parent, const juce::String& text)
     }
     return nullptr;
 }
+// Opens Batida as a host would (a processor, audio running, the editor in a
+// window) on the user's real library, and reports how long the message
+// thread is blocked: while creating the editor, and afterwards.
+int runStartup()
+{
+    auto ms = [] { return juce::Time::getMillisecondCounterHiRes(); };
+    auto t = ms();
+    BatidaProcessor proc;
+    proc.prepareToPlay (48000.0, 512);
+    std::printf ("processor        %7.1f ms\n", ms() - t);
+
+    std::atomic<bool> running { true };
+    std::thread audio ([&]
+    {
+        juce::AudioBuffer<float> buffer (2, 512);
+        juce::MidiBuffer midi;
+        while (running)
+        {
+            proc.processBlock (buffer, midi);
+            std::this_thread::sleep_for (std::chrono::milliseconds (10));
+        }
+    });
+
+    t = ms();
+    std::unique_ptr<juce::AudioProcessorEditor> editor (proc.createEditor());
+    std::printf ("editor           %7.1f ms\n", ms() - t);
+    t = ms();
+    editor->setOpaque (true);
+    editor->addToDesktop (juce::ComponentPeer::windowHasTitleBar);
+    editor->setVisible (true);
+    std::printf ("window shown     %7.1f ms\n", ms() - t);
+
+    struct Gaps final : juce::Timer
+    {
+        double last = juce::Time::getMillisecondCounterHiRes(), worst = 0.0;
+        int over50 = 0;
+        void timerCallback() override
+        {
+            const auto now = juce::Time::getMillisecondCounterHiRes();
+            const auto gap = now - last;
+            worst = std::max (worst, gap);
+            over50 += gap > 50.0 ? 1 : 0;
+            last = now;
+        }
+    } gaps;
+    gaps.startTimer (5);
+    for (int second = 1; second <= 6; ++second)
+    {
+        gaps.worst = 0.0;
+        gaps.over50 = 0;
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (1000);
+        std::printf ("second %d         worst stall %6.1f ms, %d stalls over 50 ms\n", second, gaps.worst, gaps.over50);
+    }
+    // What would a click hit? Every 40 px over the window: the top-most component.
+    auto hits = [&] (const char* when)
+    {
+        std::map<juce::String, int> count;
+        for (int y = 5; y < editor->getHeight(); y += 40)
+            for (int x = 5; x < editor->getWidth(); x += 40)
+            {
+                auto* c = editor->getComponentAt (x, y);
+                juce::String name = c == nullptr ? juce::String ("nothing") : juce::String (typeid (*c).name());
+                if (c != nullptr && c->getComponentID().isNotEmpty())
+                    name << " #" << c->getComponentID();
+                if (c != nullptr && c->isCurrentlyBlockedByAnotherModalComponent())
+                    name << " (BLOCKED by a modal)";
+                ++count[name];
+            }
+        std::printf ("clicks %s: modal components %d\n", when, juce::ModalComponentManager::getInstance()->getNumModalComponents());
+        for (const auto& [name, n] : count)
+            std::printf ("  %4d  %s\n", n, name.toRawUTF8());
+    };
+    hits ("after opening");
+
+    if (auto* e = dynamic_cast<BatidaEditor*> (editor.get()))
+        for (auto page : { BatidaEditor::Lib, BatidaEditor::Seq, BatidaEditor::Kit })
+        {
+            t = ms();
+            e->showPage (page);
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (200);
+            std::printf ("page %d           %7.1f ms (incl. 200 ms of events), worst stall %.1f ms\n", (int) page, ms() - t, gaps.worst);
+        }
+    running = false;
+    audio.join();
+    editor.reset();
+    return 0;
+}
 } // namespace
 
 int main (int argc, char* argv[])
 {
     juce::ScopedJuceInitialiser_GUI gui;
+    if (argc > 1 && juce::String (argv[1]) == "--startup")
+        return runStartup();
 
     const auto cwd = juce::File::getCurrentWorkingDirectory();
     const auto outDir = cwd.getChildFile (argc > 1 ? argv[1] : "snapshots");

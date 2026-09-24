@@ -106,6 +106,7 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
     zoom = proc.library().getZoom();
     setSize (kWidth * zoom / 100, kHeight * zoom / 100);
     startTimerHz (30);
+    mouseLog = MouseLog::start (*this);
 }
 
 BatidaEditor::~BatidaEditor()

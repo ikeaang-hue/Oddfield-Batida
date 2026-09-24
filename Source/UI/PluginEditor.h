@@ -1,5 +1,7 @@
 #pragma once
 
+#include "MouseLog.h"
+
 #include "Frame.h"
 #include "KitPage.h"
 #include "LibraryPage.h"
@@ -78,6 +80,7 @@ private:
     AboutCard about;
     juce::TooltipWindow tooltips { &content, 700 };
     std::unique_ptr<juce::TextEditor> renameEditor;
+    std::unique_ptr<MouseLog> mouseLog; // review builds only
 
     int selected = 0, page = Kit, dropTarget = -1, zoom = 100, ticks = 0;
     std::array<uint32_t, batida::kNumVoices> hitCounts {};
