@@ -48,14 +48,18 @@ void MidiHandle::mouseDrag (const juce::MouseEvent& e)
                                                                             safe->repaint();
                                                                         }
                                                                     });
-    else
-        dragging = false;
+    // A failed export keeps `dragging` set until the mouse goes up, so it's
+    // reported once, not on every move.
 }
 
 void MidiHandle::mouseUp (const juce::MouseEvent&)
 {
     if (dragging)
+    {
+        dragging = false; // a failed drag (a finished one resets in its callback too)
+        repaint();
         return;
+    }
     if (onExport)
         if (const auto file = onExport(); file.existsAsFile())
             file.revealToUser();

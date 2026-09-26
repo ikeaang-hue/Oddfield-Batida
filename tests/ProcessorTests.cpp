@@ -320,6 +320,28 @@ public:
             expectEquals (patternDistance (proc.patterns().get().patterns[0], original), 0);
         }
 
+        beginTest ("Loads, swaps and undo drop any Vary preview");
+        {
+            BatidaProcessor proc;
+            proc.patterns().edit ([] (PatternBank& b) { b.patterns[0] = breakbeatPattern(); });
+            proc.startPatternVary (0, 0.5f, PatternDirection::Any, {});
+            proc.previewPatternCandidate (0);
+            expect (proc.getKit().getSequencer().isRunning() == false);
+            proc.swapVoices (0, 1);
+            expectEquals (proc.previewedPatternCandidate(), -1, "a swap ends the preview");
+            expect (proc.patternCandidates().empty(), "and drops suggestions made for the old slots");
+
+            proc.startPatternVary (0, 0.5f, PatternDirection::Any, {});
+            proc.previewPatternCandidate (1);
+            proc.initSound (3);
+            expectEquals (proc.previewedPatternCandidate(), -1, "a load ends it");
+
+            proc.startPatternVary (0, 0.5f, PatternDirection::Any, {});
+            proc.previewPatternCandidate (2);
+            proc.undo();
+            expectEquals (proc.previewedPatternCandidate(), -1, "undo ends it");
+        }
+
         beginTest ("Kit Vary: whole-kit suggestions, locked slots untouched, KEEP undoable");
         {
             BatidaProcessor proc;
@@ -330,9 +352,9 @@ public:
             const auto snareBefore = proc.readVoiceParams (2);
             proc.startKitVary (0.4f, VaryDirection::Darker, false, false, false, locked);
             const auto until = juce::Time::getMillisecondCounter() + 60000;
-            while (proc.isVarying() && juce::Time::getMillisecondCounter() < until)
+            while (proc.isKitVarying() && juce::Time::getMillisecondCounter() < until)
                 juce::MessageManager::getInstance()->runDispatchLoopUntil (20);
-            expect (! proc.isVarying());
+            expect (! proc.isKitVarying());
             expectGreaterThan ((int) proc.kitCandidates().size(), 0);
             for (const auto& c : proc.kitCandidates())
                 expect ((c.changed & 1u) == 0, "the locked kick never changes");

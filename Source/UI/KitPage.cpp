@@ -430,7 +430,7 @@ void KitPage::recordXy (float x, float y)
     const auto& seq = proc.sequencer();
     if (! xyRec.getToggleState() || ! seq.isRunning() || seq.getPatternStep() < 0)
         return;
-    const auto pi = seq.getActivePattern();
+    const auto pi = std::clamp (seq.getActivePattern(), 0, kNumPatterns - 1);
     const auto step = seq.getPatternStep();
     if (pi == recPattern && step == recStep)
     {
@@ -442,7 +442,12 @@ void KitPage::recordXy (float x, float y)
     {
         auto& pat = b.patterns[(size_t) pi];
         const auto len = std::max (1, pat.length);
-        auto s = (pi == recPattern && recStep >= 0) ? recStep : step;
+        if (step >= len)
+            return;
+        // Catch up only on a short step forward (frames are slower than fast
+        // 16ths); a jump back (a loop, a locate, a restart) writes just this step.
+        const auto gap = (step - recStep + len) % len;
+        auto s = (pi == recPattern && recStep >= 0 && recStep < len && gap <= 4) ? recStep : step;
         for (int guard = 0; guard < len; ++guard)
         {
             pat.xy[(size_t) s] = { true, x, y };

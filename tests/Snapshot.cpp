@@ -288,7 +288,7 @@ int main (int argc, char* argv[])
             if (auto* vary = dynamic_cast<VaryOverlay*> (c))
             {
                 vary->setKitScope (true);
-                for (int i = 0; i < 1500 && proc.isVarying(); ++i)
+                for (int i = 0; i < 1500 && (proc.isVarying() || proc.isKitVarying()); ++i)
                     settle (20);
                 settle (200);
                 save ("07-Vary-Kit");

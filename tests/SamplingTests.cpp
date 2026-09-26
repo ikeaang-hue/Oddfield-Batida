@@ -205,6 +205,31 @@ public:
             expect (kit.patternStore().get().patterns[2].isEmpty(), "the real pattern is untouched");
         }
 
+        beginTest ("Auditions follow the latest press: A released and B pressed in one block plays B");
+        {
+            Kit kit;
+            kit.prepare (kRate, kBlock);
+            auto params = quietKit();
+            PatternPreview pv;
+            pv.active = true;
+            pv.bank = kit.patternStore().get();
+            for (int s = 0; s < 16; s += 4)
+                pv.bank.patterns[3].tracks[2].steps[(size_t) s].gate = true; // B: snares
+            kit.patternPreview().replace (pv);
+            kit.auditionPattern (1, true);  // A (empty)
+            kit.auditionPattern (1, false);
+            kit.auditionPattern (3, true);  // B, all before the block
+            kit.auditionPattern (1, false); // a late release of A changes nothing
+            const auto before = kit.getHitCount (2);
+            runBlocks (kit, params, 200);
+            expectGreaterThan ((int) (kit.getHitCount (2) - before), 1, "B plays");
+            kit.stopAudition();
+            runBlocks (kit, params, 2);
+            const auto after = kit.getHitCount (2);
+            runBlocks (kit, params, 200);
+            expectEquals ((int) kit.getHitCount (2), (int) after, "stopped");
+        }
+
         beginTest ("XY CCs move the pad until the pad itself moves");
         {
             Kit kit;
@@ -278,6 +303,10 @@ public:
                 if (std::abs (beat - 2.25) < 1.0e-3 && number == kXyCcX && value == 32)
                     back = true;
             }
+            bool start = false;
+            for (const auto& [beat, number, value] : ccs)
+                start = start || (beat < 1.0e-6 && number == kXyCcX && value == 32);
+            expect (start, "the file starts from the pad, so a looped region lets go of the lock");
             expect (lock, "the lock on step 9 is CC 16 = 127");
             expect (back, "the next step lets go back to the pad");
             expectWithinAbsoluteError (track.getEndTime() / kMidiTicksPerBeat, 4.0, 1.0e-3, "one pass of 16 steps");

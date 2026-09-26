@@ -55,10 +55,14 @@ void Kit::chokeOthers (int voice)
 
 void Kit::auditionPattern (int pattern, bool on)
 {
+    // Only the latest state counts: releasing one tile and pressing another in
+    // the same block plays the second; letting go of one that's no longer the
+    // held one changes nothing.
+    pattern = std::clamp (pattern, 0, kNumPatterns - 1);
     if (on)
-        auditionDown.store (std::clamp (pattern, 0, kNumPatterns - 1));
+        auditionWanted.store (pattern);
     else
-        auditionUp.store (true);
+        auditionWanted.compare_exchange_strong (pattern, -1);
 }
 
 void Kit::noteOn (int voice, int key, float velocity, int slice)
@@ -473,22 +477,15 @@ void Kit::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& mid
     // The auditioner: like holding a pattern key, from the next step, when
     // the sequencer isn't running anyway.
     auditionEvents.clear();
-    if (const auto down = auditionDown.exchange (-1); down >= 0)
+    // The real sequencer running takes over: the auditioner lets go.
+    const auto wanted = sequencer.isRunning() ? -1 : auditionWanted.load();
+    if (wanted != auditioning)
     {
-        if (auditioning >= 0 && auditioning != down)
+        if (auditioning >= 0)
             auditioner.keyUp (auditioning, 0);
-        auditioning = down;
-        auditioner.keyDown (down, 0.8f, 0);
-    }
-    if (auditionUp.exchange (false) && auditioning >= 0)
-    {
-        auditioner.keyUp (auditioning, 0);
-        auditioning = -1;
-    }
-    if (sequencer.isRunning() && auditioning >= 0) // the real sequencer took over
-    {
-        auditioner.keyUp (auditioning, 0);
-        auditioning = -1;
+        if (wanted >= 0)
+            auditioner.keyDown (wanted, 0.8f, 0);
+        auditioning = wanted;
     }
     auto s = seqSettings;
     s.run = RunMode::Keys;

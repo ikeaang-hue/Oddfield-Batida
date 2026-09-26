@@ -35,6 +35,17 @@ juce::MidiFile patternToMidi (const PatternBank& bank, int pattern, const MidiEx
     std::array<double, kNumTracks> openSince {};
     openSince.fill (-1.0);
 
+    // A region that loops (or anything after it) must start from the pad: if
+    // the lane has locks but step 1 has none, the pad's position goes first.
+    bool anyLock = false;
+    for (int s = 0; s < pat.length; ++s)
+        anyLock = anyLock || pat.xy[(size_t) s].active;
+    if (anyLock && ! pat.xy[0].active)
+    {
+        track.addEvent (juce::MidiMessage::controllerEvent (kMidiDrumChannel, kXyCcX, cc (options.padX)), 0.0);
+        track.addEvent (juce::MidiMessage::controllerEvent (kMidiDrumChannel, kXyCcY, cc (options.padY)), 0.0);
+    }
+
     std::vector<SeqEvent> events;
     events.reserve (1024);
     for (double start = 0.0; start < passBeats + 0.5; start += block * ppqPerSample)

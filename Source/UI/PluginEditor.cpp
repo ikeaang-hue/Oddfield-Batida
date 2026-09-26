@@ -114,6 +114,7 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
 BatidaEditor::~BatidaEditor()
 {
     stopTimer();
+    proc.clearPreviews(); // a held tile or a previewed suggestion must not outlive the window
     // The look is shared by every open Batida window: only the last one to
     // close takes it down as the default.
     if (look.getReferenceCount() <= 1)

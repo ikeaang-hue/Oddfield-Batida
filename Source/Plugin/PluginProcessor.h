@@ -179,6 +179,7 @@ public:
     const std::vector<KitCandidate>& kitCandidates() const { return kitCands; }
     const std::array<batida::VoiceParams, batida::kNumVoices>& kitVaryBase() const { return kitBase; }
     bool hasKitVary() const { return kitVaried; }
+    bool isKitVarying() const { return kitVaryBusy.load(); }
     void previewKitCandidate (int index); // -1 = back to the original
     int previewedKitCandidate() const { return kitPreviewIndex; }
     void keepKitCandidate();
@@ -196,6 +197,11 @@ public:
     // Plays a pattern while held (a Vary suggestion's "hold to hear") when the
     // sequencer isn't already running.
     void auditionPattern (int pattern, bool on) { kit.auditionPattern (pattern, on); }
+
+    // Every Vary preview and held audition off, and kit suggestions dropped
+    // (called by anything that replaces sounds or patterns, and when the
+    // editor closes), so nothing plays a stale suggestion.
+    void clearPreviews();
 
     // Drop a break, get a kit: slices a drum loop into the kick, snare, hat and
     // percussion slots and writes `pattern` to replay it (one undo step).
@@ -294,6 +300,7 @@ private:
     std::vector<KitCandidate> kitCands;
     std::array<batida::VoiceParams, batida::kNumVoices> kitBase {};
     bool kitVaried = false;
+    std::atomic<bool> kitVaryBusy { false };
     int kitPreviewIndex = -1;
 
     std::vector<batida::PatternCandidate> patternCands;

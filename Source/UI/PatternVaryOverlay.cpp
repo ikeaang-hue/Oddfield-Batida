@@ -178,8 +178,7 @@ void PatternVaryOverlay::openFor (int p)
     pattern = p;
     shownVersion = -1;
     open();
-    if (proc.patternVaryPattern() != pattern || proc.patternCandidates().empty())
-        startVary();
+    startVary(); // fresh each time: the pattern may have changed since
     refresh();
 }
 

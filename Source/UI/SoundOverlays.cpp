@@ -412,8 +412,8 @@ void VaryOverlay::refresh()
         }
         keep.setEnabled (has && proc.previewedKitCandidate() >= 0);
         back.setEnabled (has && proc.previewedKitCandidate() >= 0);
-        again.setEnabled (! proc.isVarying());
-        status = proc.isVarying() ? juce::String::fromUTF8 ("VARYING\xe2\x80\xa6")
+        again.setEnabled (! proc.isKitVarying());
+        status = proc.isKitVarying() ? juce::String::fromUTF8 ("VARYING\xe2\x80\xa6")
                : (proc.hasKitVary() && kits.empty()) ? juce::String ("NO USABLE VARIATIONS") : juce::String();
         repaint();
         return;

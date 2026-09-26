@@ -53,6 +53,7 @@ public:
     // Plays `pattern` while held, like a pattern key, when the sequencer isn't
     // already running (a running one just picks up a preview). Any thread.
     void auditionPattern (int pattern, bool on);
+    void stopAudition() { auditionWanted.store (-1); }
     SnapshotStore<PatternPreview>& patternPreview() { return preview; }
 
     // Message thread, just before replacing these voices' sounds (loading a
@@ -110,8 +111,7 @@ private:
     PatternStore patterns;
     SnapshotStore<PatternPreview> preview;
     std::vector<SeqEvent> auditionEvents, mergedEvents;
-    std::atomic<int> auditionDown { -1 };
-    std::atomic<bool> auditionUp { false };
+    std::atomic<int> auditionWanted { -1 }; // the pattern held down, or -1
     int auditioning = -1;
     SnapshotStore<MovementData> movement { defaultMovement() };
     const MovementData* movementData = nullptr;

@@ -337,6 +337,7 @@ void BatidaProcessor::swapVoices (int a, int b)
     beginUndoStep (true, true);
     ++actionCounter;
     kit.beginSwitch ((1u << a) | (1u << b)); // sounding slots fade before their sounds trade places
+    clearPreviews();
 
     // Settings (host parameters, so the host sees the change).
     for (int p = 0; p < kNumVoiceParams; ++p)
@@ -439,6 +440,7 @@ HistorySnapshot BatidaProcessor::snapshot (bool withParameters, bool withSamples
 
 void BatidaProcessor::restore (const HistorySnapshot& s)
 {
+    clearPreviews();
     kit.patternStore().replace (s.patterns);
     voiceNames = s.names;
     ++namesVersion;
@@ -642,7 +644,7 @@ void BatidaProcessor::startVary (int voice, float amount, VaryDirection directio
                 self->candidatesVoice = voice;
                 self->previewIndex = -1;
                 self->varyBusy = false;
-                ++self->varyVersion;
+                self->publishPreview(); // a tile pressed while it ran stops sounding
             }
         });
     });
@@ -702,7 +704,7 @@ void BatidaProcessor::previewCandidate (int index)
 void BatidaProcessor::startKitVary (float amount, VaryDirection direction, bool lockSource, bool lockFx, bool lockEnvelopes,
                                     std::array<bool, kNumVoices> lockedSlots)
 {
-    if (varyBusy.exchange (true))
+    if (kitVaryBusy.exchange (true))
         return;
     previewCandidate (-1);
     previewKitCandidate (-1);
@@ -760,8 +762,8 @@ void BatidaProcessor::startKitVary (float amount, VaryDirection direction, bool 
                 self->kitBase = base;
                 self->kitVaried = true;
                 self->kitPreviewIndex = -1;
-                self->varyBusy = false;
-                ++self->varyVersion;
+                self->kitVaryBusy = false;
+                self->publishPreview();
             }
         });
     });
@@ -792,6 +794,25 @@ void BatidaProcessor::keepKitCandidate()
     kitCands.clear();
     kitVaried = false;
     publishPreview();
+}
+
+void BatidaProcessor::clearPreviews()
+{
+    kit.stopAudition();
+    const auto hadKit = kitVaried;
+    kitCands.clear();
+    kitVaried = false;
+    if (previewIndex >= 0 || kitPreviewIndex >= 0 || hadKit)
+    {
+        previewIndex = kitPreviewIndex = -1;
+        publishPreview();
+    }
+    if (patternPreviewIndex >= 0 || ! patternCands.empty())
+    {
+        patternCands.clear();
+        patternCandsFor = -1;
+        previewPatternCandidate (-1);
+    }
 }
 
 // Pattern Vary --------------------------------------------------------------------
@@ -1029,6 +1050,7 @@ juce::File BatidaProcessor::exportPatternMidi (int pattern, juce::String* error)
 
 void BatidaProcessor::beginLoadStep (const juce::String& key, LoadMode mode)
 {
+    clearPreviews(); // sounds or patterns are about to change under any suggestion
     // Browsing: the step taken before the first load of the run covers the rest.
     if (mode == LoadMode::Browse && key == browseKey && historyStamp() == browseStamp)
         return;
@@ -1645,6 +1667,7 @@ void BatidaProcessor::setStateInformation (const void* data, int sizeInBytes)
         return;
 
     kit.beginSwitch (0xffu); // sounding voices fade before the project's sounds replace them
+    clearPreviews();
 
     auto tree = juce::ValueTree::fromXml (*xml);
     const auto samples = tree.getChildWithName (kSamplesTag);
