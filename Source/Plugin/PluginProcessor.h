@@ -161,7 +161,8 @@ public:
     const std::vector<batida::VaryCandidate>& varyCandidates() const { return candidates; }
     int varyVoice() const { return candidatesVoice; }
     const batida::VoiceParams& varyBase() const { return candidatesBase; } // the sound the suggestions came from
-    int getVaryVersion() const { return varyVersion.load(); }
+    int getVaryVersion() const { return varyVersion.load(); }          // any change (previews included)
+    int getVaryResultsVersion() const { return varyResults.load(); }   // only when the suggestions change
     void previewCandidate (int index); // -1 = back to the original
     int previewedCandidate() const { return previewIndex; }
     void keepCandidate();
@@ -205,7 +206,7 @@ public:
 
     // Drop a break, get a kit: slices a drum loop into the kick, snare, hat and
     // percussion slots and writes `pattern` to replay it (one undo step).
-    struct BreakResult { int hits = 0, bars = 0; double bpm = 0.0; };
+    struct BreakResult { int hits = 0, steps = 0; double bpm = 0.0; };
     std::optional<BreakResult> loadBreak (const juce::File& file, int pattern, juce::String* error = nullptr);
 
     // Resampling into a slot (one undo step): a sound's hit, or one pass of a
@@ -260,6 +261,13 @@ private:
     PendingSample prepareSample (const batida::SampleRef& ref);
     void commitSample (int voice, PendingSample&& sample);
     bool decodeAndSwitch (int voice, const juce::File& file);
+
+    // Samples by path, decoded once: a copy a slot already holds is shared,
+    // so slots playing the same file (a break's) keep one copy. Decode before
+    // any switch, then place.
+    using SampleCache = std::map<juce::String, std::shared_ptr<const batida::SampleData>>;
+    std::shared_ptr<const batida::SampleData> sharedSample (const juce::String& path, SampleCache& cache);
+    void placeSample (int voice, const juce::String& path, const std::shared_ptr<const batida::SampleData>& data);
     batida::SampleRef sampleRefFor (int voice) const;
     void setNameQuietly (int voice, const juce::String& name);
     void beginLoadStep (const juce::String& key, LoadMode mode);
@@ -293,7 +301,8 @@ private:
     std::vector<batida::VaryCandidate> candidates;
     batida::VoiceParams candidatesBase;
     int candidatesVoice = -1, previewIndex = -1;
-    std::atomic<int> varyVersion { 0 };
+    std::atomic<int> varyVersion { 0 }, varyResults { 0 };
+    int varyGeneration = 0; // bumped whenever sounds change under Vary; older results are dropped
     std::atomic<bool> varyBusy { false };
     juce::ThreadPool varyPool { 1 };
 

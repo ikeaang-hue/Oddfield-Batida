@@ -189,9 +189,9 @@ public:
             // Pattern 3 is empty; the preview has a kick on every beat.
             PatternPreview pv;
             pv.active = true;
-            pv.bank = kit.patternStore().get();
+            pv.index = 2;
             for (int s = 0; s < 16; s += 4)
-                pv.bank.patterns[2].tracks[0].steps[(size_t) s].gate = true;
+                pv.pattern.tracks[0].steps[(size_t) s].gate = true;
             kit.patternPreview().replace (pv);
             const auto before = kit.getHitCount (0);
             kit.auditionPattern (2, true);
@@ -212,9 +212,9 @@ public:
             auto params = quietKit();
             PatternPreview pv;
             pv.active = true;
-            pv.bank = kit.patternStore().get();
+            pv.index = 3;
             for (int s = 0; s < 16; s += 4)
-                pv.bank.patterns[3].tracks[2].steps[(size_t) s].gate = true; // B: snares
+                pv.pattern.tracks[2].steps[(size_t) s].gate = true; // B: snares
             kit.patternPreview().replace (pv);
             kit.auditionPattern (1, true);  // A (empty)
             kit.auditionPattern (1, false);
@@ -228,6 +228,29 @@ public:
             const auto after = kit.getHitCount (2);
             runBlocks (kit, params, 200);
             expectEquals ((int) kit.getHitCount (2), (int) after, "stopped");
+        }
+
+        beginTest ("A held pattern preview leaves the other patterns live");
+        {
+            Kit kit;
+            kit.prepare (kRate, kBlock);
+            auto params = quietKit();
+            params.global[gp::SeqRun] = 1.0f;  // Transport
+            params.global[gp::SeqPlay] = 1.0f; // playing pattern 1
+            params.global[gp::SeqPattern] = 0.0f;
+            PatternPreview pv;
+            pv.active = true;
+            pv.index = 2; // previewing pattern 3
+            kit.patternPreview().replace (pv);
+            runBlocks (kit, params, 50);
+            const auto before = kit.getHitCount (0);
+            kit.patternStore().edit ([] (PatternBank& b)
+            {
+                for (int s = 0; s < 16; s += 4)
+                    b.patterns[0].tracks[0].steps[(size_t) s].gate = true;
+            });
+            runBlocks (kit, params, 200);
+            expectGreaterThan ((int) (kit.getHitCount (0) - before), 1, "an edit to pattern 1 is heard while 3 is previewed");
         }
 
         beginTest ("XY CCs move the pad until the pad itself moves");
@@ -332,6 +355,31 @@ public:
             expectGreaterThan (loop.getMagnitude (0, 0, loop.getNumSamples()), 0.05f);
         }
 
+        beginTest ("A break's tempo is always one Batida can play");
+        {
+            auto loopOf = [] (double seconds)
+            {
+                auto d = std::make_unique<SampleData>();
+                d->sampleRate = 44100.0;
+                d->audio.setSize (1, (int) (seconds * 44100.0));
+                d->audio.clear();
+                for (int k = 0; k < 4; ++k)
+                    addHit (d->audio, (int) (k * seconds / 4.0 * 44100.0), HitKind::Kick, 44100.0);
+                d->onsets = { { 1, 1.0f } };
+                SampleSlot slot;
+                slot.setData (std::move (d));
+                return planBreak (*slot.getDisplayData());
+            };
+            const auto shortLoop = loopOf (0.8); // 1 bar would be 300 bpm
+            expect (shortLoop.has_value());
+            if (shortLoop)
+            {
+                expectEquals (shortLoop->steps, 8, "half a bar");
+                expectWithinAbsoluteError (shortLoop->bpm, 150.0, 0.5);
+            }
+            expect (! loopOf (0.2).has_value(), "too short for any playable tempo");
+        }
+
         beginTest ("Hits are told apart: kick, snare, closed and open hat, tonal percussion");
         {
             const auto rate = 44100.0;
@@ -372,11 +420,11 @@ public:
             expect (plan.has_value());
             if (! plan)
                 return;
-            logMessage ("  " + juce::String (plan->bars) + " bars, " + juce::String (plan->bpm, 1) + " bpm, "
+            logMessage ("  " + juce::String (plan->steps) + " steps, " + juce::String (plan->bpm, 1) + " bpm, "
                         + juce::String ((int) plan->hits.size()) + " hits");
             for (const auto& h : plan->hits)
                 logMessage ("  hit step " + juce::String (h.step + 1) + " kind " + juce::String ((int) h.kind) + " slice " + juce::String (h.slice));
-            expectEquals (plan->bars, 2);
+            expectEquals (plan->steps, 32);
             expectWithinAbsoluteError (plan->bpm, 120.0, 0.5);
             expectEquals (plan->pattern.length, 32);
             for (const auto& w : wants)

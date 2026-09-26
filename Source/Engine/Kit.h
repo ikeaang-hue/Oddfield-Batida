@@ -16,12 +16,13 @@ namespace batida
 // lane plays back from any DAW: CC 16 = X (character), CC 17 = Y (heat).
 constexpr int kXyCcX = 16, kXyCcY = 17;
 
-// A pattern bank that plays instead of the real one while a Vary suggestion
-// is held (the real patterns stay untouched).
+// One pattern that plays in place of the real one while a Vary suggestion is
+// held; the other 15 stay live, and the real pattern is untouched.
 struct PatternPreview
 {
     bool active = false;
-    PatternBank bank;
+    int index = 0;
+    Pattern pattern;
 };
 
 // The 8 voices, split into dry and wet buses by each voice's Chain amount; the
@@ -110,6 +111,7 @@ private:
     Sequencer sequencer, auditioner; // the auditioner plays a held Vary suggestion
     PatternStore patterns;
     SnapshotStore<PatternPreview> preview;
+    PatternBank previewBank; // the live bank with the previewed pattern swapped in (no allocation)
     std::vector<SeqEvent> auditionEvents, mergedEvents;
     std::atomic<int> auditionWanted { -1 }; // the pattern held down, or -1
     int auditioning = -1;

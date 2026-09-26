@@ -15,11 +15,14 @@ namespace batida
 // the step where it fell, so the break replays at any tempo without
 // stretching (SPEC §8).
 //
-// The loop is taken to be 1, 2 or 4 bars of 4/4, whichever gives the most
-// likely tempo. Slots follow the kit layout: 1 kick, 2 percussion, 3 snare,
+// The loop is taken to be half a bar, 1, 2 or 4 bars of 4/4, whichever gives
+// the most likely tempo within 40–240 bpm. Slots follow the kit layout: 1 kick, 2 percussion, 3 snare,
 // 7 closed hat, 8 open hat (the hats choke each other); the rest are untouched.
 
 enum class HitKind { Kick, Snare, ClosedHat, OpenHat, Perc };
+
+// The loop's tempo must be one the sequencer plays (the Tempo parameter's range).
+constexpr double kBreakMinBpm = 40.0, kBreakMaxBpm = 240.0;
 
 struct BreakHit
 {
@@ -31,7 +34,8 @@ struct BreakHit
 
 struct BreakPlan
 {
-    int bars = 1, steps = 16;
+    double bars = 1.0; // 0.5, 1, 2 or 4
+    int steps = 16;
     double bpm = 120.0;
     float sensitivity = 1.0f; // Slice Sensitivity that gives exactly these slices
     std::vector<BreakHit> hits;

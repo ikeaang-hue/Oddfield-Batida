@@ -378,12 +378,7 @@ KitPage::KitPage (BatidaProcessor& p) : proc (p), pad (p)
 
     xyRec.setTooltip ("Record pad moves into the playing pattern's XY lane");
     addAndMakeVisible (xyRec);
-    pad.onGestureStart = [this]
-    {
-        recPattern = recStep = -1;
-        if (xyRec.getToggleState())
-            proc.beginUndoStep();
-    };
+    pad.onGestureStart = [this] { recPattern = recStep = -1; };
     pad.onMove = [this] (float x, float y) { recordXy (x, y); };
 
     store.setTooltip ("Store the chain into a scene: STORE, then a letter");
@@ -438,6 +433,8 @@ void KitPage::recordXy (float x, float y)
         if (lock.active && juce::exactlyEqual (lock.x, x) && juce::exactlyEqual (lock.y, y))
             return; // nothing new
     }
+    if (recStep < 0)
+        proc.beginUndoStep(); // one undo step per gesture, taken when it first writes
     proc.patterns().edit ([&] (PatternBank& b)
     {
         auto& pat = b.patterns[(size_t) pi];

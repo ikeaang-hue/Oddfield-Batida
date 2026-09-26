@@ -82,7 +82,7 @@ private:
     void endHold();
 
     BatidaProcessor& proc;
-    int voice = 0, shownVersion = -1, heldPattern = -1;
+    int voice = 0, shownVersion = -1, shownResults = -1, heldPattern = -1;
     Segmented scope { { "Sound", "Kit" } };
     juce::OwnedArray<juce::ToggleButton> slotLocks;
     Segmented amount { { "Subtle", "Medium", "Far" }, 1 };

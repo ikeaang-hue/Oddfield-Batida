@@ -339,6 +339,26 @@ void BatidaProcessor::swapVoices (int a, int b)
     kit.beginSwitch ((1u << a) | (1u << b)); // sounding slots fade before their sounds trade places
     clearPreviews();
 
+    // Samples first, as they are in memory (no disk reads, so a sample whose
+    // file has gone since keeps playing): each slot takes the other's.
+    struct Held { SampleSlot::Status status; juce::String path; std::shared_ptr<const SampleData> data; };
+    const Held ha { kit.sampleSlot (a).getStatus(), kit.sampleSlot (a).getPath(), kit.sampleSlot (a).share() };
+    const Held hb { kit.sampleSlot (b).getStatus(), kit.sampleSlot (b).getPath(), kit.sampleSlot (b).share() };
+    auto takeOver = [this] (int voice, const Held& h)
+    {
+        auto& slot = kit.sampleSlot (voice);
+        if (h.status == SampleSlot::Status::Loaded && h.data != nullptr)
+            slot.setShared (h.data);
+        else if (h.path.isEmpty())
+            slot.clear();
+        else if (h.status == SampleSlot::Status::Error)
+            slot.markUnreadable (h.path);
+        else
+            slot.markMissing (h.path);
+    };
+    takeOver (a, hb);
+    takeOver (b, ha);
+
     // Settings (host parameters, so the host sees the change).
     for (int p = 0; p < kNumVoiceParams; ++p)
     {
@@ -353,35 +373,11 @@ void BatidaProcessor::swapVoices (int a, int b)
         }
     }
 
-    // Samples: each slot reloads the other's file (or its missing path).
-    struct Held { SampleSlot::Status status; juce::String path; };
-    const Held ha { kit.sampleSlot (a).getStatus(), kit.sampleSlot (a).getPath() };
-    const Held hb { kit.sampleSlot (b).getStatus(), kit.sampleSlot (b).getPath() };
-    auto takeOver = [this] (int voice, const Held& h)
-    {
-        auto& slot = kit.sampleSlot (voice);
-        if (h.status == SampleSlot::Status::Loaded && slot.load (juce::File (h.path), formats))
-            return;
-        if (h.path.isEmpty())
-            slot.clear();
-        else if (juce::File (h.path).existsAsFile())
-            slot.markUnreadable (h.path);
-        else
-            slot.markMissing (h.path);
-    };
-    takeOver (a, hb);
-    takeOver (b, ha);
-
     // What each sound was loaded from (Save writes there) and its sample's
     // size (for finding it again) go with it.
     std::swap (origins.soundFiles[(size_t) a], origins.soundFiles[(size_t) b]);
     std::swap (sampleBytes[(size_t) a], sampleBytes[(size_t) b]);
     ++originsVersion;
-    if (candidatesVoice == a || candidatesVoice == b)
-    {
-        previewCandidate (-1);
-        candidatesVoice = candidatesVoice == a ? b : a;
-    }
 
     // Names (an unnamed slot keeps showing its sound's default name).
     const auto na = getVoiceName (a), nb = getVoiceName (b);
@@ -447,33 +443,73 @@ void BatidaProcessor::restore (const HistorySnapshot& s)
     if (const auto xml = juce::parseXML (s.origins))
         originsFromXml (xml.get());
 
-    if (s.parameters || s.samples)
-        kit.beginSwitch (0xffu); // sounding voices fade before their sounds change
-    if (s.parameters)
-    {
-        const auto& params = getParameters();
-        for (size_t i = 0; i < params.size() && i < s.parameters->size(); ++i)
-            if (params[(int) i]->getValue() != (*s.parameters)[i])
-            {
-                params[(int) i]->beginChangeGesture();
-                params[(int) i]->setValueNotifyingHost ((*s.parameters)[i]);
-                params[(int) i]->endChangeGesture();
-            }
-    }
+    // Samples decode before anything switches, then the sounds change together.
+    std::array<std::shared_ptr<const SampleData>, kNumVoices> decoded;
+    uint32_t changed = 0;
     if (s.samples)
+    {
+        SampleCache cache;
         for (int v = 0; v < kNumVoices; ++v)
         {
-            auto& slot = kit.sampleSlot (v);
             const auto& path = (*s.samples)[(size_t) v];
-            if (path == slot.getPath())
+            if (path == kit.sampleSlot (v).getPath())
                 continue;
-            if (path.isEmpty())
-                slot.clear();
-            else if (! slot.load (juce::File (path), formats))
-                juce::File (path).existsAsFile() ? slot.markUnreadable (path) : slot.markMissing (path);
+            changed |= 1u << v;
+            if (path.isNotEmpty())
+                decoded[(size_t) v] = sharedSample (path, cache);
+        }
+    }
+
+    if (s.parameters || changed != 0)
+        kit.beginSwitch (0xffu); // sounding voices fade before their sounds change
+    for (int v = 0; v < kNumVoices; ++v)
+        if ((changed >> v) & 1u)
+        {
+            const auto& path = (*s.samples)[(size_t) v];
+            placeSample (v, path, decoded[(size_t) v]);
             sampleBytes[(size_t) v] = juce::File (path).existsAsFile() ? juce::File (path).getSize() : -1;
         }
+    if (s.parameters)
+    {
+        const auto& all = getParameters();
+        for (size_t i = 0; i < (size_t) all.size() && i < s.parameters->size(); ++i)
+            if (! juce::exactlyEqual (all[(int) i]->getValue(), (*s.parameters)[i]))
+            {
+                all[(int) i]->beginChangeGesture();
+                all[(int) i]->setValueNotifyingHost ((*s.parameters)[i]);
+                all[(int) i]->endChangeGesture();
+            }
+    }
     ++actionCounter;
+}
+
+std::shared_ptr<const SampleData> BatidaProcessor::sharedSample (const juce::String& path, SampleCache& cache)
+{
+    if (const auto it = cache.find (path); it != cache.end())
+        return it->second;
+    for (int v = 0; v < kNumVoices; ++v)
+    {
+        auto& slot = kit.sampleSlot (v);
+        if (slot.getStatus() == SampleSlot::Status::Loaded && slot.getPath() == path)
+            if (auto held = slot.share())
+                return cache[path] = held;
+    }
+    juce::String note;
+    std::shared_ptr<const SampleData> data = SampleSlot::decode (juce::File (path), formats, note);
+    return cache[path] = data;
+}
+
+void BatidaProcessor::placeSample (int voice, const juce::String& path, const std::shared_ptr<const SampleData>& data)
+{
+    auto& slot = kit.sampleSlot (voice);
+    if (path.isEmpty())
+        slot.clear();
+    else if (data != nullptr)
+        slot.setShared (data);
+    else if (juce::File (path).existsAsFile())
+        slot.markUnreadable (path);
+    else
+        slot.markMissing (path);
 }
 
 void BatidaProcessor::beginUndoStep (bool withParameters, bool withSamples)
@@ -632,18 +668,24 @@ void BatidaProcessor::startVary (int voice, float amount, VaryDirection directio
     req.seed = (uint32_t) juce::Random::getSystemRandom().nextInt();
 
     juce::WeakReference<BatidaProcessor> safe (this);
-    varyPool.addJob ([safe, req, voice]
+    varyPool.addJob ([safe, req, voice, generation = varyGeneration]
     {
-        auto result = vary (req);
-        juce::MessageManager::callAsync ([safe, result = std::move (result), voice, base = req.base]() mutable
+        auto found = vary (req);
+        juce::MessageManager::callAsync ([safe, result = std::move (found), voice, base = req.base, generation]() mutable
         {
             if (auto* self = safe.get())
             {
+                self->varyBusy = false;
+                ++self->varyResults;
+                if (generation != self->varyGeneration)
+                {
+                    ++self->varyVersion; // the sound changed while it ran: these no longer apply
+                    return;
+                }
                 self->candidates = std::move (result);
                 self->candidatesBase = base;
                 self->candidatesVoice = voice;
                 self->previewIndex = -1;
-                self->varyBusy = false;
                 self->publishPreview(); // a tile pressed while it ran stops sounding
             }
         });
@@ -731,13 +773,13 @@ void BatidaProcessor::startKitVary (float amount, VaryDirection direction, bool 
     }
 
     juce::WeakReference<BatidaProcessor> safe (this);
-    varyPool.addJob ([safe, requests, base]
+    varyPool.addJob ([safe, requests, base, generation = varyGeneration]
     {
         std::array<std::vector<VaryCandidate>, kNumVoices> results;
         for (const auto& [v, req] : requests)
             results[(size_t) v] = vary (req);
 
-        std::vector<KitCandidate> kits;
+        std::vector<KitCandidate> built;
         for (int i = 0; i < 4; ++i)
         {
             KitCandidate k;
@@ -752,17 +794,23 @@ void BatidaProcessor::startKitVary (float amount, VaryDirection direction, bool 
                 continue;
             const auto n = juce::countNumberOfBits (k.changed);
             k.note = std::to_string (n) + (n == 1 ? " sound" : " sounds");
-            kits.push_back (std::move (k));
+            built.push_back (std::move (k));
         }
-        juce::MessageManager::callAsync ([safe, kits = std::move (kits), base]() mutable
+        juce::MessageManager::callAsync ([safe, kits = std::move (built), base, generation]() mutable
         {
             if (auto* self = safe.get())
             {
+                self->kitVaryBusy = false;
+                ++self->varyResults;
+                if (generation != self->varyGeneration)
+                {
+                    ++self->varyVersion; // the kit changed while it ran: these no longer apply
+                    return;
+                }
                 self->kitCands = std::move (kits);
                 self->kitBase = base;
                 self->kitVaried = true;
                 self->kitPreviewIndex = -1;
-                self->kitVaryBusy = false;
                 self->publishPreview();
             }
         });
@@ -793,16 +841,22 @@ void BatidaProcessor::keepKitCandidate()
     kitPreviewIndex = -1;
     kitCands.clear();
     kitVaried = false;
+    ++varyResults;
     publishPreview();
 }
 
 void BatidaProcessor::clearPreviews()
 {
     kit.stopAudition();
-    const auto hadKit = kitVaried;
+    ++varyGeneration; // results of a Vary still running are for sounds that are gone
+    const auto hadResults = kitVaried || ! candidates.empty();
     kitCands.clear();
     kitVaried = false;
-    if (previewIndex >= 0 || kitPreviewIndex >= 0 || hadKit)
+    candidates.clear();
+    candidatesVoice = -1;
+    if (hadResults)
+        ++varyResults;
+    if (previewIndex >= 0 || kitPreviewIndex >= 0 || hadResults)
     {
         previewIndex = kitPreviewIndex = -1;
         publishPreview();
@@ -838,8 +892,8 @@ void BatidaProcessor::previewPatternCandidate (int index)
     if (patternPreviewIndex >= 0)
     {
         pv.active = true;
-        pv.bank = kit.patternStore().get();
-        pv.bank.patterns[(size_t) patternCandsFor] = patternCands[(size_t) patternPreviewIndex].pattern;
+        pv.index = patternCandsFor;
+        pv.pattern = patternCands[(size_t) patternPreviewIndex].pattern;
     }
     kit.patternPreview().replace (pv);
     ++patternVaryVersion;
@@ -886,6 +940,7 @@ void BatidaProcessor::keepCandidate()
     previewCandidate (-1);
     candidates.clear();
     candidatesVoice = -1; // back to "press Vary", not "nothing found"
+    ++varyResults;
     ++varyVersion;
 }
 
@@ -905,7 +960,7 @@ std::optional<BatidaProcessor::BreakResult> BatidaProcessor::loadBreak (const ju
     if (! plan)
     {
         if (error != nullptr)
-            *error = "No hits found in " + file.getFileName();
+            *error = "No loop at a playable tempo in " + file.getFileName();
         return std::nullopt;
     }
 
@@ -933,7 +988,7 @@ std::optional<BatidaProcessor::BreakResult> BatidaProcessor::loadBreak (const ju
     origins.patternFiles[(size_t) pattern] = juce::File();
     writeGlobalParameter (gp::SeqTempo, (float) (std::round (plan->bpm * 100.0) / 100.0)); // the loop's own tempo
     endLoadStep ("break", LoadMode::Step);
-    return BreakResult { (int) plan->hits.size(), plan->bars, plan->bpm };
+    return BreakResult { (int) plan->hits.size(), plan->steps, (double) readGlobalParams()[gp::SeqTempo] }; // the tempo as set
 }
 
 bool BatidaProcessor::loadRendered (const juce::AudioBuffer<float>& audio, int target, const juce::String& name, bool loop, juce::String* error)
@@ -1477,12 +1532,18 @@ int BatidaProcessor::relinkFound (const std::vector<std::pair<int, juce::File>>&
     beginLoadStep ("relink", LoadMode::Step);
     int n = 0;
     uint32_t mask = 0;
-    for (const auto& [v, f] : found)
+    SampleCache cache;
+    std::vector<std::shared_ptr<const SampleData>> decoded;
+    for (const auto& [v, f] : found) // decoded first, one copy per file
+    {
         mask |= 1u << v;
+        decoded.push_back (sharedSample (f.getFullPathName(), cache));
+    }
     kit.beginSwitch (mask);
-    for (const auto& [v, f] : found)
-        if (kit.sampleSlot (v).load (f, formats))
+    for (size_t i = 0; i < found.size(); ++i)
+        if (const auto& [v, f] = found[i]; decoded[i] != nullptr)
         {
+            kit.sampleSlot (v).setShared (decoded[i]);
             sampleBytes[(size_t) v] = f.getSize();
             library().addRelinkFolder (f.getParentDirectory());
             ++n;
@@ -1666,12 +1727,33 @@ void BatidaProcessor::setStateInformation (const void* data, int sizeInBytes)
     if (xml == nullptr || ! xml->hasTagName (state.state.getType()))
         return;
 
-    kit.beginSwitch (0xffu); // sounding voices fade before the project's sounds replace them
-    clearPreviews();
-
     auto tree = juce::ValueTree::fromXml (*xml);
     const auto samples = tree.getChildWithName (kSamplesTag);
     tree.removeChild (samples, nullptr);
+
+    // The project's samples decode before anything switches (one copy per file).
+    std::array<juce::String, kNumVoices> paths;
+    std::array<juce::int64, kNumVoices> bytes;
+    bytes.fill (-1);
+    for (const auto& sv : samples)
+    {
+        const auto v = (int) sv.getProperty (kVoiceAttr, -1);
+        if (v >= 0 && v < kNumVoices)
+        {
+            paths[(size_t) v] = sv.getProperty (kPathAttr).toString();
+            bytes[(size_t) v] = sv.getProperty (kBytesAttr, "-1").toString().getLargeIntValue();
+        }
+    }
+    std::array<std::shared_ptr<const SampleData>, kNumVoices> decoded;
+    {
+        SampleCache cache;
+        for (int v = 0; v < kNumVoices; ++v)
+            if (paths[(size_t) v].isNotEmpty())
+                decoded[(size_t) v] = sharedSample (paths[(size_t) v], cache);
+    }
+
+    kit.beginSwitch (0xffu); // sounding voices fade before the project's sounds replace them
+    clearPreviews();
     const auto patternTree = tree.getChildWithName (kPatternsTag);
     tree.removeChild (patternTree, nullptr);
     const auto namesTree = tree.getChildWithName (kNamesTag);
@@ -1721,30 +1803,9 @@ void BatidaProcessor::setStateInformation (const void* data, int sizeInBytes)
         kit.patternStore().replace (bank);
     }
 
-    std::array<juce::String, kNumVoices> paths;
-    sampleBytes.fill (-1);
-    for (const auto& s : samples)
-    {
-        const auto v = (int) s.getProperty (kVoiceAttr, -1);
-        if (v >= 0 && v < kNumVoices)
-        {
-            paths[(size_t) v] = s.getProperty (kPathAttr).toString();
-            sampleBytes[(size_t) v] = s.getProperty (kBytesAttr, "-1").toString().getLargeIntValue();
-        }
-    }
-
+    sampleBytes = bytes;
     for (int v = 0; v < kNumVoices; ++v)
-    {
-        auto& slot = kit.sampleSlot (v);
-        if (paths[(size_t) v].isEmpty())
-            slot.clear();
-        else if (paths[(size_t) v] != slot.getPath() || slot.getStatus() != SampleSlot::Status::Loaded)
-        {
-            const juce::File f (paths[(size_t) v]);
-            if (! slot.load (f, formats) && f.existsAsFile()) // a gone file is marked missing by load()
-                slot.markUnreadable (f.getFullPathName());
-        }
-    }
+        placeSample (v, paths[(size_t) v], decoded[(size_t) v]);
 
     // Samples that moved: look in the library and the folders relinked from before.
     if (numMissingSamples() > 0)

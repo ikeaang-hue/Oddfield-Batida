@@ -145,22 +145,27 @@ std::optional<BreakPlan> planBreak (const SampleData& data)
 
     BreakPlan plan;
 
-    // 1, 2 or 4 bars: whichever puts the tempo nearest 125 bpm, within 70–190.
+    // Half a bar, 1, 2 or 4 bars: whichever puts the tempo nearest 125 bpm
+    // (within 70–190 preferred), never outside the tempo Batida can play.
     const auto seconds = frames / data.sampleRate;
     double best = 1.0e9;
-    for (const auto bars : { 1, 2, 4 })
+    for (const auto steps : { 8, 16, 32, 64 })
     {
-        const auto bpm = 240.0 * bars / seconds;
+        const auto bpm = 60.0 * (steps / 4.0) / seconds;
+        if (bpm < kBreakMinBpm || bpm > kBreakMaxBpm)
+            continue;
         const auto outside = bpm < 70.0 ? 70.0 / bpm : (bpm > 190.0 ? bpm / 190.0 : 1.0);
         const auto score = std::abs (std::log2 (bpm / 125.0)) + 10.0 * (outside - 1.0);
         if (score < best)
         {
             best = score;
-            plan.bars = bars;
+            plan.steps = steps;
             plan.bpm = bpm;
         }
     }
-    plan.steps = std::min (kMaxSteps, 16 * plan.bars);
+    if (best > 1.0e8)
+        return std::nullopt; // too short or too long to be a loop at a playable tempo
+    plan.bars = plan.steps / 16.0;
     const auto framesPerStep = (double) frames / plan.steps;
 
     // The strongest 31 onsets become slices (the most a slot can hold); the

@@ -218,7 +218,7 @@ void PatternGrid::trackMenu (int track, juce::Component& target)
     m.addSectionHeader (juce::String (track + 1) + " " + proc.getVoiceName (track));
     m.addItem (7, "Rename...");
     m.addSubMenu ("Swap with", swapMenu);
-    m.addSubMenu ("Resample here", resampleMenu (proc, track));
+    m.addSubMenu ("Resample here", resampleMenu (proc, track, pi));
     m.addSeparator();
     m.addItem (1, "Copy track");
     m.addItem (2, "Paste track", trackClipboard.has_value());
@@ -234,8 +234,8 @@ void PatternGrid::trackMenu (int track, juce::Component& target)
         if (safe == nullptr || choice == 0)
             return;
         auto& self = *safe;
-        auto& proc = self.proc;
-        if (runResample (proc, choice, track))
+        auto& bp = self.proc;
+        if (runResample (bp, choice, track, pi))
         {
             self.repaint();
             return;
@@ -248,12 +248,12 @@ void PatternGrid::trackMenu (int track, juce::Component& target)
         }
         if (choice >= 100)
         {
-            proc.swapVoices (track, choice - 100);
+            bp.swapVoices (track, choice - 100);
             self.repaint();
             return;
         }
-        proc.beginUndoStep();
-        proc.patterns().edit ([&] (PatternBank& b)
+        bp.beginUndoStep();
+        bp.patterns().edit ([&] (PatternBank& b)
         {
             auto& tr = b.patterns[(size_t) pi].tracks[(size_t) track];
             switch (choice)
@@ -487,12 +487,12 @@ void PageMap::mouseDown (const juce::MouseEvent& e)
         {
             if (safe == nullptr || choice == 0) // the editor may have closed while the menu was open
                 return;
-            auto& proc = safe->proc;
-            const auto pi = std::clamp (proc.displayPattern(), 0, kNumPatterns - 1);
+            auto& bp = safe->proc;
+            const auto pi = std::clamp (bp.displayPattern(), 0, kNumPatterns - 1);
             const auto first = bar * 16;
             if (choice == 1)
             {
-                const auto& pat = proc.patterns().get().patterns[(size_t) pi];
+                const auto& pat = bp.patterns().get().patterns[(size_t) pi];
                 std::pair<std::array<std::array<Step, 16>, kNumTracks>, std::array<XyLock, 16>> clip;
                 for (int t = 0; t < kNumTracks; ++t)
                     for (int s = 0; s < 16; ++s)
@@ -503,8 +503,8 @@ void PageMap::mouseDown (const juce::MouseEvent& e)
             }
             else if (choice == 2 || choice == 3)
             {
-                proc.beginUndoStep();
-                proc.patterns().edit ([&] (PatternBank& b)
+                bp.beginUndoStep();
+                bp.patterns().edit ([&] (PatternBank& b)
                 {
                     auto& pat = b.patterns[(size_t) pi];
                     for (int t = 0; t < kNumTracks; ++t)
