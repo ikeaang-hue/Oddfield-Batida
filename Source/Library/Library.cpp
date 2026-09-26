@@ -21,15 +21,22 @@ const char* folderName (PresetType type)
 const void* archiveData = nullptr;
 size_t archiveSize = 0;
 
-int readArchiveVersion()
+// The archive's factory-version.txt: the version number, then an ID of the
+// content ("8 65a822caa00e0180").
+juce::String readArchiveStamp()
 {
     if (archiveData == nullptr)
-        return 0;
+        return {};
     juce::ZipFile zip (new juce::MemoryInputStream (archiveData, archiveSize, false), true);
     if (const auto* entry = zip.getEntry ("factory-version.txt"))
         if (std::unique_ptr<juce::InputStream> in (zip.createStreamForEntry (*entry)); in != nullptr)
-            return in->readEntireStreamAsString().trim().getIntValue();
-    return 0;
+            return in->readEntireStreamAsString().trim();
+    return {};
+}
+
+int readArchiveVersion()
+{
+    return readArchiveStamp().getIntValue();
 }
 } // namespace
 
@@ -105,10 +112,14 @@ int Library::archiveVersion()
 
 bool Library::installFactory()
 {
-    const auto version = readArchiveVersion();
+    // Installed when the archive is newer, or the same version with other
+    // content (a factory rebuilt without a new number); never over a newer one.
+    const auto archive = readArchiveStamp();
+    const auto version = archive.getIntValue();
     const auto factory = root.getChildFile ("Factory");
     const auto stamp = factory.getChildFile (".version");
-    if (version <= 0 || stamp.loadFileAsString().trim().getIntValue() >= version)
+    const auto installed = stamp.loadFileAsString().trim();
+    if (version <= 0 || installed.getIntValue() > version || installed == archive)
         return false;
 
     // Batida's own folder: replaced whole, so files a newer factory dropped go too.
@@ -118,7 +129,7 @@ bool Library::installFactory()
     const auto result = zip.uncompressTo (factory, true);
     factory.getChildFile ("factory-version.txt").deleteFile();
     if (result.wasOk())
-        stamp.replaceWithText (juce::String (version));
+        stamp.replaceWithText (archive);
     return true;
 }
 

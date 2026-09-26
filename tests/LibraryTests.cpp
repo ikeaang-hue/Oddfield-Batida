@@ -43,7 +43,7 @@ std::unique_ptr<SampleData> bufferOf (int frames, bool noise)
 
 // A small factory archive (the neutral kit, its 8 sounds, the breakbeat and a
 // set), so these tests don't depend on the real factory library.
-juce::MemoryBlock smallArchive (const juce::File& temp, int version, bool withBreakbeat = true)
+juce::MemoryBlock smallArchive (const juce::File& temp, int version, bool withBreakbeat = true, const juce::String& id = {})
 {
     const auto dir = temp.getChildFile ("archive");
     dir.deleteRecursively();
@@ -74,7 +74,7 @@ juce::MemoryBlock smallArchive (const juce::File& temp, int version, bool withBr
     set.patterns.patterns[0] = breakbeatPattern();
     dir.getChildFile ("Sets").createDirectory();
     writeSet (dir.getChildFile ("Sets/Neutral Breakbeat.batida-set"), set);
-    dir.getChildFile ("factory-version.txt").replaceWithText (juce::String (version));
+    dir.getChildFile ("factory-version.txt").replaceWithText (juce::String (version) + (id.isNotEmpty() ? " " + id : juce::String()));
 
     juce::ZipFile::Builder zip;
     for (const auto& e : juce::RangedDirectoryIterator (dir, true, "*", juce::File::findFiles))
@@ -370,6 +370,18 @@ public:
             expectEquals (root.getChildFile ("Factory/.version").loadFileAsString().trim(), juce::String ("2"));
             expectEquals (user.loadFileAsString(), before, "User untouched");
             expect (lib.isFavourite (snare), "favourites kept");
+            // The same number with other content (a factory rebuilt in place) installs too.
+            const auto archive2b = smallArchive (temp, 2, true);
+            Library::setFactoryArchive (archive2b.getData(), archive2b.getSize());
+            expect (! lib.installFactory(), "same number, same content: nothing to do");
+            const auto archive2c = smallArchive (temp, 2, true, "other");
+            Library::setFactoryArchive (archive2c.getData(), archive2c.getSize());
+            expect (lib.installFactory(), "same number, other content: installs");
+            expect (root.getChildFile ("Factory/Patterns/Breakbeat.batida-pattern").existsAsFile());
+            const auto archive1old = smallArchive (temp, 1, true, "older");
+            Library::setFactoryArchive (archive1old.getData(), archive1old.getSize());
+            expect (! lib.installFactory(), "never over a newer factory");
+
             Library::setFactoryArchive (archive1.getData(), archive1.getSize());
             root.getChildFile ("Factory/.version").replaceWithText ("0");
             lib.installFactory(); // back to the small factory for the tests below

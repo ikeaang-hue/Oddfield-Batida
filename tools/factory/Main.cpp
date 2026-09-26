@@ -612,7 +612,7 @@ int runBuild (const juce::File& library, const juce::File& out)
     if (previous.size() < 2 || previous[1] != hash)
         ++version;
     versionFile.replaceWithText (juce::String (version) + " " + hash + "\n");
-    out.getChildFile ("factory-version.txt").replaceWithText (juce::String (version) + "\n");
+    out.getChildFile ("factory-version.txt").replaceWithText (juce::String (version) + " " + hash + "\n");
 
     // Kits, patterns and sets go to Review too, for listening.
     if (review.isDirectory())
