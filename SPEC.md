@@ -1,6 +1,6 @@
 # Negative Space Batida: Design Spec
 
-*Version 1.11, agreed 2026-09-27 (1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
+*Version 1.12, agreed 2026-09-27 (1.12: Vary searches only audible settings, measures longer and by spectrum, and relaxes step by step; 1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
 
 ## 1. Identity
 
@@ -164,6 +164,13 @@ The main way the chain is operated: one gesture moves the whole chain.
 - Each suggestion shows a waveform and a short note of what changed (e.g. "decay −41% · op2
   +6%"). Hold one to hear it.
 - **Automatic dud filtering:** silent, clipping and near-duplicate results never reach the user.
+- **How it searches** (1.12): only settings the sound can hear are varied (no FM settings on a
+  sample, no sample settings on FM, nothing on a silent operator), and on a sample, Tonal/Noisy
+  use drive, cutoff and resonance. Each try is measured for up to 4 s (so long sounds can get
+  longer) for loudness, length, brightness (the spectral centroid) and the spectrum's shape in
+  12 bands (so timbre changes count even at the same brightness). When a pass finds too little,
+  the next reaches further (1.6× the amount), then asks less (smaller moves count; up to 3 dB
+  of level shortfall). There is no message explaining an empty result.
 - **History:** full undo/redo, and one click saves a result to the library.
 - **Kit Vary:** the same panel switched from SOUND to KIT varies every sound at once, in one
   direction, with the same section locks, plus a lock per slot. Each of the 4 suggestions is a

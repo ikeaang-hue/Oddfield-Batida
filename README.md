@@ -1,6 +1,6 @@
 # Batida
 
-**A drum instrument for sound design**, by Negative Space. macOS · Audio Unit · version 0.8.0
+**A drum instrument for sound design**, by Negative Space. macOS · Audio Unit · version 0.8.1
 (pre-release).
 
 Eight sounds play into one shared effects chain. An **XY pad** pushes the whole chain at once:
