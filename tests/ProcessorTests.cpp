@@ -79,6 +79,33 @@ public:
     {
         const auto dir = scratchDir();
 
+        beginTest ("Parameter IDs never change or disappear (saved projects and automation use them)");
+        {
+            // tests/golden/parameter-ids.txt is the list every release shipped with.
+            // A new parameter is added to it on purpose; nothing is ever removed.
+            // BATIDA_WRITE_GOLDEN=1 rewrites it from the current build.
+            BatidaProcessor proc;
+            juce::StringArray ids;
+            for (auto* p : proc.getParameters())
+                if (auto* r = dynamic_cast<juce::RangedAudioParameter*> (p))
+                    ids.add (r->getParameterID());
+            const auto golden = juce::File (BATIDA_SOURCE_DIR).getChildFile ("tests/golden/parameter-ids.txt");
+            if (juce::SystemStats::getEnvironmentVariable ("BATIDA_WRITE_GOLDEN", {}) == "1")
+            {
+                golden.getParentDirectory().createDirectory();
+                golden.replaceWithText (ids.joinIntoString ("\n") + "\n");
+            }
+            juce::StringArray known;
+            known.addLines (golden.loadFileAsString());
+            known.removeEmptyStrings();
+            expect (known.size() > 0, "the list exists: " + golden.getFullPathName());
+            for (const auto& id : known)
+                expect (ids.contains (id), "still there: " + id);
+            for (const auto& id : ids)
+                expect (known.contains (id), "new, add it to the list on purpose: " + id);
+            logMessage ("  " + juce::String (ids.size()) + " parameters");
+        }
+
         beginTest ("Host parameter groups say Sound, IDs still say voice");
         {
             BatidaProcessor proc;
@@ -456,6 +483,68 @@ public:
             reopened.setStateInformation (saved.getData(), (int) saved.getSize());
             const auto* k2 = reopened.sampleSlot (0).getDisplayData();
             expect (k2 != nullptr && k2 == reopened.sampleSlot (2).getDisplayData(), "and when the project opens again");
+        }
+
+        beginTest ("Missing samples are found again in the library, by name and size");
+        {
+            const auto libraryRoot = juce::File (juce::SystemStats::getEnvironmentVariable ("BATIDA_LIBRARY", {}));
+            const auto away = writeTone (dir.getChildFile ("elsewhere/moved-snare.wav"), 200.0f);
+            juce::MemoryBlock saved;
+            {
+                BatidaProcessor a;
+                a.prepareToPlay (kRate, kBlock);
+                expect (a.loadSample (2, away));
+                a.getStateInformation (saved);
+            }
+            // The file moves into the library (a search folder), under the same name.
+            const auto moved = libraryRoot.getChildFile ("Moved/moved-snare.wav");
+            moved.getParentDirectory().createDirectory();
+            expect (away.moveFileTo (moved));
+
+            BatidaProcessor b;
+            b.setStateInformation (saved.getData(), (int) saved.getSize());
+            expect (b.sampleSlot (2).getStatus() == SampleSlot::Status::Loaded, "relinked when the project opens");
+            expectEquals (b.sampleSlot (2).getPath(), moved.getFullPathName());
+
+            // Gone for good (renamed where nothing searches): missing, path kept,
+            // and one relink by hand is one undo step.
+            const auto renamed = dir.getChildFile ("hidden/renamed-snare.wav");
+            renamed.getParentDirectory().createDirectory();
+            expect (moved.moveFileTo (renamed));
+            BatidaProcessor c;
+            c.setStateInformation (saved.getData(), (int) saved.getSize());
+            expect (c.sampleSlot (2).getStatus() == SampleSlot::Status::Missing);
+            expectEquals (c.sampleSlot (2).getPath(), away.getFullPathName());
+            expectEquals (c.numMissingSamples(), 1);
+            expect (c.relinkSample (2, renamed));
+            expect (c.sampleSlot (2).getStatus() == SampleSlot::Status::Loaded);
+            c.undo();
+            expect (c.sampleSlot (2).getStatus() == SampleSlot::Status::Missing, "undo takes the relink back");
+        }
+
+        beginTest ("Projects saved by earlier releases still open");
+        {
+            // Written by the tagged release itself (tests/fixtures/README.md).
+            // 0.6.1 wrote a byte-identical state, so 0.7.2's stands for both.
+            for (const auto* version : { "0.7.2" })
+            {
+                const auto file = juce::File (BATIDA_SOURCE_DIR).getChildFile ("tests/fixtures/project-" + juce::String (version) + ".batida-state");
+                juce::MemoryBlock data;
+                expect (file.loadFileAsData (data), "fixture " + file.getFileName());
+                BatidaProcessor proc;
+                proc.setStateInformation (data.getData(), (int) data.getSize());
+                const auto tag = juce::String (" (") + version + ")";
+                expectWithinAbsoluteError (getParam (proc, voiceParamID (0, vp::Level)), -7.5f, 0.01f, "level" + tag);
+                expectWithinAbsoluteError (getParam (proc, globalParamID (gp::XyY)), 0.6f, 0.001f, "pad" + tag);
+                expectWithinAbsoluteError (getParam (proc, voiceParamID (7, vp::AmpD)), 900.0f, 0.5f, "decay" + tag);
+                expectEquals (proc.getVoiceName (2), juce::String ("Crack"), "name" + tag);
+                const auto& pat = proc.patterns().get().patterns[2];
+                expect (pat.tracks[4].steps[9].gate && pat.length == 24, "pattern" + tag);
+                expect (proc.sampleSlot (3).getStatus() == SampleSlot::Status::Missing, "a gone sample is missing" + tag);
+                expectEquals (proc.sampleSlot (3).getPath(), juce::String ("/tmp/batida-fixture/old-tone.wav"), "its path is kept" + tag);
+                for (int v = 0; v < kNumVoices; ++v)
+                    expectEquals ((int) getParam (proc, voiceParamID (v, vp::Choke)), 0, "no choke groups" + tag);
+            }
         }
 
         beginTest ("Saved state round-trips parameters, names, samples and patterns");

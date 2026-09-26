@@ -1,0 +1,39 @@
+// Writes a project state from this (old) version of Batida, as a fixture for
+// the current version's tests.
+#include "Plugin/PluginProcessor.h"
+
+int main (int argc, char* argv[])
+{
+    juce::ScopedJuceInitialiser_GUI gui;
+    const juce::File out (argv[1]);
+    const juce::File tone ("/tmp/batida-fixture/old-tone.wav"); // gone when the fixture loads
+    tone.getParentDirectory().createDirectory();
+    {
+        juce::AudioBuffer<float> b (1, 4800);
+        for (int i = 0; i < 4800; ++i)
+            b.setSample (0, i, 0.5f * std::sin (6.2831853f * 220.0f * (float) i / 48000.0f));
+        std::unique_ptr<juce::OutputStream> os (tone.createOutputStream());
+        juce::WavAudioFormat wav;
+        if (auto w = wav.createWriterFor (os, juce::AudioFormatWriterOptions {}.withSampleRate (48000.0).withNumChannels (1).withBitsPerSample (16)))
+            w->writeFromAudioSampleBuffer (b, 0, 4800);
+    }
+    BatidaProcessor proc;
+    proc.prepareToPlay (48000.0, 512);
+    auto set = [&] (const char* id, float value)
+    {
+        auto* p = proc.getState().getParameter (id);
+        p->setValueNotifyingHost (p->convertTo0to1 (value));
+    };
+    set ("v1_level", -7.5f);
+    set ("xy_y", 0.6f);
+    set ("v8_amp_decay", 900.0f);
+    proc.setVoiceName (2, "Crack");
+    proc.loadSample (3, tone);
+    proc.patterns().edit ([] (batida::PatternBank& b) { b.patterns[2].tracks[4].steps[9].gate = true; b.patterns[2].length = 24; });
+    juce::MemoryBlock state;
+    proc.getStateInformation (state);
+    out.replaceWithData (state.getData(), state.getSize());
+    tone.deleteFile();
+    std::printf ("wrote %s (%d bytes)\n", out.getFullPathName().toRawUTF8(), (int) state.getSize());
+    return 0;
+}

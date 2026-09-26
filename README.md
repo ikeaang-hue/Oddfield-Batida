@@ -159,6 +159,13 @@ auval -v aumu Btda Ngsp                                                # Apple's
 swiftc -O -o build/au_check tests/au_check.swift && build/au_check     # the installed AU, host-style
 ```
 
+- **CI:** `.github/workflows/tests.yml` runs the unit tests, the snapshot gesture checks and
+  auval on macOS for every push to `main` and every pull request. Every check exits non-zero
+  when it fails.
+- **Compatibility:** `tests/golden/parameter-ids.txt` lists every parameter ID a release has
+  shipped; the tests fail if one changes or disappears (add new ones on purpose, with
+  `BATIDA_WRITE_GOLDEN=1`). `tests/fixtures/` holds projects saved by old releases, which must
+  keep opening.
 - **Demo defaults:** builds start empty, like a release. `cmake -B build -DBATIDA_DEMO=ON` puts a
   breakbeat in pattern 1 and has Mod 1 move the pad. The tests pass either way.
 - **Factory library:** `BatidaFactory` makes it from the engine (SPEC §11). `BatidaFactory
