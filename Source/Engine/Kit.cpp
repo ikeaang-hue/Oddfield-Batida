@@ -17,6 +17,9 @@ void Kit::prepare (double sampleRate, int maxBlockSize)
 
     scratch.setSize (4, std::max (1, maxBlockSize));
     sequencer.prepare (sampleRate);
+    auditioner.prepare (sampleRate);
+    auditionEvents.reserve (4096);
+    mergedEvents.reserve (8192);
     mods.prepare (sampleRate);
     seqEvents.reserve (4096);
     chain.prepare (sampleRate, std::max (1, maxBlockSize));
@@ -30,6 +33,9 @@ void Kit::reset()
         v.reset();
     chain.reset();
     sequencer.reset();
+    auditioner.reset();
+    auditioning = -1;
+    ccXy = false;
     mods.reset();
     xyLocked = false;
     switching = 0;
@@ -37,9 +43,32 @@ void Kit::reset()
     deferred = {};
 }
 
+void Kit::chokeOthers (int voice)
+{
+    const auto group = current.voices[(size_t) voice].choice (vp::Choke);
+    if (group <= 0)
+        return;
+    for (int o = 0; o < kNumVoices; ++o)
+        if (o != voice && current.voices[(size_t) o].choice (vp::Choke) == group && voices[(size_t) o].isActive())
+            voices[(size_t) o].choke(); // a quick fade, no click
+}
+
+void Kit::auditionPattern (int pattern, bool on)
+{
+    // Only the latest state counts: releasing one tile and pressing another in
+    // the same block plays the second; letting go of one that's no longer the
+    // held one changes nothing.
+    pattern = std::clamp (pattern, 0, kNumPatterns - 1);
+    if (on)
+        auditionWanted.store (pattern);
+    else
+        auditionWanted.compare_exchange_strong (pattern, -1);
+}
+
 void Kit::noteOn (int voice, int key, float velocity, int slice)
 {
     hitCounts[(size_t) voice].fetch_add (1, std::memory_order_relaxed);
+    chokeOthers (voice);
     if ((switching >> voice) & 1u)
     {
         deferred[(size_t) voice] = { true, false, key, slice, velocity };
@@ -100,6 +129,13 @@ void Kit::setParameters (const KitParams& params)
 
     host = params;
     movementData = movement.acquire();
+
+    // The pad (or its automation) moved: it takes back over from the XY CCs.
+    const auto hx = params.global[gp::XyX], hy = params.global[gp::XyY];
+    if (ccXy && (std::abs (hx - hostX) > 1.0e-4f || std::abs (hy - hostY) > 1.0e-4f))
+        ccXy = false;
+    hostX = hx;
+    hostY = hy;
 
     const auto mode = (MidiMode) std::clamp ((int) (params.global[gp::MidiMode] + 0.5f), 0, 1);
     const auto keys = std::clamp ((int) (params.global[gp::KeysVoice] + 0.5f), 0, kNumVoices - 1);
@@ -234,19 +270,22 @@ void Kit::tick (int offset)
 
 void Kit::applyChainSettings()
 {
-    // A step's XY lock stands in for the pad while it lasts.
+    // A step's XY lock stands in for the pad while it lasts; otherwise the
+    // XY CCs do, until the pad moves.
     auto g = globals;
-    if (xyLocked)
+    const auto locked = xyLocked || ccXy;
+    const auto x = xyLocked ? lockX : ccX, y = xyLocked ? lockY : ccY;
+    if (locked)
     {
-        g[gp::XyX] = lockX;
-        g[gp::XyY] = lockY;
+        g[gp::XyX] = x;
+        g[gp::XyY] = y;
     }
     const auto settings = computeEffectiveChain (g);
     chain.setSettings (settings);
     safetyClip = settings.safetyClip;
-    uiXyLocked = xyLocked;
-    uiLockX = lockX;
-    uiLockY = lockY;
+    uiXyLocked = locked;
+    uiLockX = x;
+    uiLockY = y;
 }
 
 bool Kit::isPatternKey (const juce::MidiMessage& m) const
@@ -269,6 +308,20 @@ void Kit::handle (const SeqEvent& e)
 
 void Kit::handle (const juce::MidiMessage& message)
 {
+    if (message.isController()
+        && (message.getControllerNumber() == kXyCcX || message.getControllerNumber() == kXyCcY))
+    {
+        if (! ccXy)
+        {
+            ccX = host.global[gp::XyX];
+            ccY = host.global[gp::XyY];
+            ccXy = true;
+        }
+        (message.getControllerNumber() == kXyCcX ? ccX : ccY) = (float) message.getControllerValue() / 127.0f;
+        applyChainSettings();
+        return;
+    }
+
     if (message.isAllNotesOff() || message.isAllSoundOff())
     {
         for (auto& v : voices)
@@ -357,6 +410,23 @@ void Kit::renderSegment (int start, int numSamples, juce::AudioBuffer<float>& bu
     }
 }
 
+void Kit::mergeEvents()
+{
+    // Both lists are sorted; merge them without allocating (capacity is reserved).
+    if (auditionEvents.empty())
+        return;
+    mergedEvents.clear();
+    size_t a = 0, b = 0;
+    while (a < seqEvents.size() || b < auditionEvents.size())
+    {
+        if (b >= auditionEvents.size() || (a < seqEvents.size() && seqEvents[a].offset <= auditionEvents[b].offset))
+            mergedEvents.push_back (seqEvents[a++]);
+        else
+            mergedEvents.push_back (auditionEvents[b++]);
+    }
+    std::swap (seqEvents, mergedEvents);
+}
+
 void Kit::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi,
                    const juce::AudioBuffer<float>* sidechain, const Transport& transport)
 {
@@ -396,8 +466,33 @@ void Kit::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& mid
             sequencer.keyUp (pattern, metadata.samplePosition);
     }
 
+    // A held Vary suggestion plays in place of the real patterns.
+    const auto* realBank = patterns.acquire();
+    const auto* pv = preview.acquire();
+    const auto* bank = pv != nullptr && pv->active ? &pv->bank : realBank;
+
     seqEvents.clear();
-    sequencer.generate (total, transport, seqSettings, patterns.acquire(), seqEvents);
+    sequencer.generate (total, transport, seqSettings, bank, seqEvents);
+
+    // The auditioner: like holding a pattern key, from the next step, when
+    // the sequencer isn't running anyway.
+    auditionEvents.clear();
+    // The real sequencer running takes over: the auditioner lets go.
+    const auto wanted = sequencer.isRunning() ? -1 : auditionWanted.load();
+    if (wanted != auditioning)
+    {
+        if (auditioning >= 0)
+            auditioner.keyUp (auditioning, 0);
+        if (wanted >= 0)
+            auditioner.keyDown (wanted, 0.8f, 0);
+        auditioning = wanted;
+    }
+    auto s = seqSettings;
+    s.run = RunMode::Keys;
+    s.latch = false;
+    s.quantise = Quantise::Step;
+    auditioner.generate (total, transport, s, bank, auditionEvents);
+    mergeEvents();
     uiFollowingHost = transport.hostPlaying && seqSettings.sync;
     uiHostBpm = transport.bpm;
 

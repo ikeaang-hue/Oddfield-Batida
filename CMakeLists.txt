@@ -6,7 +6,7 @@ if(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "Minimum macOS version" FORCE)
 endif()
 
-project(Batida VERSION 0.7.3)
+project(Batida VERSION 0.8.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -60,6 +60,10 @@ target_sources(BatidaEngine
         Source/Engine/Chain/KitChain.cpp
         Source/Engine/Sequencer/Pattern.cpp
         Source/Engine/Sequencer/Sequencer.cpp
+        Source/Engine/Sequencer/PatternVary.cpp
+        Source/Engine/Sequencer/PatternMidi.cpp
+        Source/Engine/Render.cpp
+        Source/Engine/BreakKit.cpp
         Source/Engine/Movement/Movement.cpp
         Source/Engine/Movement/Modulators.cpp
         Source/Engine/Movement/Vary.cpp
@@ -133,6 +137,7 @@ set(BATIDA_UI_SOURCES
     Source/UI/KitPage.cpp
     Source/UI/SoundPage.cpp
     Source/UI/SoundOverlays.cpp
+    Source/UI/PatternVaryOverlay.cpp
     Source/UI/PatternGrid.cpp
     Source/UI/SeqPage.cpp
     Source/UI/ModPage.cpp
@@ -199,13 +204,14 @@ target_sources(BatidaTests
         tests/LibraryTests.cpp
         tests/FactoryTests.cpp
         tests/ProcessorTests.cpp
+        tests/SamplingTests.cpp
         tests/Tools.cpp
         tools/factory/Analysis.cpp
         ${BATIDA_UI_SOURCES})
 
 target_include_directories(BatidaTests PRIVATE tools/factory)
 target_compile_definitions(BatidaTests PRIVATE ${BATIDA_DEFINITIONS} BATIDA_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
-                           JucePlugin_Name="Batida")
+                           JucePlugin_Name="Batida" JUCE_MODAL_LOOPS_PERMITTED=1)
 
 target_link_libraries(BatidaTests
     PRIVATE

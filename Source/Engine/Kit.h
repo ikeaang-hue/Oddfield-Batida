@@ -12,6 +12,18 @@
 namespace batida
 {
 
+// MIDI CCs that move the XY pad (any channel), so an exported pattern's XY
+// lane plays back from any DAW: CC 16 = X (character), CC 17 = Y (heat).
+constexpr int kXyCcX = 16, kXyCcY = 17;
+
+// A pattern bank that plays instead of the real one while a Vary suggestion
+// is held (the real patterns stay untouched).
+struct PatternPreview
+{
+    bool active = false;
+    PatternBank bank;
+};
+
 // The 8 voices, split into dry and wet buses by each voice's Chain amount; the
 // wet bus runs through the kit chain, the dry bus is added back, then the
 // master level and the safety clipper. The sequencer's hits and live MIDI go
@@ -34,8 +46,15 @@ public:
     float getGainReductionDb() const { return chain.getGainReductionDb(); }
 
     // Direct triggering, used by the editor's audition buttons and by tests.
+    // A hit cuts the other sounding voices in its choke group.
     void noteOn (int voice, int key, float velocity, int slice = -1);
     void noteOff (int voice, int key);
+
+    // Plays `pattern` while held, like a pattern key, when the sequencer isn't
+    // already running (a running one just picks up a preview). Any thread.
+    void auditionPattern (int pattern, bool on);
+    void stopAudition() { auditionWanted.store (-1); }
+    SnapshotStore<PatternPreview>& patternPreview() { return preview; }
 
     // Message thread, just before replacing these voices' sounds (loading a
     // sound or kit): a voice that is sounding fades out first (~1.5 ms). Until
@@ -55,7 +74,7 @@ public:
     static constexpr int kControlSamples = 32;
     const Sequencer& getSequencer() const { return sequencer; }
 
-    // The XY position the chain is using right now (a step lock or the pad).
+    // The XY position the chain is using right now (a step lock, the XY CCs, or the pad).
     bool isXyLocked() const { return uiXyLocked.load(); }
     float getLockX() const { return uiLockX.load(); }
     float getLockY() const { return uiLockY.load(); }
@@ -80,14 +99,20 @@ private:
     void applyChainSettings();
     void renderSegment (int start, int numSamples, juce::AudioBuffer<float>& buffer,
                         const juce::AudioBuffer<float>* sidechain);
+    void chokeOthers (int voice);
+    void mergeEvents();
 
     std::array<Voice, kNumVoices> voices;
     std::array<SampleSlot, kNumVoices> slots;
     juce::AudioBuffer<float> scratch; // dry L/R, wet L/R
     KitChain chain;
     bool safetyClip = true;
-    Sequencer sequencer;
+    Sequencer sequencer, auditioner; // the auditioner plays a held Vary suggestion
     PatternStore patterns;
+    SnapshotStore<PatternPreview> preview;
+    std::vector<SeqEvent> auditionEvents, mergedEvents;
+    std::atomic<int> auditionWanted { -1 }; // the pattern held down, or -1
+    int auditioning = -1;
     SnapshotStore<MovementData> movement { defaultMovement() };
     const MovementData* movementData = nullptr;
     Modulators mods;
@@ -101,6 +126,8 @@ private:
     std::array<float, kNumGlobalParams> globals {};
     bool xyLocked = false;
     float lockX = 0.5f, lockY = 0.0f;
+    bool ccXy = false;                          // the XY CCs hold the pad until it moves
+    float ccX = 0.5f, ccY = 0.0f, hostX = -1.0f, hostY = -1.0f;
     std::atomic<bool> uiXyLocked { false };
     std::atomic<float> uiLockX { 0.5f }, uiLockY { 0.0f };
     std::atomic<bool> uiFollowingHost { false };

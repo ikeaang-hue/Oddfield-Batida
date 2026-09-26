@@ -1,6 +1,6 @@
 # Batida
 
-**A drum instrument for sound design**, by Negative Space. macOS · Audio Unit · version 0.7.2
+**A drum instrument for sound design**, by Negative Space. macOS · Audio Unit · version 0.8.0
 (pre-release).
 
 Eight sounds play into one shared effects chain. An **XY pad** pushes the whole chain at once:
@@ -79,7 +79,11 @@ master level. Click **BATIDA/** for the version.
 - Pick **FM**, **SAMPLE** or **LAYER** (both) at the top.
 - The path runs left to right: Source → Punch → Drive → Filter. Below it are the operators (or
   slices for a sample), the amp envelope and the pitch envelope.
-- **OPERATORS ↗** opens every FM setting. **VARY** suggests new versions.
+- **OPERATORS ↗** opens every FM setting. **VARY** suggests new versions; switch it to **KIT**
+  to vary all eight sounds at once (click a slot number to keep that sound as it is). Holding a
+  kit suggestion plays the pattern on screen with it.
+- **CHOKE** (under Pitch · play): sounds in the same group cut each other, like closed and open
+  hats. The default kit's hats are in group 1.
 - To use a sample, drop a WAV, AIFF or FLAC onto a sound in the top row.
 
 **SEQ: patterns**
@@ -87,7 +91,14 @@ master level. Click **BATIDA/** for the version.
 - In the grid: click a step to turn it on or off, and drag up or down for velocity.
   **Option-click** a step to make that track shorter.
 - The lanes (Pitch, Slice, Ratchet, Prob) change what each step does. The **XY LOCK** row moves
-  the pad on a single step.
+  the pad on a single step. On the KIT page, **XY REC** writes the pad into that row while a
+  pattern plays and you hold the pad.
+- **VARY** suggests four versions of the pattern: denser, sparser, broken, with ghost notes or
+  rolls. Hold one to hear it (even with the sequencer stopped); **KEEP** writes it in.
+- **Drop a drum loop onto the grid** to turn it into a kit: its hits go to the kick, snare, hat
+  and percussion slots as slices, and the pattern replays the loop at any tempo.
+- **MIDI ↗**: drag it onto a track in any DAW to get the pattern as a MIDI region, or click it
+  to save the file (`User/MIDI`).
 
 **MOD: two modulators**
 - Draw a shape: click to add a point, drag to move it, double-click to delete it. **SHAPES** has
@@ -107,7 +118,9 @@ master level. Click **BATIDA/** for the version.
 
 **The sound row** (top of every page; on SEQ, down the left side)
 - Click a slot to select and play it. Double-click to rename it; drag it onto another slot to
-  swap the two; right-click for more.
+  swap the two; right-click for more, including **Choke group** and **Resample here** (the
+  pattern on screen as a loop, or any sound's hit, rendered through the chain into this slot;
+  the WAV goes to `User/Samples/Resampled`).
 - **M** mutes and **S** solos. The small bars show how much of the sound goes through the chain.
 
 ---
@@ -118,12 +131,18 @@ master level. Click **BATIDA/** for the version.
 |---|---|
 | C1–G1 (36–43) | the 8 sounds |
 | C3–D#4 (60–75) | patterns 1–16, while held |
+| CC 16 / CC 17 | the XY pad's X and Y, until you move the pad |
+
+Note names differ between DAWs (note 60 is C3 in Logic and Live, C4 in Reaper, C5 in FL
+Studio), so the numbers are the ones to go by. A pattern exported with **MIDI ↗** uses the
+notes above on channel 10 and the two CCs for its XY lane, so it plays back from any DAW.
 
 **CFG → MIDI mode → Chromatic** turns Batida into a mono synth. Every channel except 10 plays
 one chosen sound across the keyboard, and channel 10 keeps the drum notes.
 
-**Sidechain:** set Dynamics → *Detector* to **Sidechain**, then choose a track in Logic's Side
-Chain menu at the top of the plugin window.
+**Sidechain:** set Dynamics → *Detector* to **Sidechain**, then route a track into Batida's
+sidechain input. In Logic that's the Side Chain menu at the top of the plugin window; in other
+DAWs, send audio to the plugin's sidechain input.
 
 ---
 

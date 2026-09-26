@@ -57,6 +57,8 @@ private:
 
 // Vary: amount, direction, sections to keep, and the original plus up to 4
 // suggestions. Hold one to hear it; KEEP makes it the sound (one undo step).
+// KIT varies every sound at once (slots can be kept as they are); its tiles
+// show the eight sounds side by side and play the pattern while held.
 class VaryOverlay final : public Overlay, private juce::Timer
 {
 public:
@@ -64,7 +66,10 @@ public:
     ~VaryOverlay() override;
     void setVoice (int voice);
     void startVary();
-    std::function<void()> onSave;
+    void startIfNeeded();
+    bool isKitScope() const { return scope.getSelected() == 1; }
+    void setKitScope (bool kit) { scope.setSelected (kit ? 1 : 0, true); }
+    std::function<void()> onSave, onSaveKit;
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -72,9 +77,14 @@ public:
 private:
     void timerCallback() override;
     void refresh();
+    std::vector<float> kitPeaks (const std::array<batida::VoiceParams, batida::kNumVoices>& params) const;
+    void startHold();
+    void endHold();
 
     BatidaProcessor& proc;
-    int voice = 0, shownVersion = -1;
+    int voice = 0, shownVersion = -1, heldPattern = -1;
+    Segmented scope { { "Sound", "Kit" } };
+    juce::OwnedArray<juce::ToggleButton> slotLocks;
     Segmented amount { { "Subtle", "Medium", "Far" }, 1 };
     Segmented direction { { "Any", "Brighter", "Darker", "Shorter", "Longer", "Tonal", "Noisy", "Cleaner", "Dirtier" } };
     juce::ToggleButton lockSource { "Source" }, lockFx { "FX" }, lockEnvelopes { "Envelopes" };

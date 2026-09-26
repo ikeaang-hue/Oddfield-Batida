@@ -86,7 +86,8 @@ const std::array<DefaultVoice, kNumVoices>& defaultVoices()
             { "op2_fixed", 1 }, { "op2_freq", 540.0f }, { "op2_wave", 0.75f }, { "op2_level", 0.1f },
             { "op3_fixed", 1 }, { "op3_freq", 800.0f }, { "op3_wave", 0.75f }, { "op3_level", 0.1f },
             { "amp_decay", 55.0f }, { "amp_release", 25.0f },
-            { "flt_type", 2 }, { "flt_cutoff", 9000.0f }, { "flt_res", 0.15f }, { "level", 5.0f } } },
+            { "flt_type", 2 }, { "flt_cutoff", 9000.0f }, { "flt_res", 0.15f }, { "level", 5.0f },
+            { "choke", 1 } } }, // the hats cut each other
 
         { "Open Hat",
           { { "fm_algo", 7 },
@@ -94,7 +95,8 @@ const std::array<DefaultVoice, kNumVoices>& defaultVoices()
             { "op2_fixed", 1 }, { "op2_freq", 540.0f }, { "op2_wave", 0.75f }, { "op2_level", 0.1f },
             { "op3_fixed", 1 }, { "op3_freq", 800.0f }, { "op3_wave", 0.75f }, { "op3_level", 0.1f },
             { "amp_decay", 420.0f }, { "amp_release", 60.0f },
-            { "flt_type", 2 }, { "flt_cutoff", 9000.0f }, { "flt_res", 0.15f }, { "level", 4.0f } } },
+            { "flt_type", 2 }, { "flt_cutoff", 9000.0f }, { "flt_res", 0.15f }, { "level", 4.0f },
+            { "choke", 1 } } },
     } };
     return voices;
 }

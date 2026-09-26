@@ -1,6 +1,7 @@
 #include "Plugin/PluginProcessor.h"
 
 #include "Engine/ParamRange.h"
+#include "Engine/Sequencer/PatternVary.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -241,6 +242,158 @@ public:
             proc.patterns().edit ([] (PatternBank& b) { b.patterns[3].tracks[0].steps[5].gate = true; });
             proc.setStateInformation (old.getData(), (int) old.getSize());
             expect (! proc.patterns().get().patterns[3].tracks[0].steps[5].gate, "the last project's pattern is gone");
+        }
+
+        beginTest ("Resample a pattern into a slot, then turn that loop back into a kit");
+        {
+            BatidaProcessor proc;
+            proc.prepareToPlay (kRate, kBlock);
+            proc.patterns().edit ([] (PatternBank& b) { b.patterns[0] = breakbeatPattern(); });
+            setParam (proc, globalParamID (gp::SeqTempo), 120.0f);
+
+            juce::String error;
+            expect (proc.resamplePattern (0, 5, &error), error);
+            auto& slot = proc.sampleSlot (5);
+            expect (slot.getStatus() == SampleSlot::Status::Loaded);
+            const juce::File loop (slot.getPath());
+            expect (loop.existsAsFile() && loop.getParentDirectory().getFileName() == "Resampled", loop.getFullPathName());
+            expectWithinAbsoluteError ((double) slot.getDisplayData()->numFrames(), 2.0 * kRate, 2.0, "one pass: 16 steps at 120 bpm");
+            expectWithinAbsoluteError (getParam (proc, voiceParamID (5, vp::ChainAmt)), 0.0f, 1.0e-4f, "dry: the chain is in the render");
+            expectEquals (getParam (proc, voiceParamID (5, vp::SrcMode)), (float) SourceMode::Sample);
+
+            expect (proc.resampleSound (0, 4, &error), error);
+            expect (proc.sampleSlot (4).getStatus() == SampleSlot::Status::Loaded);
+            expect (! proc.resamplePattern (7, 3, &error), "an empty pattern doesn't render");
+
+            // The loop as a break: the kit's own beat comes back as slices.
+            const auto result = proc.loadBreak (loop, 1, &error);
+            expect (result.has_value(), error);
+            if (result)
+            {
+                logMessage ("  break: " + juce::String (result->hits) + " hits, " + juce::String (result->bars) + " bar(s), "
+                            + juce::String (result->bpm, 1) + " bpm");
+                expectEquals (result->bars, 1);
+                expectWithinAbsoluteError (result->bpm, 120.0, 0.5);
+                expectGreaterThan (result->hits, 5);
+                expect (proc.getVoiceName (0).startsWith ("Break"), proc.getVoiceName (0));
+                expectEquals ((int) getParam (proc, voiceParamID (0, vp::SmpSliceMode)), (int) SliceMode::Transients);
+                expect (! proc.patterns().get().patterns[1].isEmpty());
+                expect (proc.sampleSlot (0).getDisplayData() == proc.sampleSlot (2).getDisplayData(), "one loop shared");
+                proc.undo();
+                expect (proc.patterns().get().patterns[1].isEmpty(), "one undo takes it all back");
+                expect (! proc.getVoiceName (0).startsWith ("Break"));
+            }
+        }
+
+        beginTest ("A pattern exports as a MIDI file in the library");
+        {
+            BatidaProcessor proc;
+            proc.patterns().edit ([] (PatternBank& b) { b.patterns[2] = breakbeatPattern(); });
+            juce::String error;
+            const auto file = proc.exportPatternMidi (2, &error);
+            expect (file.existsAsFile(), error);
+            expect (file.getFileName().startsWith ("P03"), file.getFileName());
+            juce::FileInputStream in (file);
+            juce::MidiFile midi;
+            expect (midi.readFrom (in));
+            expectEquals (midi.getNumTracks(), 1);
+            int notes = 0;
+            for (const auto* e : *midi.getTrack (0))
+                notes += e->message.isNoteOn() ? 1 : 0;
+            expectGreaterThan (notes, 8);
+            expect (proc.exportPatternMidi (2) == file, "exporting again replaces the file");
+        }
+
+        beginTest ("Pattern Vary: preview leaves the pattern alone, KEEP is one undo step");
+        {
+            BatidaProcessor proc;
+            proc.patterns().edit ([] (PatternBank& b) { b.patterns[0] = breakbeatPattern(); });
+            const auto original = proc.patterns().get().patterns[0];
+            proc.startPatternVary (0, 0.5f, PatternDirection::Any, {});
+            expectEquals ((int) proc.patternCandidates().size(), 4);
+            proc.previewPatternCandidate (1);
+            expectEquals (patternDistance (proc.patterns().get().patterns[0], original), 0, "previewing doesn't edit");
+            const auto chosen = proc.patternCandidates()[1].pattern;
+            proc.keepPatternCandidate();
+            expectEquals (patternDistance (proc.patterns().get().patterns[0], chosen), 0);
+            proc.undo();
+            expectEquals (patternDistance (proc.patterns().get().patterns[0], original), 0);
+        }
+
+        beginTest ("Loads, swaps and undo drop any Vary preview");
+        {
+            BatidaProcessor proc;
+            proc.patterns().edit ([] (PatternBank& b) { b.patterns[0] = breakbeatPattern(); });
+            proc.startPatternVary (0, 0.5f, PatternDirection::Any, {});
+            proc.previewPatternCandidate (0);
+            expect (proc.getKit().getSequencer().isRunning() == false);
+            proc.swapVoices (0, 1);
+            expectEquals (proc.previewedPatternCandidate(), -1, "a swap ends the preview");
+            expect (proc.patternCandidates().empty(), "and drops suggestions made for the old slots");
+
+            proc.startPatternVary (0, 0.5f, PatternDirection::Any, {});
+            proc.previewPatternCandidate (1);
+            proc.initSound (3);
+            expectEquals (proc.previewedPatternCandidate(), -1, "a load ends it");
+
+            proc.startPatternVary (0, 0.5f, PatternDirection::Any, {});
+            proc.previewPatternCandidate (2);
+            proc.undo();
+            expectEquals (proc.previewedPatternCandidate(), -1, "undo ends it");
+        }
+
+        beginTest ("Kit Vary: whole-kit suggestions, locked slots untouched, KEEP undoable");
+        {
+            BatidaProcessor proc;
+            proc.prepareToPlay (kRate, kBlock);
+            std::array<bool, kNumVoices> locked {};
+            locked[0] = true;
+            const auto before = proc.readVoiceParams (0);
+            const auto snareBefore = proc.readVoiceParams (2);
+            proc.startKitVary (0.4f, VaryDirection::Darker, false, false, false, locked);
+            const auto until = juce::Time::getMillisecondCounter() + 60000;
+            while (proc.isKitVarying() && juce::Time::getMillisecondCounter() < until)
+                juce::MessageManager::getInstance()->runDispatchLoopUntil (20);
+            expect (! proc.isKitVarying());
+            expectGreaterThan ((int) proc.kitCandidates().size(), 0);
+            for (const auto& c : proc.kitCandidates())
+                expect ((c.changed & 1u) == 0, "the locked kick never changes");
+            proc.previewKitCandidate (0);
+            expect (proc.previewedKitCandidate() == 0);
+            proc.keepKitCandidate();
+            expect (proc.readVoiceParams (0)[vp::FmBright] == before[vp::FmBright]);
+            bool changed = false;
+            for (int k = 0; k < kNumVoiceParams; ++k)
+                changed = changed || std::abs (proc.readVoiceParams (2)[k] - snareBefore[k]) > 1.0e-4f;
+            expect (changed || (proc.kitCandidates().empty()), "kept");
+            proc.undo();
+            bool back = true;
+            for (int k = 0; k < kNumVoiceParams; ++k)
+                back = back && std::abs (proc.readVoiceParams (2)[k] - snareBefore[k]) < 1.0e-3f;
+            expect (back, "undo restores the kit");
+        }
+
+        beginTest ("Projects from before choke groups load with none");
+        {
+            BatidaProcessor source;
+            juce::MemoryBlock saved;
+            source.getStateInformation (saved);
+            auto xml = juce::AudioProcessor::getXmlFromBinary (saved.getData(), (int) saved.getSize());
+            for (int v = 0; v < kNumVoices; ++v)
+                if (auto* e = xml->getChildByAttribute ("id", voiceParamID (v, vp::Choke)))
+                    xml->removeChildElement (e, true);
+            juce::MemoryBlock old;
+            juce::AudioProcessor::copyXmlToBinary (*xml, old);
+
+            BatidaProcessor proc;
+            expectEquals ((int) getParam (proc, voiceParamID (6, vp::Choke)), 1, "a new Batida's hats choke");
+            proc.setStateInformation (old.getData(), (int) old.getSize());
+            expectEquals ((int) getParam (proc, voiceParamID (6, vp::Choke)), 0);
+            expectEquals ((int) getParam (proc, voiceParamID (7, vp::Choke)), 0);
+
+            BatidaProcessor current;
+            current.setStateInformation (saved.getData(), (int) saved.getSize());
+            expectEquals ((int) getParam (current, voiceParamID (6, vp::Choke)), 1, "a 0.8 project keeps its groups");
         }
 
         beginTest ("Saved state round-trips parameters, names, samples and patterns");

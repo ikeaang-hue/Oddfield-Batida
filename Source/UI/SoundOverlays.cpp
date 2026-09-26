@@ -187,19 +187,41 @@ void VaryTile::mouseUp (const juce::MouseEvent&)
 
 VaryOverlay::VaryOverlay (BatidaProcessor& p) : proc (p)
 {
-    for (juce::Component* c : { (juce::Component*) &amount, (juce::Component*) &direction, (juce::Component*) &lockSource,
+    for (juce::Component* c : { (juce::Component*) &scope, (juce::Component*) &amount, (juce::Component*) &direction, (juce::Component*) &lockSource,
                                 (juce::Component*) &lockFx, (juce::Component*) &lockEnvelopes, (juce::Component*) &again,
                                 (juce::Component*) &keep, (juce::Component*) &back, (juce::Component*) &save })
         addAndMakeVisible (c);
     again.withDice = true;
     again.onClick = [this] { startVary(); };
 
+    for (int v = 0; v < kNumVoices; ++v)
+    {
+        auto* b = slotLocks.add (new juce::ToggleButton (juce::String (v + 1)));
+        addChildComponent (b);
+    }
+    scope.onChange = [this] (int)
+    {
+        proc.previewCandidate (-1);
+        proc.previewKitCandidate (-1);
+        for (auto* b : slotLocks)
+            b->setVisible (isKitScope());
+        save.setButtonText (juce::String::fromUTF8 (isKitScope() ? "SAVE KIT\xe2\x80\xa6" : "SAVE TO LIBRARY\xe2\x80\xa6"));
+        shownVersion = -1;
+        refresh();
+        startIfNeeded();
+    };
+
     for (int i = 0; i <= 4; ++i)
     {
         auto* t = tiles.add (new VaryTile());
         t->onPress = [this, i]
         {
-            if (i == 0)
+            if (isKitScope())
+            {
+                proc.previewKitCandidate (i - 1);
+                startHold();
+            }
+            else if (i == 0)
             {
                 proc.previewCandidate (-1);
                 proc.audition (voice, true);
@@ -211,12 +233,35 @@ VaryOverlay::VaryOverlay (BatidaProcessor& p) : proc (p)
             }
             refresh();
         };
-        t->onRelease = [this, i] { proc.audition (i == 0 ? voice : proc.varyVoice(), false); };
+        t->onRelease = [this, i]
+        {
+            if (isKitScope())
+                endHold();
+            else
+                proc.audition (i == 0 ? voice : proc.varyVoice(), false);
+        };
         addAndMakeVisible (t);
     }
 
     keep.onClick = [this]
     {
+        if (isKitScope())
+        {
+            const auto index = proc.previewedKitCandidate();
+            if (index < 0)
+                return;
+            proc.keepKitCandidate();
+            tiles[index + 1]->setKept (true);
+            juce::Timer::callAfterDelay (220, [safe = juce::Component::SafePointer<VaryOverlay> (this), index]
+            {
+                if (safe == nullptr)
+                    return;
+                safe->tiles[index + 1]->setKept (false);
+                safe->close();
+            });
+            refresh();
+            return;
+        }
         const auto index = proc.previewedCandidate();
         if (index < 0)
             return;
@@ -231,16 +276,77 @@ VaryOverlay::VaryOverlay (BatidaProcessor& p) : proc (p)
         });
         refresh();
     };
-    back.onClick = [this] { proc.previewCandidate (-1); refresh(); };
+    back.onClick = [this]
+    {
+        proc.previewCandidate (-1);
+        proc.previewKitCandidate (-1);
+        refresh();
+    };
     save.onClick = [this]
     {
-        if (proc.previewedCandidate() >= 0)
+        const auto kitScope = isKitScope();
+        if (kitScope && proc.previewedKitCandidate() >= 0)
+            proc.keepKitCandidate();
+        else if (! kitScope && proc.previewedCandidate() >= 0)
             proc.keepCandidate();
         close();
-        if (onSave)
-            onSave();
+        if (kitScope ? onSaveKit : onSave)
+            (kitScope ? onSaveKit : onSave)();
+    };
+    // Closing without KEEP goes back to the sounds as they were.
+    onClose = [this]
+    {
+        if (heldPattern >= 0)
+            endHold();
+        proc.previewCandidate (-1);
+        proc.previewKitCandidate (-1);
     };
     startTimerHz (10);
+}
+
+// Holding a kit tile plays the pattern on screen (or, with an empty
+// pattern, the selected sound) with the suggestion in place.
+void VaryOverlay::startHold()
+{
+    const auto pattern = proc.displayPattern();
+    if (! proc.patterns().get().patterns[(size_t) pattern].isEmpty())
+    {
+        heldPattern = pattern;
+        proc.auditionPattern (pattern, true);
+    }
+    else
+    {
+        heldPattern = -1;
+        proc.audition (voice, true);
+    }
+}
+
+void VaryOverlay::endHold()
+{
+    if (heldPattern >= 0)
+        proc.auditionPattern (heldPattern, false);
+    else
+        proc.audition (voice, false);
+    heldPattern = -1;
+}
+
+void VaryOverlay::startIfNeeded()
+{
+    if (isKitScope() ? ! proc.hasKitVary() : (proc.varyVoice() != voice || proc.varyCandidates().empty()))
+        startVary();
+}
+
+std::vector<float> VaryOverlay::kitPeaks (const std::array<VoiceParams, kNumVoices>& params) const
+{
+    // The eight sounds side by side, a gap between each.
+    std::vector<float> all;
+    for (int v = 0; v < kNumVoices; ++v)
+    {
+        const auto p = renderPeaks (params[(size_t) v], proc.sampleSlot (v).getDisplayData(), 11, 0.5);
+        all.insert (all.end(), p.begin(), p.end());
+        all.push_back (0.0f);
+    }
+    return all;
 }
 
 VaryOverlay::~VaryOverlay()
@@ -250,7 +356,7 @@ VaryOverlay::~VaryOverlay()
 
 void VaryOverlay::setVoice (int v)
 {
-    if (v != voice && proc.previewedCandidate() >= 0)
+    if (v != voice && proc.previewedCandidate() >= 0 && ! isKitScope())
         proc.previewCandidate (-1);
     voice = v;
     shownVersion = -1;
@@ -260,8 +366,17 @@ void VaryOverlay::setVoice (int v)
 void VaryOverlay::startVary()
 {
     static const float amounts[] = { 0.18f, 0.4f, 0.75f };
-    proc.startVary (voice, amounts[amount.getSelected()], (VaryDirection) direction.getSelected(), lockSource.getToggleState(),
-                    lockFx.getToggleState(), lockEnvelopes.getToggleState());
+    if (isKitScope())
+    {
+        std::array<bool, kNumVoices> locked {};
+        for (int v = 0; v < kNumVoices; ++v)
+            locked[(size_t) v] = slotLocks[v]->getToggleState();
+        proc.startKitVary (amounts[amount.getSelected()], (VaryDirection) direction.getSelected(), lockSource.getToggleState(),
+                           lockFx.getToggleState(), lockEnvelopes.getToggleState(), locked);
+    }
+    else
+        proc.startVary (voice, amounts[amount.getSelected()], (VaryDirection) direction.getSelected(), lockSource.getToggleState(),
+                        lockFx.getToggleState(), lockEnvelopes.getToggleState());
     refresh();
 }
 
@@ -275,6 +390,34 @@ void VaryOverlay::refresh()
 {
     const auto versionChanged = proc.getVaryVersion() != shownVersion;
     shownVersion = proc.getVaryVersion();
+
+    if (isKitScope())
+    {
+        const auto& kits = proc.kitCandidates();
+        const auto has = proc.hasKitVary() && ! kits.empty();
+        if (versionChanged)
+        {
+            std::array<VoiceParams, kNumVoices> base;
+            for (int v = 0; v < kNumVoices; ++v)
+                base[(size_t) v] = has ? proc.kitVaryBase()[(size_t) v] : proc.readVoiceParams (v);
+            tiles[0]->set ("ORIGINAL", proc.getOrigins().kitName, kitPeaks (base), true);
+            for (int i = 0; i < 4; ++i)
+            {
+                if (has && i < (int) kits.size())
+                    tiles[i + 1]->set (juce::String (i + 1).paddedLeft ('0', 2), juce::String::fromUTF8 (kits[(size_t) i].note.c_str()),
+                                       kitPeaks (kits[(size_t) i].params), false);
+                else
+                    tiles[i + 1]->set (juce::String (i + 1).paddedLeft ('0', 2), {}, {}, false);
+            }
+        }
+        keep.setEnabled (has && proc.previewedKitCandidate() >= 0);
+        back.setEnabled (has && proc.previewedKitCandidate() >= 0);
+        again.setEnabled (! proc.isKitVarying());
+        status = proc.isKitVarying() ? juce::String::fromUTF8 ("VARYING\xe2\x80\xa6")
+               : (proc.hasKitVary() && kits.empty()) ? juce::String ("NO USABLE VARIATIONS") : juce::String();
+        repaint();
+        return;
+    }
     const auto& cands = proc.varyCandidates();
     const bool mine = proc.varyVoice() == voice && ! cands.empty();
     const auto* sample = proc.sampleSlot (voice).getDisplayData();
@@ -309,7 +452,8 @@ void VaryOverlay::refresh()
 void VaryOverlay::paint (juce::Graphics& g)
 {
     Overlay::paint (g);
-    drawHeader (g, "VARY", juce::String (voice + 1).paddedLeft ('0', 2) + " " + proc.getVoiceName (voice));
+    drawHeader (g, "VARY", isKitScope() ? "Kit " + proc.getOrigins().kitName
+                                        : juce::String (voice + 1).paddedLeft ('0', 2) + " " + proc.getVoiceName (voice));
     g.saveState();
     g.setOpacity (shown);
     const auto dy = std::round (8.0f * (1.0f - shown));
@@ -330,6 +474,7 @@ void VaryOverlay::resized()
     panel = getLocalBounds().withTrimmedTop (44).withHeight (300);
     auto r = panel.reduced (14, 12);
     closeButton.setBounds (r.getRight() - 64, r.getY() - 2, 64, 20);
+    scope.setBounds (closeButton.getX() - 16 - scope.getIdealWidth(), r.getY(), scope.getIdealWidth(), kTagHeight);
     r.removeFromTop (kTagHeight + 12);
 
     auto row = r.removeFromTop (22);
@@ -347,6 +492,13 @@ void VaryOverlay::resized()
         const auto w = (int) juce::GlyphArrangement::getStringWidth (mono (9.5f, Weight::Bold), "[" + b->getButtonText().toUpperCase() + "]") + 14;
         b->setBounds (row.removeFromLeft (w).withSizeKeepingCentre (w, 20));
         row.removeFromLeft (6);
+    }
+    row.removeFromLeft (14);
+    for (auto* b : slotLocks) // KIT: slots kept as they are
+    {
+        const auto w = (int) juce::GlyphArrangement::getStringWidth (mono (9.5f, Weight::Bold), "[8]") + 12;
+        b->setBounds (row.removeFromLeft (w).withSizeKeepingCentre (w, 20));
+        row.removeFromLeft (2);
     }
     r.removeFromTop (12);
 

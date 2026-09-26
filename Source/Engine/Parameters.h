@@ -46,6 +46,7 @@ enum : int
     Punch, Drive, DriveType, FltType, FltCutoff, FltRes,
     ChainAmt, // dry/wet into the kit chain
     Mute, Solo,
+    Choke,    // choke group: a hit cuts the other sounds in its group (0 = none)
     OpBase
 };
 }

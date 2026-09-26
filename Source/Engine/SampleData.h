@@ -52,6 +52,8 @@ public:
     // The current sample, kept alive for as long as the caller holds it (for
     // background jobs such as Vary; the audio thread uses acquire()).
     std::shared_ptr<const SampleData> share() const;
+    // Uses a sample another slot already holds, without copying it (offline renders).
+    void setShared (std::shared_ptr<const SampleData> data);
 
     Status getStatus() const { const juce::ScopedLock sl (lock); return status; }
     juce::String getPath() const { const juce::ScopedLock sl (lock); return path; }
@@ -71,17 +73,17 @@ public:
     }
 
 private:
-    void publish (std::unique_ptr<SampleData> data);
+    void publish (std::shared_ptr<const SampleData> data);
 
     struct Entry
     {
-        std::shared_ptr<SampleData> data;
+        std::shared_ptr<const SampleData> data;
         double retiredAt = 0.0; // 0 = still current
     };
 
     juce::CriticalSection lock; // message-side state only, never taken on the audio thread
     std::vector<Entry> pool;
-    std::atomic<SampleData*> latest { nullptr }, inUse { nullptr };
+    std::atomic<const SampleData*> latest { nullptr }, inUse { nullptr };
     std::atomic<int> version { 0 };
 
     Status status = Status::Empty;

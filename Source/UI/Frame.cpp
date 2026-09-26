@@ -207,6 +207,34 @@ void SoundCell::itemDropped (const SourceDetails& d)
         onSwapFrom (from);
 }
 
+juce::PopupMenu resampleMenu (BatidaProcessor& proc, int target)
+{
+    juce::PopupMenu m;
+    const auto pattern = proc.displayPattern();
+    const auto empty = proc.patterns().get().patterns[(size_t) pattern].isEmpty();
+    m.addItem (kResamplePatternItem, "P" + juce::String (pattern + 1).paddedLeft ('0', 2) + " " + proc.getPatternName (pattern) + " (loop)", ! empty);
+    m.addSeparator();
+    for (int v = 0; v < kNumVoices; ++v)
+        m.addItem (kResampleSoundItem + v, juce::String (v + 1).paddedLeft ('0', 2) + " " + proc.getVoiceName (v) + (v == target ? " (itself)" : ""));
+    return m;
+}
+
+bool runResample (BatidaProcessor& proc, int choice, int target)
+{
+    const auto isPattern = choice == kResamplePatternItem;
+    const auto isSound = choice >= kResampleSoundItem && choice < kResampleSoundItem + kNumVoices;
+    if (! isPattern && ! isSound)
+        return false;
+    juce::String error;
+    juce::MouseCursor::showWaitCursor();
+    const auto ok = isPattern ? proc.resamplePattern (proc.displayPattern(), target, &error)
+                              : proc.resampleSound (choice - kResampleSoundItem, target, &error);
+    juce::MouseCursor::hideWaitCursor();
+    if (! ok)
+        juce::AlertWindow::showAsync (juce::MessageBoxOptions().withTitle ("Couldn't resample").withMessage (error).withButton ("OK"), nullptr);
+    return true;
+}
+
 void refreshSoundCells (BatidaProcessor& proc, std::array<SoundCell*, kNumVoices> cells, int selected,
                         const std::function<juce::String (int)>& detail)
 {

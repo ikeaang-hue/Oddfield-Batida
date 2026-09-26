@@ -10,6 +10,13 @@ juce::AudioBuffer<float> renderVoice (const KitParams& params, int voice, int ke
 {
     constexpr int block = 128;
     Kit kit;
+    // The release movement (no modulation targets), in demo builds too: the
+    // demo's Mod 1 moving the pad would change what's measured.
+    auto movement = defaultMovement();
+    for (auto& mod : movement.mods)
+        for (auto& t : mod.targets)
+            t = {};
+    kit.movementStore().replace (movement);
     kit.setParameters (params); // so the chain starts at these settings, not sweeping to them
     kit.prepare (sampleRate, block);
 
