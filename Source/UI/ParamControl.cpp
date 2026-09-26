@@ -553,7 +553,7 @@ void ParamControl::modifierKeysChanged (const juce::ModifierKeys& mods)
     }
 }
 
-void ParamControl::mouseUp (const juce::MouseEvent& e)
+void ParamControl::mouseUp (const juce::MouseEvent&)
 {
     if (! dragging)
         return;
@@ -561,26 +561,19 @@ void ParamControl::mouseUp (const juce::MouseEvent& e)
     fine = false;
     attachment->endGesture();
     repaint();
-
-    // A click on the number (no drag) opens a field to type into, unless it
-    // turns out to be a double-click (which goes back to the default).
-    if (pressedOnValue && ! movedSincePress && e.getNumberOfClicks() == 1)
-    {
-        const auto token = ++clickToken;
-        juce::Timer::callAfterDelay (juce::MouseEvent::getDoubleClickTimeout() + 20,
-                                     [safe = juce::Component::SafePointer<ParamControl> (this), token]
-                                     {
-                                         if (safe != nullptr && safe->clickToken == token)
-                                             safe->editValue();
-                                     });
-    }
 }
 
-void ParamControl::mouseDoubleClick (const juce::MouseEvent&)
+void ParamControl::mouseDoubleClick (const juce::MouseEvent& e)
 {
     if ((kind != Kind::Bar && kind != Kind::Number) || param == nullptr)
         return;
-    ++clickToken; // not a click to type after all
+    // On the number: type a precise value. On the bar: back to the default
+    // (a number on its own goes back with Option-click or the menu).
+    if (kind == Kind::Number || valueArea().contains (e.getPosition()))
+    {
+        editValue();
+        return;
+    }
     glideTo (param->getDefaultValue());
     defaultFlash = 1.0f;
     flashStart = juce::Time::getMillisecondCounterHiRes();

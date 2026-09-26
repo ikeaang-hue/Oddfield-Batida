@@ -14,7 +14,7 @@ DraggableNumber::DraggableNumber (juce::RangedAudioParameter& p, int d, juce::St
     : param (p), decimals (d), suffix (std::move (s)), scale (displayScale)
 {
     setMouseCursor (juce::MouseCursor::UpDownResizeCursor);
-    setTooltip (d > 0 ? "Whole number and decimals drag separately; click to type, double-click for the default" : juce::String());
+    setTooltip (d > 0 ? "Whole number and decimals drag separately; double-click to type, Option-click for the default" : juce::String());
     startTimerHz (15);
 }
 
@@ -114,6 +114,14 @@ void DraggableNumber::mouseDown (const juce::MouseEvent& e)
 {
     if (overrideText && overrideText().has_value())
         return; // following the host: nothing to drag
+    if (e.mods.isAltDown())
+    {
+        param.beginChangeGesture();
+        param.setValueNotifyingHost (param.getDefaultValue());
+        param.endChangeGesture();
+        repaint();
+        return;
+    }
     dragging = true;
     dragFraction = decimals > 0 && e.x >= splitX();
     startValue = value();
@@ -131,36 +139,17 @@ void DraggableNumber::mouseDrag (const juce::MouseEvent& e)
     repaint();
 }
 
-void DraggableNumber::mouseUp (const juce::MouseEvent& e)
+void DraggableNumber::mouseUp (const juce::MouseEvent&)
 {
     if (dragging)
         param.endChangeGesture();
-    const auto wasClick = dragging && e.getDistanceFromDragStart() <= 2 && e.getNumberOfClicks() == 1;
     dragging = false;
     repaint();
-
-    // A click (no drag) opens a field to type into, unless it becomes a double-click.
-    if (wasClick)
-    {
-        const auto token = ++clickToken;
-        juce::Timer::callAfterDelay (juce::MouseEvent::getDoubleClickTimeout() + 20,
-                                     [safe = juce::Component::SafePointer<DraggableNumber> (this), token]
-                                     {
-                                         if (safe != nullptr && safe->clickToken == token)
-                                             safe->startEditing();
-                                     });
-    }
 }
 
 void DraggableNumber::mouseDoubleClick (const juce::MouseEvent&)
 {
-    if (overrideText && overrideText().has_value())
-        return;
-    ++clickToken; // back to the default instead of typing
-    param.beginChangeGesture();
-    param.setValueNotifyingHost (param.getDefaultValue());
-    param.endChangeGesture();
-    repaint();
+    startEditing(); // a double-click types a precise value (Option-click goes back to the default)
 }
 
 void DraggableNumber::startEditing()

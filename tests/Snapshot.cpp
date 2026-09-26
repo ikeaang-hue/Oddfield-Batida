@@ -6,6 +6,7 @@
 //   BatidaSnapshot --startup     how long opening Batida blocks the UI, on the real library
 
 #include "Plugin/PluginProcessor.h"
+#include "UI/DraggableNumber.h"
 #include "UI/PluginEditor.h"
 
 namespace
@@ -351,6 +352,18 @@ int main (int argc, char* argv[])
         const juce::Point<float> fracPart (46.0f, tempo->getHeight() / 2.0f);
         gesture (tempo, fracPart, { fracPart.translated (0, -15) });
         check (std::abs (bpm() - (t0 + 2.03f)) < 1.0e-3f, "tempo: dragging the decimals moves by 0.01 per step");
+        if (auto* number = dynamic_cast<DraggableNumber*> (tempo))
+        {
+            const auto before = bpm();
+            number->mouseDoubleClick (juce::MouseEvent (juce::Desktop::getInstance().getMainMouseSource(), intPart, juce::ModifierKeys(),
+                                                        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, number, number, juce::Time::getCurrentTime(),
+                                                        intPart, juce::Time::getCurrentTime(), 2, false));
+            bool typing = false;
+            for (auto* c : number->getChildren())
+                typing = typing || dynamic_cast<juce::TextEditor*> (c) != nullptr;
+            check (typing && std::abs (bpm() - before) < 1.0e-3f, "tempo: a double-click opens a field to type into");
+            number->grabKeyboardFocus(); // closes the field
+        }
         std::printf ("  tempo now %.2f (was %.2f)\n", bpm(), t0);
 
         // Modulation: assign, display, remove.
@@ -687,8 +700,9 @@ int main (int argc, char* argv[])
             driveBar->mouseDown (event (driveBar, far, far, false, juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier | juce::ModifierKeys::altModifier)));
             check (std::abs (drive->getValue() - drive->getDefaultValue()) < 1.0e-4f, "bar: Option-click goes back to the default");
             drive->setValueNotifyingHost (0.3f);
-            driveBar->mouseDoubleClick (event (driveBar, far, far, false));
-            check (std::abs (drive->getValue() - drive->getDefaultValue()) < 1.0e-4f, "bar: double-click goes back to the default");
+            const juce::Point<float> onBar (driveBar->getWidth() * 0.5f, 10.0f); // the middle of the bar, away from the number
+            driveBar->mouseDoubleClick (event (driveBar, onBar, onBar, false));
+            check (std::abs (drive->getValue() - drive->getDefaultValue()) < 1.0e-4f, "bar: a double-click on the bar goes back to the default");
             auto editorOpen = [&]
             {
                 for (auto* c : driveBar->getChildren())
@@ -697,11 +711,14 @@ int main (int argc, char* argv[])
                 return false;
             };
             const juce::Point<float> number ((float) driveBar->getWidth() - 20.0f, 10.0f);
+            drive->setValueNotifyingHost (0.3f);
             driveBar->mouseDown (event (driveBar, number, number, false));
             driveBar->mouseUp (event (driveBar, number, number, false, juce::ModifierKeys()));
-            check (! editorOpen(), "bar: a click on the number waits in case it's a double-click");
             settle (juce::MouseEvent::getDoubleClickTimeout() + 150);
-            check (editorOpen(), "bar: then opens a field to type into");
+            check (! editorOpen() && std::abs (drive->getValue() - 0.3f) < 1.0e-4f, "bar: a single click on the number does nothing");
+            driveBar->mouseDoubleClick (event (driveBar, number, number, false));
+            check (editorOpen() && std::abs (drive->getValue() - 0.3f) < 1.0e-4f,
+                   "bar: a double-click on the number opens a field to type into (and keeps the value)");
             settle (30);
 
             check (detector != nullptr && detector->getKind() == ParamControl::Kind::Menu, "Detector is a drop-down");
