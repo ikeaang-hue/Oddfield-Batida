@@ -19,7 +19,9 @@ public:
     void releaseResources() override {}
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    void processBlockBypassed (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
     using AudioProcessor::processBlock;
+    using AudioProcessor::processBlockBypassed;
 
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
@@ -195,7 +197,18 @@ private:
     juce::int64 historyStamp() const;
     void writeVoiceParameters (int voice, const batida::VoiceParams& values);
     void writeGlobalParameter (int param, float value);
-    void setSample (int voice, const batida::SampleRef& ref);
+    // Loads decode first, then the sounds switch: a sounding voice never
+    // plays new settings with its old sample while a file is being read.
+    struct PendingSample
+    {
+        enum Kind { Empty, Loaded, Missing, Unreadable } kind = Empty;
+        std::unique_ptr<batida::SampleData> data;
+        juce::String path, note;
+        juce::int64 bytes = -1;
+    };
+    PendingSample prepareSample (const batida::SampleRef& ref);
+    void commitSample (int voice, PendingSample&& sample);
+    bool decodeAndSwitch (int voice, const juce::File& file);
     batida::SampleRef sampleRefFor (int voice) const;
     void setNameQuietly (int voice, const juce::String& name);
     void beginLoadStep (const juce::String& key, LoadMode mode);

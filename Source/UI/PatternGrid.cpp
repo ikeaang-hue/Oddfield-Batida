@@ -471,8 +471,12 @@ void PageMap::mouseDown (const juce::MouseEvent& e)
         m.addItem (1, "Copy bar");
         m.addItem (2, "Paste bar", barClipboard.has_value());
         m.addItem (3, "Clear bar");
-        m.showMenuAsync (juce::PopupMenu::Options(), [this, bar] (int choice)
+        m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this),
+                         [safe = juce::Component::SafePointer<PageMap> (this), bar] (int choice)
         {
+            if (safe == nullptr || choice == 0) // the editor may have closed while the menu was open
+                return;
+            auto& proc = safe->proc;
             const auto pi = std::clamp (proc.displayPattern(), 0, kNumPatterns - 1);
             const auto first = bar * 16;
             if (choice == 1)
@@ -499,7 +503,7 @@ void PageMap::mouseDown (const juce::MouseEvent& e)
                         pat.xy[(size_t) (first + s)] = choice == 2 ? barClipboard->second[(size_t) s] : XyLock {};
                 });
             }
-            repaint();
+            safe->repaint();
         });
         return;
     }

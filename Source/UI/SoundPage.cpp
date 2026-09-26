@@ -34,9 +34,12 @@ void SampleView::paint (juce::Graphics& g)
     const auto* data = slot.getDisplayData();
     if (data == nullptr || data->peaks.empty())
     {
-        g.setColour (slot.getStatus() == SampleSlot::Status::Missing ? ink : faint);
+        const auto status = slot.getStatus();
+        const auto file = juce::File (slot.getPath()).getFileName();
+        g.setColour (status == SampleSlot::Status::Missing || status == SampleSlot::Status::Error ? ink : faint);
         g.setFont (mono (9.5f));
-        g.drawText (slot.getStatus() == SampleSlot::Status::Missing ? "MISSING: " + juce::File (slot.getPath()).getFileName() : juce::String ("NO SAMPLE"),
+        g.drawText (status == SampleSlot::Status::Missing ? "MISSING: " + file
+                    : status == SampleSlot::Status::Error ? "UNREADABLE: " + file : juce::String ("NO SAMPLE"),
                     getLocalBounds(), juce::Justification::centred);
         return;
     }
@@ -476,7 +479,10 @@ void SoundPage::timerCallback()
         }
         else
         {
-            fileLine = slot.getStatus() == SampleSlot::Status::Missing ? "MISSING: " + juce::File (slot.getPath()).getFileName() : juce::String ("no sample");
+            const auto status = slot.getStatus();
+            const auto file = juce::File (slot.getPath()).getFileName();
+            fileLine = status == SampleSlot::Status::Missing ? "MISSING: " + file
+                     : status == SampleSlot::Status::Error ? "UNREADABLE: " + file : juce::String ("no sample");
             layerPeaks.set ({}, ink);
         }
         repaint (sourceBounds);

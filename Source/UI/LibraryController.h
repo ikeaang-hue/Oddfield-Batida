@@ -59,6 +59,7 @@ private:
     {
         std::atomic<bool> stop { false }, done { false };
         std::vector<std::pair<int, juce::File>> found;
+        std::array<juce::String, batida::kNumVoices> wantedPaths; // what each slot was missing when the search began
     };
 
     void timerCallback() override;

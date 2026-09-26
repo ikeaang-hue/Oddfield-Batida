@@ -112,7 +112,10 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
 BatidaEditor::~BatidaEditor()
 {
     stopTimer();
-    juce::LookAndFeel::setDefaultLookAndFeel (nullptr);
+    // The look is shared by every open Batida window: only the last one to
+    // close takes it down as the default.
+    if (look.getReferenceCount() <= 1)
+        juce::LookAndFeel::setDefaultLookAndFeel (nullptr);
     setLookAndFeel (nullptr);
 }
 

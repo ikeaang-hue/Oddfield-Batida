@@ -58,6 +58,7 @@ public:
     void modifierKeysChanged (const juce::ModifierKeys&) override;
 
 private:
+    void finishGestures();
     void timerCallback() override;
     void valueChanged (float);
     void showMenu();

@@ -3,6 +3,7 @@
 #include "Engine/Parameters.h"
 #include "Engine/SampleData.h"
 
+#include <memory>
 #include <vector>
 
 namespace batida
@@ -24,6 +25,7 @@ struct VaryRequest
 {
     VoiceParams base;
     const SampleData* sample = nullptr; // for Sample/Layer voices
+    std::shared_ptr<const SampleData> keepAlive; // holds `sample` while a background job renders it
     float amount = 0.3f;                // 0 subtle .. 1 far
     VaryDirection direction = VaryDirection::None;
     bool lockSource = false, lockFx = false, lockEnvelopes = false;

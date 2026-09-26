@@ -35,6 +35,7 @@ public:
 
     void prepare (double hostSampleRate);
     void setData (const SampleData* newData);     // once per block
+    const SampleData* getData() const { return data; }
     void setSettings (const Settings& newSettings);
     void trigger (int slice = -1); // slice mode on: -1 plays slice 1
     void reset();
