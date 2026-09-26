@@ -5,7 +5,7 @@
 #include "Widgets.h"
 #include "Plugin/PluginProcessor.h"
 
-// Panels that open over the SOUND page. The page behind dims; the panel rises
+// Panels that open over a page (SOUND, SEQ). The page behind dims; the panel rises
 // 8 px and fades in (120 ms), and closes faster (80 ms).
 class Overlay : public juce::Component
 {

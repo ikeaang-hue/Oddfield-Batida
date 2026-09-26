@@ -25,8 +25,10 @@ cmake --build build --config Release
 killall -9 AudioComponentRegistrar
 ```
 
-Then quit and reopen Logic, and add **AU Instruments → Negative Space → Batida** to a
-software-instrument track.
+Then quit and reopen your host and add Batida as an instrument: in Logic or GarageBand,
+**AU Instruments → Negative Space → Batida** on a software-instrument track; in Live, turn on
+Audio Units in Settings → Plug-Ins and rescan; in Reaper, it's under AUi in the FX browser.
+Note names in this README follow Logic (note 60 = C3); the note numbers are the same everywhere.
 
 To update later: `git pull && git submodule update --init`, then build again and run the
 `killall` line.
@@ -35,12 +37,12 @@ To update later: `git pull && git submodule update --init`, then build again and
 
 ## Your first five minutes
 
-1. **Play C1 to G1** on your keyboard. Those eight notes are the eight sounds: kick, rim, snare,
-   clap, tom, bass, closed hat, open hat.
+1. **Play C1 to G1** (notes 36–43) on your keyboard. Those eight notes are the eight sounds:
+   kick, rim, snare, clap, tom, bass, closed hat, open hat.
 2. **Drag the XY pad** on the KIT page while you play. That's the heart of Batida.
 3. **Click a sound** in the row at the top, then open the **SOUND** page to change it. Press
    **VARY** for four new versions; hold one to hear it and **KEEP** the one you like.
-4. **Open LIB → Patterns** and click *Breakbeat*. **Hold C3** to play it.
+4. **Open LIB → Patterns** and click *Breakbeat*. **Hold C3** (note 60) to play it.
 5. **Made a mistake?** **UNDO** is in the top bar.
 
 ---
@@ -87,7 +89,8 @@ master level. Click **BATIDA/** for the version.
 - To use a sample, drop a WAV, AIFF or FLAC onto a sound in the top row.
 
 **SEQ: patterns**
-- 16 patterns of up to 64 steps. **Hold C3–D#4** to play patterns 1–16; **LATCH** keeps them going.
+- 16 patterns of up to 64 steps. **Hold C3–D#4** (notes 60–75) to play patterns 1–16; **LATCH**
+  keeps them going.
 - In the grid: click a step to turn it on or off, and drag up or down for velocity.
   **Option-click** a step to make that track shorter.
 - The lanes (Pitch, Slice, Ratchet, Prob) change what each step does. The **XY LOCK** row moves
@@ -188,8 +191,7 @@ swiftc -O -o build/au_check tests/au_check.swift && build/au_check     # the ins
 
 ## Licence
 
-Free and open source under the **GNU AGPL v3**; the licence file comes with the first public
-release. Built with [JUCE](https://juce.com). The fonts, JetBrains Mono and Martian Mono, are
+Free and open source under the **GNU AGPL v3** ([LICENSE.md](LICENSE.md)). Built with [JUCE](https://juce.com). The fonts, JetBrains Mono and Martian Mono, are
 under the SIL Open Font License; you'll find them in `resources/fonts/`.
 
 © 2026 Negative Space

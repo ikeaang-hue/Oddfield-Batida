@@ -36,7 +36,7 @@ add_subdirectory(external/JUCE)
 
 # ---------------------------------------------------------------------------
 # Engine: pure DSP, no plugin or UI code. An INTERFACE library, so each
-# consumer (plugin, tests, later the preset factory) compiles it alongside its
+# consumer (plugin, tests, snapshot tool, preset factory) compiles it alongside its
 # own copy of the JUCE modules.
 # ---------------------------------------------------------------------------
 add_library(BatidaEngine INTERFACE)
@@ -104,7 +104,7 @@ set(BATIDA_DEFINITIONS
     BATIDA_VERSION="${PROJECT_VERSION}")
 
 # ---------------------------------------------------------------------------
-# Plugin (AU only for now; VST3 comes in phase 7)
+# Plugin (AU only for now; VST3 comes in phase 9, SPEC §14)
 # ---------------------------------------------------------------------------
 juce_add_plugin(Batida
     COMPANY_NAME "Negative Space"

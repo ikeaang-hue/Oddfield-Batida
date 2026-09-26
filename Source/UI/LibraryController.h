@@ -34,7 +34,7 @@ private:
     std::array<juce::TextButton, 7> categories;
     std::array<juce::TextButton, 5> tags;
     juce::String tagText, titleText;
-    juce::ToggleButton collect { "Collect samples (copy them next to the file)" };
+    juce::ToggleButton collect { "Collect samples" };
     juce::TextButton save { "SAVE" }, elsewhere { "SAVE ELSEWHERE..." }, cancel { "CANCEL" };
     juce::File replacing; // armed: the next Save replaces this file
     std::unique_ptr<juce::FileChooser> chooser;

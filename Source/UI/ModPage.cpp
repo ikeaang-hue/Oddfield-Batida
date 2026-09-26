@@ -17,7 +17,6 @@ juce::String targetName (BatidaProcessor& proc, const ModTarget& t)
 
 ShapeEditor::ShapeEditor (BatidaProcessor& p, int m) : proc (p), mod (m)
 {
-    setTooltip ("Click: add a point. Drag: move it. Double-click: delete it. Option-drag a segment: bend it.");
     startTimerHz (30);
 }
 

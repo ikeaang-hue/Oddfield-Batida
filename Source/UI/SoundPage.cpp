@@ -364,7 +364,7 @@ SoundPage::SoundPage (BatidaProcessor& p) : proc (p), sampleView (p), vary (p), 
         c->withLabelWidth (40).withValueWidth (64);
     choke = &add (vp::Choke, "Choke");
     choke->asSegmented().withLabelWidth (40);
-    choke->setTooltip ("Cuts the other sounds in its group");
+    choke->setTooltip ("Choke group");
 
     vary.onSave = [this] { if (onSaveSound) onSaveSound(); };
     vary.onSaveKit = [this] { if (onSaveKit) onSaveKit(); };

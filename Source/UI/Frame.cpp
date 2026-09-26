@@ -500,7 +500,7 @@ SettingsPanel::SettingsPanel (BatidaProcessor& p) : proc (p), midiMode (p.getSta
     };
     reveal.onClick = [this] { proc.library().getRoot().revealToUser(); };
     author.setText (p.library().getAuthor(), false);
-    author.setTextToShowWhenEmpty ("your name, for saved files", faint);
+    author.setTextToShowWhenEmpty ("Author", faint);
     author.setFont (mono (10.5f));
     author.setIndents (8, 5);
     author.onTextChange = [this] { proc.library().setAuthor (author.getText().trim()); };
