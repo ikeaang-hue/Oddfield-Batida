@@ -143,6 +143,35 @@ public:
             expectEquals (moved, 0, "factory sounds the engine now makes differently (rebuild the factory if meant)");
         }
 
+        beginTest ("Fold stays in the glitch kits; melodic sounds play in key");
+        for (const auto& e : kits)
+        {
+            const auto kit = readKit (e.file);
+            if (! kit)
+                continue;
+            const auto glitch = kit->info.tags.contains ("glitch");
+            const auto& g = kit->globals;
+            if (! glitch)
+                expect (g[gp::DistType] + (g[gp::XyX] - 0.5f) <= 0.501f, kit->info.name + ": the chain stays short of fold");
+            // The kit's own pattern (same name) tells which slots play melodies.
+            const auto pattern = readPattern (e.file.getParentDirectory().getSiblingFile ("Patterns")
+                                                  .getChildFile (kit->info.name + ".batida-pattern"));
+            for (int v = 0; v < kNumVoices; ++v)
+            {
+                const auto& p = kit->voices[(size_t) v];
+                if (! glitch && p[vp::Drive] > 0.01f)
+                    expect (p.choice (vp::DriveType) != (int) DriveType::Fold, kit->info.name + " " + kit->names[(size_t) v] + " folds");
+                bool melodic = false;
+                if (pattern)
+                    for (int i = 0; i < pattern->pattern.length; ++i)
+                        melodic = melodic || (pattern->pattern.tracks[(size_t) v].steps[(size_t) i].gate
+                                              && pattern->pattern.tracks[(size_t) v].steps[(size_t) i].pitch != 0);
+                if (melodic && p.choice (vp::SrcMode) != 1)
+                    expectWithinAbsoluteError (std::remainder (p[vp::FmPitch], 12.0f), 0.0f, 1.0e-3f,
+                                               kit->info.name + " " + kit->names[(size_t) v] + " is rooted on a C");
+            }
+        }
+
         beginTest ("Every set plays its patterns cleanly across the pad");
         for (const auto& e : sets)
         {

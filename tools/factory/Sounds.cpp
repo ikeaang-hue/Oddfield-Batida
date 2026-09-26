@@ -458,10 +458,10 @@ std::vector<Archetype> build()
            { { "fm_pitch", 12.0f, 26.0f }, { "amp_decay", 25.0f, 70.0f, true }, { "op2_level", 0.15f, 0.3f } },
            11, 3, { "organic" } });
     add ({ "perc.cowbell", "perc", { "Bell" },
-           { { "fm_algo", 7 }, { "op1_fixed", 1 }, { "op1_wave", 0.75f }, { "op1_level", 0.5f },
-             { "op2_fixed", 1 }, { "op2_wave", 0.75f }, { "op2_level", 0.5f }, { "flt_type", 2 }, { "flt_res", 0.3f },
+           { { "fm_algo", 7 }, { "fm_pitch", 12.0f }, { "op1_ratio", 1.0f }, { "op1_wave", 0.75f }, { "op1_level", 0.5f },
+             { "op2_wave", 0.75f }, { "op2_level", 0.5f }, { "flt_type", 2 }, { "flt_res", 0.3f },
              { "amp_decay", 18.0f } },
-           { { "op1_freq", 500.0f, 600.0f }, { "op2_freq", 760.0f, 860.0f }, { "flt_cutoff", 900.0f, 1600.0f, true },
+           { { "op2_ratio", 1.45f, 1.52f }, { "flt_cutoff", 900.0f, 1600.0f, true },
              { "amp_sustain", 0.35f, 0.5f }, { "amp_release", 150.0f, 300.0f, true } },
            11, 3, { "metallic" } });
     add ({ "perc.zap", "perc", { "Zap" },
@@ -874,7 +874,7 @@ std::vector<Archetype> build()
               { "op3_decay", 600.0f, 1400.0f, true }, { "amp_decay", 600.0f, 1400.0f, true } },
             9, 2, { "neon" } }, 0.3f);
     mood ({ "neon.chord", "texture", { "Chord" },
-            { { "fm_algo", 7 }, { "op1_ratio", 1.0f }, { "op2_ratio", 1.2599f }, { "op3_ratio", 1.4983f }, { "op4_ratio", 1.8877f },
+            { { "fm_algo", 7 }, { "op1_ratio", 1.0f }, { "op2_ratio", 1.1892f }, { "op3_ratio", 1.4983f }, { "op4_ratio", 2.2449f },
               { "op1_level", 0.45f }, { "op2_level", 0.45f }, { "op3_level", 0.45f }, { "op4_level", 0.45f },
               { "op1_sustain", 0.2f }, { "op2_sustain", 0.2f }, { "op3_sustain", 0.2f }, { "op4_sustain", 0.2f },
               { "amp_release", 200.0f } },
@@ -959,6 +959,12 @@ std::vector<Archetype> build()
             { { "op2_ratio", 1.002f, 1.005f }, { "amp_attack", 200.0f, 600.0f, true }, { "amp_release", 800.0f, 1600.0f, true },
               { "flt_cutoff", 1000.0f, 2500.0f, true } },
             9, 2, { "tender", "warm" } }, 0.3f);
+    // Melodic recipes: pitched on a C (see Archetype::keyed).
+    for (auto& x : a)
+        for (const auto* id : { "bass.pluck", "bass.stab", "texture.chord", "texture.drone", "perc.blip", "perc.zap", "perc.zaphard",
+                                "synth.zap", "neon.bell", "neon.chord", "neon.pluck", "tender.marimba", "tender.kalimba" })
+            if (x.id == id)
+                x.keyed = true;
     return a;
 }
 
@@ -1155,6 +1161,8 @@ std::vector<Candidate> makeCandidates()
                 const auto v = range.log ? logBetween (r, range.lo, range.hi) : between (r, range.lo, range.hi);
                 apply (c.params, { { range.key, v } });
             }
+            if (a.keyed) // on the nearest C, so it plays in tune with the rest
+                c.params[vp::FmPitch] = 12.0f * std::floor (c.params[vp::FmPitch] / 12.0f + 0.5f);
             for (int k = 0; k < kNumVoiceParams; ++k) // a range over a menu lands on one of its choices
                 if (voiceParamSpecs()[(size_t) k].kind != Kind::Float)
                     c.params[k] = std::round (c.params[k]);

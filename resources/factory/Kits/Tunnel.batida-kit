@@ -4,9 +4,9 @@
   <INFO name="Tunnel" author="Negative Space" category="" tags="metallic,techno"/>
   <KIT xy_x="0.449999988" xy_y="0.300000012" comp_amount="0.200000003"
        comp_attack="10" comp_release="200" comp_mix="1" comp_detector="Internal"
-       comp_follow="1" dist_drive="0" dist_type="0.5" dist_low_keep="90"
+       comp_follow="1" dist_drive="0" dist_type="0.25" dist_low_keep="90"
        exc_amount="0" exc_tone="5000" dist_follow="1" eq_hp="20" eq_lp="20000"
-       eq_low="0" eq_mid="0" eq_high="0" eq_follow="1" chain_out="1.46231079"
+       eq_low="0" eq_mid="0" eq_high="0" eq_follow="1" chain_out="0.827199936"
        safety_clip="1" mod1_mode="Sync" mod1_rate="8 bars" mod1_hz="1"
        mod1_polarity="Unipolar" mod1_smooth="0" mod1_humanise="0" mod1_amount="1"
        mod1_trigger="Any hit" mod2_mode="Sync" mod2_rate="2 bars" mod2_hz="1"
@@ -94,7 +94,7 @@
     <VOICE index="4" name="Bright Clang" src_mode="FM" balance="0.5" level="-9.47431374"
            pan="-0.300000012" vel_sens="0.699999988" play_mode="One-shot"
            glide="0" amp_attack="0" amp_decay="138.255753" amp_sustain="0"
-           amp_release="60" pitch_amt="0" pitch_decay="60" fm_pitch="9.21970749"
+           amp_release="60" pitch_amt="0" pitch_decay="60" fm_pitch="12"
            fm_algo="5" fm_feedback="0" fm_harm="0.677380741" fm_bright="0"
            fm_bdecay="0" fm_grit="0" smp_tune="0" smp_start="0" smp_end="1"
            smp_reverse="0" smp_fade_in="0" smp_fade_out="0" smp_gain="0"
@@ -178,29 +178,30 @@
       </MOD>
       <SCENE index="0" xy_x="0.449999988079071" xy_y="0.300000011920929" comp_amount="0.2000000029802322"
              comp_attack="10.0" comp_release="200.0" comp_mix="1.0" comp_detector="0.0"
-             comp_follow="1.0" dist_drive="0.0" dist_type="0.5" dist_low_keep="90.0"
+             comp_follow="1.0" dist_drive="0.0" dist_type="0.25" dist_low_keep="90.0"
              exc_amount="0.0" exc_tone="5000.0" dist_follow="1.0" eq_hp="20.0"
              eq_lp="20000.0" eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0"
-             chain_out="1.462310791015625" safety_clip="1.0"/>
+             chain_out="0.8271999359130859" safety_clip="1.0"/>
       <SCENE index="1" xy_x="0.449999988079071" xy_y="0.6000000238418579"
              comp_amount="0.3500000238418579" comp_attack="10.0" comp_release="200.0"
              comp_mix="1.0" comp_detector="0.0" comp_follow="1.0" dist_drive="0.0"
-             dist_type="0.5" dist_low_keep="90.0" exc_amount="0.0" exc_tone="5000.0"
+             dist_type="0.25" dist_low_keep="90.0" exc_amount="0.0" exc_tone="5000.0"
              dist_follow="1.0" eq_hp="20.0" eq_lp="20000.0" eq_low="0.0" eq_mid="0.0"
-             eq_high="0.0" eq_follow="1.0" chain_out="1.462310791015625" safety_clip="1.0"/>
-      <SCENE index="2" xy_x="0.8999999761581421" xy_y="0.300000011920929"
-             comp_amount="0.2000000029802322" comp_attack="10.0" comp_release="200.0"
-             comp_mix="1.0" comp_detector="0.0" comp_follow="1.0" dist_drive="0.0"
-             dist_type="0.5" dist_low_keep="90.0" exc_amount="0.1500000059604645"
-             exc_tone="5000.0" dist_follow="1.0" eq_hp="20.0" eq_lp="20000.0"
-             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="1.462310791015625"
+             eq_high="0.0" eq_follow="1.0" chain_out="0.8271999359130859"
              safety_clip="1.0"/>
+      <SCENE index="2" xy_x="0.75" xy_y="0.300000011920929" comp_amount="0.2000000029802322"
+             comp_attack="10.0" comp_release="200.0" comp_mix="1.0" comp_detector="0.0"
+             comp_follow="1.0" dist_drive="0.0" dist_type="0.25" dist_low_keep="90.0"
+             exc_amount="0.1500000059604645" exc_tone="5000.0" dist_follow="1.0"
+             eq_hp="20.0" eq_lp="20000.0" eq_low="0.0" eq_mid="0.0" eq_high="0.0"
+             eq_follow="1.0" chain_out="0.8271999359130859" safety_clip="1.0"/>
       <SCENE index="3" xy_x="0.449999988079071" xy_y="0.1500000059604645"
              comp_amount="0.2000000029802322" comp_attack="10.0" comp_release="200.0"
              comp_mix="1.0" comp_detector="0.0" comp_follow="1.0" dist_drive="0.0"
-             dist_type="0.5" dist_low_keep="90.0" exc_amount="0.0" exc_tone="5000.0"
+             dist_type="0.25" dist_low_keep="90.0" exc_amount="0.0" exc_tone="5000.0"
              dist_follow="1.0" eq_hp="220.0" eq_lp="3500.0" eq_low="0.0" eq_mid="0.0"
-             eq_high="0.0" eq_follow="1.0" chain_out="1.462310791015625" safety_clip="1.0"/>
+             eq_high="0.0" eq_follow="1.0" chain_out="0.8271999359130859"
+             safety_clip="1.0"/>
     </MOVEMENT>
   </KIT>
 </BATIDA>

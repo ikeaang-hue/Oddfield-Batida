@@ -273,8 +273,12 @@ void storeScenes (KitPreset& kit, const KitConcept& idea)
                                         ? Overrides { { "xy_y", std::min (1.0f, y + 0.3f) },
                                                       { "comp_amount", std::min (1.0f, g[gp::CompAmount] + 0.15f) } }
                                         : idea.scenes[1]);
+    // Scene C turns the character; outside glitch it stops at clip (no fold).
+    auto turned = x < 0.5f ? x + 0.45f : x - 0.45f;
+    if (idea.style != "glitch")
+        turned = std::min (turned, 1.0f - g[gp::DistType]);
     kit.movement.scenes[2] = at (g, idea.scenes[2].empty()
-                                        ? Overrides { { "xy_x", x < 0.5f ? x + 0.45f : x - 0.45f },
+                                        ? Overrides { { "xy_x", turned },
                                                       { "exc_amount", std::min (1.0f, g[gp::ExcAmount] + 0.15f) } }
                                         : idea.scenes[2]);
     kit.movement.scenes[3] = at (g, idea.scenes[3].empty()
@@ -314,28 +318,10 @@ void setKitLevel (BuiltKit& b, float targetDb, bool report)
     };
     if (! b.idea->neutral)
     {
-        // A kit its peaks hold back gets glue: more compression (up to +0.25)
-        // with a faster attack, kept only where it makes the kit louder and
-        // full heat stays within 4 dB of it.
-        auto loud = level();
-        const auto start = b.kit.globals;
-        auto best = start;
-        auto bestLoud = loud;
-        for (float extra = 0.05f; bestLoud < targetDb - 1.0f && extra <= 0.251f; extra += 0.05f)
-        {
-            b.kit.globals = start;
-            b.kit.globals[gp::CompAmount] = std::min (1.0f, start[gp::CompAmount] + extra);
-            b.kit.globals[gp::CompAttack] = std::min (start[gp::CompAttack], 2.0f);
-            const auto l = level();
-            const auto hot = std::min (measure ({ { "xy_x", 0.0f }, { "xy_y", 1.0f } }).first,
-                                       measure ({ { "xy_x", 1.0f }, { "xy_y", 1.0f } }).first);
-            if (l > bestLoud + 0.3f && hot > l - 4.0f) // and full heat stays about as loud
-            {
-                bestLoud = l;
-                best = b.kit.globals;
-            }
-        }
-        b.kit.globals = best;
+        // No compressor glue for kits held back by their peaks: extra
+        // compression with a fast attack weakened the kicks (0.7.2). Such a
+        // kit sits a little quieter instead.
+        level();
     }
     if (! report)
         return;
@@ -452,13 +438,46 @@ int runBuild (const juce::File& library, const juce::File& out)
         else
         {
             b.kit.info = { idea.name, kAuthor, {}, idea.tags, {} };
-            b.kit.info.tags.add (idea.style);
+            b.kit.info.tags.addIfNotAlreadyThere (idea.style);
             for (int g = 0; g < kNumGlobalParams; ++g)
                 b.kit.globals[(size_t) g] = globalParamSpecs()[(size_t) g].def;
             applyGlobals (b.kit.globals, idea.chain);
             b.kit.movement = defaultMovement();
             if (idea.movement)
                 idea.movement (b.kit.movement, b.kit.globals);
+
+            // The kit's patterns: its own and its B pattern.
+            std::vector<Pattern> own { b.pattern };
+            for (const auto& extra : extraPatterns())
+                if (extra.name == idea.name + " B")
+                    own.push_back (extra.pattern());
+            auto usesPitch = [&] (int track)
+            {
+                for (const auto& pat : own)
+                    for (int i = 0; i < pat.length; ++i)
+                        if (const auto& st = pat.tracks[(size_t) track].steps[(size_t) i]; st.gate && st.pitch != 0)
+                            return true;
+                return false;
+            };
+
+            // Outside glitch, the chain's distortion reaches clip at most: the
+            // Type knob is set so the pad's X, the modulators on it and the
+            // patterns' XY locks never move it into fold.
+            const auto glitch = idea.style == "glitch";
+            if (! glitch)
+            {
+                auto xmax = b.kit.globals[gp::XyX];
+                for (const auto& mod : b.kit.movement.mods)
+                    for (const auto& t : mod.targets)
+                        if (t.active && t.global && t.param == gp::XyX && t.depth > 0.0f)
+                            xmax += t.depth;
+                for (const auto& pat : own)
+                    for (int i = 0; i < pat.length; ++i)
+                        if (pat.xy[(size_t) i].active)
+                            xmax = std::max (xmax, pat.xy[(size_t) i].x);
+                b.kit.globals[gp::DistType] = std::min (b.kit.globals[gp::DistType],
+                                                        std::clamp (0.5f - std::max (0.0f, xmax - 0.5f), 0.0f, 0.5f));
+            }
 
             std::set<const PoolSound*> inKit;
             for (int v = 0; v < kNumVoices; ++v)
@@ -475,6 +494,16 @@ int runBuild (const juce::File& library, const juce::File& out)
                 apply (p, slot.tweak);
                 p[vp::Level] = std::clamp (p[vp::Level] + slot.trimDb, -60.0f, 6.0f);
                 p[vp::Pan] = slot.pan;
+
+                // A melodic slot (a keyed recipe, or one the patterns play at
+                // other pitches) is rooted on a C, so it's in key with the rest.
+                const auto* archetype = findArchetype (s->archetype);
+                if ((archetype->keyed || usesPitch (v)) && p.choice (vp::SrcMode) != 1)
+                    p[vp::FmPitch] = 12.0f * std::floor (p[vp::FmPitch] / 12.0f + 0.5f);
+
+                // Fold belongs to the glitch kits; elsewhere a folding sound clips instead.
+                if (! glitch && p.choice (vp::DriveType) == 2)
+                    p[vp::DriveType] = 1.0f;
                 b.kit.voices[(size_t) v] = p;
                 b.kit.names[(size_t) v] = s->preset.info.name;
                 b.slots[(size_t) v] = s->slot;
@@ -607,7 +636,7 @@ int runBuild (const juce::File& library, const juce::File& out)
     const auto hash = juce::String::toHexString ((juce::int64) fnv);
     const auto versionFile = sourceRoot().getChildFile ("resources/factory-version.txt");
     juce::StringArray previous;
-    previous.addTokens (versionFile.loadFileAsString(), " \n", "");
+    previous.addTokens (versionFile.loadFileAsString(), " \r\n", ""); // (replaceWithText writes CRLF)
     auto version = previous.size() >= 2 ? previous[0].getIntValue() : 1;
     if (previous.size() < 2 || previous[1] != hash)
         ++version;

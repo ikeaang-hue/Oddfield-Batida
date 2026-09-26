@@ -80,6 +80,7 @@ struct Archetype
     bool loop = false;    // the sample is a loop (for Slice or looping)
     float hotDb = 0.0f;   // louder than the category (the aggressive recipes)
     float maxFlatness = 1.0f; // below 1: a tonal recipe, and a noisier result is a dud
+    bool keyed = false;   // a melodic sound: its pitch lands on a C (so it plays in tune)
 };
 
 const std::vector<Archetype>& archetypes();
