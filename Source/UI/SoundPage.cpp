@@ -313,6 +313,16 @@ SoundPage::SoundPage (BatidaProcessor& p) : proc (p), sampleView (p), vary (p), 
     for (auto* c : { layerTune, layerGain, layerPitch, layerBright })
         c->withLabelWidth (40).withValueWidth (64);
 
+    // Stack
+    stackCount = &add (vp::StackCount, "Stack");
+    stackCount->asSegmented().withLabelWidth (44);
+    stackInterval = &add (vp::StackInterval);
+    stackInterval->asMenu().withLabelWidth (0);
+    stackDetune = &add (vp::StackDetune, "Detune");
+    stackSpread = &add (vp::StackSpread, "Spread");
+    for (auto* c : { stackDetune, stackSpread })
+        c->numberOnly().withLabelWidth (48).withValueWidth (40);
+
     // FX
     punch = &add (vp::Punch, "Amt");
     punch->withLabelWidth (26).withValueWidth (36);
@@ -464,6 +474,11 @@ void SoundPage::timerCallback()
     loopStart->setAlpha (p.flag (vp::SmpLoop) ? 1.0f : 0.4f);
     loopEnd->setAlpha (p.flag (vp::SmpLoop) ? 1.0f : 0.4f);
 
+    // One copy: nothing to detune, spread or voice.
+    const auto stacked = p.choice (vp::StackCount) > 0;
+    for (auto* c : { stackInterval, stackDetune, stackSpread })
+        c->setAlpha (stacked ? 1.0f : 0.4f);
+
     auto& slot = proc.sampleSlot (voice);
     if (slot.getVersion() != shownSampleVersion)
     {
@@ -538,6 +553,8 @@ void SoundPage::paint (juce::Graphics& g)
     const auto sourceTag = shownSource == 1 ? "01 Sample source" : shownSource == 2 ? "01 Layer source" : "01 FM source";
     drawPanel (g, sourceBounds, sourceTag);
     drawPanel (g, punchBounds, "02 Punch");
+    g.setColour (faint);
+    g.fillRect (stackBounds.getX(), stackBounds.getY() - 5, stackBounds.getWidth(), 1); // Stack sits under the source
     drawPanel (g, driveBounds, "03 Drive");
     drawPanel (g, filterBounds, "04 Filter");
     drawPanel (g, opsBounds, shownSource == 1 ? "05 Slices " + juce::String::fromUTF8 ("\xc2\xb7") + " loop" : "05 Operators");
@@ -592,7 +609,7 @@ void SoundPage::resized()
     chain->setBounds (bottom.removeFromRight (half));
 
     r.removeFromTop (10);
-    auto row1 = r.removeFromTop (212);
+    auto row1 = r.removeFromTop (236);
     sourceBounds = row1.removeFromLeft (436);
     row1.removeFromLeft (16);
     punchBounds = row1.removeFromLeft (96);
@@ -612,6 +629,22 @@ void SoundPage::resized()
     // 01 Source
     {
         auto c = panelContent (sourceBounds);
+
+        // Stack: one row along the bottom, for every source.
+        stackBounds = c.removeFromBottom (22);
+        c.removeFromBottom (8);
+        {
+            auto row = stackBounds;
+            stackCount->setBounds (row.removeFromLeft (stackCount->getIdealWidth()));
+            row.removeFromLeft (10);
+            stackInterval->setBounds (row.removeFromLeft (92));
+            row.removeFromLeft (10);
+            const auto half = (row.getWidth() - 10) / 2;
+            stackDetune->setBounds (row.removeFromLeft (half));
+            row.removeFromLeft (10);
+            stackSpread->setBounds (row);
+        }
+
         const auto headerRight = juce::Rectangle<int> (sourceBounds.getRight() - 8, sourceBounds.getY() + 5, 0, 20);
         layerView.setBounds (headerRight.withLeft (headerRight.getX() - layerView.getIdealWidth()));
         // With a layer, the view switch takes the right; the rest sits left of it.
@@ -649,10 +682,8 @@ void SoundPage::resized()
         gain->setBounds (right.next());
         fadeIn->setBounds (left.next());
         fadeOut->setBounds (right.next());
-        if (shownSource == 2) // no room below: next to LOAD in the header
-            reverse->setBounds (loadButton.getX() - 8 - reverse->getIdealWidth(), headerRight.getY(), reverse->getIdealWidth(), 20);
-        else
-            reverse->setBounds (left.next().withWidth (reverse->getIdealWidth()));
+        // No room below (Stack takes the bottom row): next to LOAD in the header.
+        reverse->setBounds (loadButton.getX() - 8 - reverse->getIdealWidth(), headerRight.getY(), reverse->getIdealWidth(), 20);
 
         // Layer: both summaries side by side.
         auto both = c.withTrimmedTop (26 + 18);
@@ -665,7 +696,7 @@ void SoundPage::resized()
         layerTune->setBounds (sCol.removeFromTop (20));
         sCol.removeFromTop (2);
         layerGain->setBounds (sCol.removeFromTop (20));
-        layerAlgorithm.setBounds (fCol.removeFromTop (90).withWidth (100));
+        layerAlgorithm.setBounds (fCol.removeFromTop (80).withWidth (100));
         fCol.removeFromTop (6);
         layerPitch->setBounds (fCol.removeFromTop (20));
         fCol.removeFromTop (2);
@@ -676,7 +707,7 @@ void SoundPage::resized()
     punch->setBounds (panelContent (punchBounds).removeFromTop (20));
     {
         auto c = panelContent (driveBounds);
-        driveGraph.setBounds (c.removeFromTop (96));
+        driveGraph.setBounds (c.removeFromTop (120));
         c.removeFromTop (8);
         drive->setBounds (c.removeFromTop (20));
         c.removeFromTop (4);
@@ -686,7 +717,7 @@ void SoundPage::resized()
         auto c = panelContent (filterBounds);
         filterType->setBounds (juce::Rectangle<int> (filterBounds.getRight() - 8 - filterType->getIdealWidth(), filterBounds.getY() + 5,
                                                      filterType->getIdealWidth(), 20));
-        filterGraph.setBounds (c.removeFromTop (110));
+        filterGraph.setBounds (c.removeFromTop (134));
         c.removeFromTop (8);
         cutoff->setBounds (c.removeFromTop (20));
         c.removeFromTop (2);

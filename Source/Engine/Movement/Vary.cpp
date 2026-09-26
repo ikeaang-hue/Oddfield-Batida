@@ -299,6 +299,8 @@ bool isAudibleSetting (const VoiceParams& base, int k)
         return false;
     if (k == vp::Balance && source != 2)
         return false;
+    if ((k == vp::StackDetune || k == vp::StackSpread) && base.choice (vp::StackCount) == 0)
+        return false; // one copy: nothing to detune or spread
     if (isOp)
     {
         // A silent operator's settings do nothing (its level can still rise).

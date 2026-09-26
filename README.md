@@ -1,6 +1,6 @@
 # Batida
 
-**A drum instrument for sound design**, by Negative Space. macOS · Audio Unit · version 0.8.2
+**A drum instrument for sound design**, by Negative Space. macOS · Audio Unit · version 0.8.3
 (pre-release).
 
 Eight sounds play into one shared effects chain. An **XY pad** pushes the whole chain at once:
@@ -84,6 +84,9 @@ master level. Click **BATIDA/** for the version.
 - **OPERATORS ↗** opens every FM setting. **VARY** suggests new versions; switch it to **KIT**
   to vary all eight sounds at once (click a slot number to keep that sound as it is). Holding a
   kit suggestion plays the pattern on screen with it.
+- **STACK** (along the bottom of Source): play the sound as 2–4 copies. **Detune** and
+  **Spread** make it thick and wide (a reese from one slot); **Interval** puts the copies at an
+  octave, a fifth or a chord (Minor, Minor 7, Major), so one note plays a chord stab.
 - **CHOKE** (under Pitch · play): sounds in the same group cut each other, like closed and open
   hats. The default kit's hats are in group 1.
 - To use a sample, drop a WAV, AIFF or FLAC onto a sound in the top row.

@@ -94,6 +94,10 @@ v1_chain_amt
 v1_mute
 v1_solo
 v1_choke
+v1_stack
+v1_stack_detune
+v1_stack_spread
+v1_stack_interval
 v1_op1_ratio
 v1_op1_fixed
 v1_op1_freq
@@ -177,6 +181,10 @@ v2_chain_amt
 v2_mute
 v2_solo
 v2_choke
+v2_stack
+v2_stack_detune
+v2_stack_spread
+v2_stack_interval
 v2_op1_ratio
 v2_op1_fixed
 v2_op1_freq
@@ -260,6 +268,10 @@ v3_chain_amt
 v3_mute
 v3_solo
 v3_choke
+v3_stack
+v3_stack_detune
+v3_stack_spread
+v3_stack_interval
 v3_op1_ratio
 v3_op1_fixed
 v3_op1_freq
@@ -343,6 +355,10 @@ v4_chain_amt
 v4_mute
 v4_solo
 v4_choke
+v4_stack
+v4_stack_detune
+v4_stack_spread
+v4_stack_interval
 v4_op1_ratio
 v4_op1_fixed
 v4_op1_freq
@@ -426,6 +442,10 @@ v5_chain_amt
 v5_mute
 v5_solo
 v5_choke
+v5_stack
+v5_stack_detune
+v5_stack_spread
+v5_stack_interval
 v5_op1_ratio
 v5_op1_fixed
 v5_op1_freq
@@ -509,6 +529,10 @@ v6_chain_amt
 v6_mute
 v6_solo
 v6_choke
+v6_stack
+v6_stack_detune
+v6_stack_spread
+v6_stack_interval
 v6_op1_ratio
 v6_op1_fixed
 v6_op1_freq
@@ -592,6 +616,10 @@ v7_chain_amt
 v7_mute
 v7_solo
 v7_choke
+v7_stack
+v7_stack_detune
+v7_stack_spread
+v7_stack_interval
 v7_op1_ratio
 v7_op1_fixed
 v7_op1_freq
@@ -675,6 +703,10 @@ v8_chain_amt
 v8_mute
 v8_solo
 v8_choke
+v8_stack
+v8_stack_detune
+v8_stack_spread
+v8_stack_interval
 v8_op1_ratio
 v8_op1_fixed
 v8_op1_freq

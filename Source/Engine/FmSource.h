@@ -54,6 +54,9 @@ class FmSource
 public:
     void prepare (double sampleRate);
     void setParameters (const FmEffective& fm);
+    // Where every operator's phase starts on a reset (cycles): a stacked copy
+    // starts elsewhere, so copies don't add up in phase on the attack.
+    void setPhaseOffset (float cycles) { phaseOffset = cycles; }
     void trigger (bool oneShot, bool resetPhase);
     void release();
     void reset();
@@ -74,6 +77,7 @@ private:
     std::array<float, kNumOps> phase {};
     std::array<uint32_t, kNumOps> noiseState { 0x9e3779b9u, 0x85ebca6bu, 0xc2b2ae35u, 0x27d4eb2fu };
     float feedbackSample = 0.0f;
+    float phaseOffset = 0.0f;
 };
 
 } // namespace batida

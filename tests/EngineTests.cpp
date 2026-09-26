@@ -435,7 +435,169 @@ public:
     }
 };
 
+class StackTests final : public juce::UnitTest
+{
+public:
+    StackTests() : juce::UnitTest ("Stack", "Batida") {}
+
+    struct Stereo { std::vector<float> l, r; };
+
+    static Stereo play (const VoiceParams& p, double seconds, const SampleData* sample = nullptr)
+    {
+        Voice voice;
+        voice.prepare (kRate);
+        voice.setSampleData (sample);
+        voice.setParameters (p);
+        voice.noteOn (Voice::kBaseKey, 1.0f);
+        const auto n = (int) (seconds * kRate);
+        Stereo out { std::vector<float> ((size_t) n), std::vector<float> ((size_t) n) };
+        voice.render (out.l.data(), out.r.data(), out.l.data(), out.r.data(), n);
+        return out;
+    }
+
+    static float rmsDb (const Stereo& s, double from)
+    {
+        double sum = 0.0;
+        const auto start = (size_t) (from * kRate);
+        for (size_t i = start; i < s.l.size(); ++i)
+            sum += 0.5 * (s.l[i] * s.l[i] + s.r[i] * s.r[i]);
+        return 10.0f * std::log10 ((float) std::max (1.0e-12, sum / (double) (s.l.size() - start)));
+    }
+
+    // Level of one frequency in the mono sum (Goertzel), in dB.
+    static float toneDb (const Stereo& s, double hz, double from)
+    {
+        const auto w = 6.283185307 * hz / kRate;
+        const auto coeff = 2.0 * std::cos (w);
+        double s1 = 0.0, s2 = 0.0;
+        const auto start = (size_t) (from * kRate);
+        for (size_t i = start; i < s.l.size(); ++i)
+        {
+            const auto s0 = 0.5 * (s.l[i] + s.r[i]) + coeff * s1 - s2;
+            s2 = s1;
+            s1 = s0;
+        }
+        const auto power = s1 * s1 + s2 * s2 - coeff * s1 * s2;
+        return 10.0f * (float) std::log10 (std::max (1.0e-12, power));
+    }
+
+    static float differenceDb (const Stereo& s)
+    {
+        double diff = 0.0, sum = 0.0;
+        for (size_t i = 0; i < s.l.size(); ++i)
+        {
+            diff += (s.l[i] - s.r[i]) * (s.l[i] - s.r[i]);
+            sum += (s.l[i] + s.r[i]) * (s.l[i] + s.r[i]);
+        }
+        return 10.0f * (float) std::log10 (std::max (1.0e-12, diff) / std::max (1.0e-12, sum));
+    }
+
+    static VoiceParams saw()
+    {
+        auto p = plainVoice();
+        p[opParam (0, Wave)] = 0.5f;
+        return p;
+    }
+
+    void runTest() override
+    {
+        beginTest ("One copy is the sound as before: mono, one pitch");
+        {
+            auto p = saw();
+            p[vp::StackDetune] = 50.0f; // ignored with one copy
+            p[vp::StackSpread] = 1.0f;
+            const auto s = play (p, 0.5);
+            expect (s.l == s.r, "left and right are the same");
+        }
+
+        beginTest ("Two to four copies keep the level of one");
+        {
+            const auto one = rmsDb (play (saw(), 1.0), 0.2);
+            for (int copies = 2; copies <= kMaxStack; ++copies)
+            {
+                auto p = saw();
+                p[vp::StackCount] = (float) (copies - 1);
+                const auto s = play (p, 1.0);
+                const auto level = rmsDb (s, 0.2);
+                expect (std::isfinite (level));
+                expectWithinAbsoluteError (level, one, 2.0f, juce::String (copies) + " copies");
+            }
+        }
+
+        beginTest ("Spread makes it stereo; no spread keeps it mono");
+        {
+            auto p = saw();
+            p[vp::StackCount] = 2.0f; // 3 copies
+            p[vp::StackSpread] = 0.0f;
+            expectLessThan (differenceDb (play (p, 0.5)), -100.0f);
+            p[vp::StackSpread] = 1.0f;
+            expectGreaterThan (differenceDb (play (p, 0.5)), -15.0f);
+        }
+
+        beginTest ("Detune spreads the copies around the pitch");
+        {
+            auto p = plainVoice(); // a sine at 261.6 Hz
+            p[vp::StackCount] = 1.0f; // 2 copies
+            p[vp::StackDetune] = 100.0f; // the two copies sit at the ends: a semitone down and up
+            const auto s = play (p, 1.0);
+            const auto base = (double) Voice::kBaseHz;
+            expectGreaterThan (toneDb (s, base * std::exp2 (1.0 / 12.0), 0.1), toneDb (s, base, 0.1) + 10.0f);
+            expectGreaterThan (toneDb (s, base * std::exp2 (-1.0 / 12.0), 0.1), toneDb (s, base, 0.1) + 10.0f);
+        }
+
+        beginTest ("Intervals: Minor 7 sounds root, minor third, fifth and seventh");
+        {
+            auto p = plainVoice();
+            p[vp::StackCount] = 3.0f; // 4 copies
+            p[vp::StackDetune] = 0.0f;
+            p[vp::StackInterval] = (float) StackInterval::Minor7;
+            const auto s = play (p, 1.0);
+            const auto base = (double) Voice::kBaseHz;
+            const auto root = toneDb (s, base, 0.1);
+            for (auto semis : { 3, 7, 10 })
+                expectWithinAbsoluteError (toneDb (s, base * std::exp2 (semis / 12.0), 0.1), root, 3.0f,
+                                           "+" + juce::String (semis) + " st");
+            expectLessThan (toneDb (s, base * std::exp2 (4.0 / 12.0), 0.1), root - 20.0f, "no major third");
+        }
+
+        beginTest ("Samples stack too: Octave adds the octave");
+        {
+            auto sample = SampleTests::sine (48000); // 382 Hz
+            auto p = plainVoice();
+            p[vp::SrcMode] = 1.0f;
+            p[vp::StackCount] = 1.0f;
+            p[vp::StackDetune] = 0.0f;
+            p[vp::StackInterval] = (float) StackInterval::Octave;
+            const auto hz = 0.05 * kRate / 6.283185307;
+            const auto both = play (p, 0.4, sample.get());
+            expectWithinAbsoluteError (toneDb (both, 2.0 * hz, 0.05), toneDb (both, hz, 0.05), 3.0f);
+        }
+
+        beginTest ("A slide keeps every copy sounding");
+        {
+            auto p = plainVoice(); // sines, so each copy is one tone
+            p[vp::StackCount] = 1.0f;
+            p[vp::StackDetune] = 0.0f;
+            p[vp::StackInterval] = (float) StackInterval::Octave;
+            p[vp::Glide] = 20.0f;
+            p[vp::PlayMode] = 1.0f; // gate
+            Voice voice;
+            voice.prepare (kRate);
+            voice.setParameters (p);
+            voice.noteOn (Voice::kBaseKey, 1.0f);
+            std::vector<float> l (24000), r (24000);
+            voice.render (l.data(), r.data(), l.data(), r.data(), 12000);
+            voice.noteOn (Voice::kBaseKey + 5, 1.0f);
+            voice.render (l.data() + 12000, r.data() + 12000, l.data() + 12000, r.data() + 12000, 12000);
+            const Stereo after { std::vector<float> (l.begin() + 14400, l.end()), std::vector<float> (r.begin() + 14400, r.end()) };
+            const auto hz = (double) Voice::kBaseHz * std::exp2 (5.0 / 12.0);
+            expectWithinAbsoluteError (toneDb (after, 2.0 * hz, 0.0), toneDb (after, hz, 0.0), 3.0f);
+        }
+    }
+};
+
 static EnvelopeTests envelopeTests;
+static StackTests stackTests;
 static VoiceTests voiceTests;
 static MidiTests midiTests;
 static SampleTests sampleTests;

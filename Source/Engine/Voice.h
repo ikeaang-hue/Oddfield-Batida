@@ -10,7 +10,9 @@ namespace batida
 {
 
 // One monophonic voice: source (FM | Sample | Layer) → amp → punch → drive →
-// filter → level/pan. A new note retriggers. With glide above 0, a note that
+// filter → level/pan. With Stack above 1, the source runs as 2-4 copies,
+// detuned, at an interval and spread across the stereo field; the copies
+// share the envelopes and everything after the source. A new note retriggers. With glide above 0, a note that
 // arrives while the voice sounds slides from the current pitch; otherwise the
 // old note is faded out over ~1.5 ms and the new one starts from a clean phase.
 class Voice
@@ -21,7 +23,12 @@ public:
 
     void prepare (double sampleRate);
     void setParameters (const VoiceParams& p);
-    void setSampleData (const SampleData* data) { sampleSource.setData (data); }
+    void setSampleData (const SampleData* data)
+    {
+        sampleSource.setData (data);
+        for (auto& s : stackSample)
+            s.setData (data);
+    }
     const SampleData* getSampleData() const { return sampleSource.getData(); }
 
     // Mute/solo, decided by the kit: fades the voice out (or back in) over a
@@ -48,6 +55,8 @@ private:
     void startNote (int key, float velocity, int slice);
     void removeHeld (int key);
     bool sourceActive() const;
+    void triggerSources (bool resetPhase, int slice);
+    void releaseSources();
 
     double sampleRate = 48000.0;
     VoiceParams params;
@@ -57,6 +66,14 @@ private:
     FmSource fm;                 // runs at 2x the voice's sample rate
     HalfbandDecimator fmDecimator;
     SampleSource sampleSource;
+
+    // Stack: copy 0 is fm/sampleSource; the others run beside them.
+    std::array<FmSource, kMaxStack - 1> stackFm;
+    std::array<SampleSource, kMaxStack - 1> stackSample;
+    HalfbandDecimator stackDecimatorL, stackDecimatorR;
+    int stackCount = 1;
+    std::array<float, kMaxStack> stackRatio {};        // pitch ratio of each copy
+    std::array<float, kMaxStack> stackL {}, stackR {}; // pan gains of each copy, with the level kept
     Envelope ampEnv, pitchEnv;
     Punch punch;
     Drive drive;
