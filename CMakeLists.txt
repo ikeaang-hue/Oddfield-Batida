@@ -1,10 +1,31 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Batida VERSION 0.6.1)
+project(Batida VERSION 0.7.2)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "Minimum macOS version")
+
+# Local fixes to JUCE, kept as patches (patches/) and applied to the
+# submodule once, when configuring:
+#   juce-view-service-clicks: clicks work when a host runs the AU out of
+#   process (Logic, through AUHostingService).
+find_package(Git REQUIRED)
+foreach(patch juce-view-service-clicks)
+    set(patch_file ${CMAKE_SOURCE_DIR}/patches/${patch}.patch)
+    execute_process(COMMAND ${GIT_EXECUTABLE} apply --reverse --check ${patch_file}
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/JUCE
+                    RESULT_VARIABLE patch_present OUTPUT_QUIET ERROR_QUIET)
+    if(NOT patch_present EQUAL 0)
+        execute_process(COMMAND ${GIT_EXECUTABLE} apply ${patch_file}
+                        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/JUCE
+                        RESULT_VARIABLE patch_result)
+        if(NOT patch_result EQUAL 0)
+            message(FATAL_ERROR "Couldn't apply patches/${patch}.patch to external/JUCE")
+        endif()
+        message(STATUS "Applied patches/${patch}.patch to JUCE")
+    endif()
+endforeach()
 
 add_subdirectory(external/JUCE)
 
@@ -55,8 +76,18 @@ else()
     set(BATIDA_DEMO_VALUE 0)
 endif()
 
+# Review builds show the preset factory's candidates in LIB, with Keep and
+# Reject (SPEC §11). Off by default, like a release.
+option(BATIDA_REVIEW "Show the preset factory's review area in LIB" OFF)
+if(BATIDA_REVIEW)
+    set(BATIDA_REVIEW_VALUE 1)
+else()
+    set(BATIDA_REVIEW_VALUE 0)
+endif()
+
 set(BATIDA_DEFINITIONS
     BATIDA_DEMO=${BATIDA_DEMO_VALUE}
+    BATIDA_REVIEW=${BATIDA_REVIEW_VALUE}
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_DISPLAY_SPLASH_SCREEN=0
@@ -87,6 +118,7 @@ set(BATIDA_UI_SOURCES
     Source/Plugin/PluginProcessor.cpp
     Source/UI/Look/Theme.cpp
     Source/UI/Look/Motion.mm
+    Source/UI/MouseLog.mm
     Source/UI/Widgets.cpp
     Source/UI/Graphs.cpp
     Source/UI/ParamControl.cpp
@@ -112,6 +144,26 @@ juce_add_binary_data(BatidaFonts
         resources/fonts/MartianMono-StdMd.ttf
         resources/fonts/MartianMono-StdxBd.ttf)
 
+# The factory library (resources/factory, written by BatidaFactory), zipped
+# at build time and built into the plugin; Batida writes it out on first use.
+# resources/factory-version.txt changes with every new factory, so the zip
+# (which lists the folder as it builds) is made again even for new files.
+file(GLOB_RECURSE BATIDA_FACTORY_FILES CONFIGURE_DEPENDS RELATIVE ${CMAKE_SOURCE_DIR}/resources/factory
+     ${CMAKE_SOURCE_DIR}/resources/factory/*)
+list(FILTER BATIDA_FACTORY_FILES EXCLUDE REGEX "(^|/)\\.")
+list(TRANSFORM BATIDA_FACTORY_FILES PREPEND ${CMAKE_SOURCE_DIR}/resources/factory/ OUTPUT_VARIABLE BATIDA_FACTORY_DEPENDS)
+set(BATIDA_FACTORY_ZIP ${CMAKE_BINARY_DIR}/factory/Factory.zip)
+add_custom_command(OUTPUT ${BATIDA_FACTORY_ZIP}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/factory
+    COMMAND ${CMAKE_COMMAND} -DSOURCE=${CMAKE_SOURCE_DIR}/resources/factory -DOUTPUT=${BATIDA_FACTORY_ZIP}
+            -P ${CMAKE_SOURCE_DIR}/cmake/ZipFactory.cmake
+    DEPENDS ${BATIDA_FACTORY_DEPENDS} ${CMAKE_SOURCE_DIR}/resources/factory-version.txt ${CMAKE_SOURCE_DIR}/cmake/ZipFactory.cmake
+    COMMENT "Zipping the factory library"
+    VERBATIM)
+add_custom_target(BatidaFactoryZip DEPENDS ${BATIDA_FACTORY_ZIP})
+juce_add_binary_data(BatidaFactoryData HEADER_NAME FactoryData.h NAMESPACE FactoryData SOURCES ${BATIDA_FACTORY_ZIP})
+add_dependencies(BatidaFactoryData BatidaFactoryZip)
+
 target_sources(Batida PRIVATE ${BATIDA_UI_SOURCES})
 
 target_compile_definitions(Batida PUBLIC ${BATIDA_DEFINITIONS})
@@ -120,6 +172,7 @@ target_link_libraries(Batida
     PRIVATE
         BatidaEngine
         BatidaFonts
+        BatidaFactoryData
         juce::juce_audio_utils
     PUBLIC
         juce::juce_recommended_config_flags
@@ -139,13 +192,17 @@ target_sources(BatidaTests
         tests/SequencerTests.cpp
         tests/MovementTests.cpp
         tests/LibraryTests.cpp
-        tests/Tools.cpp)
+        tests/FactoryTests.cpp
+        tests/Tools.cpp
+        tools/factory/Analysis.cpp)
 
-target_compile_definitions(BatidaTests PRIVATE ${BATIDA_DEFINITIONS})
+target_include_directories(BatidaTests PRIVATE tools/factory)
+target_compile_definitions(BatidaTests PRIVATE ${BATIDA_DEFINITIONS} BATIDA_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
 target_link_libraries(BatidaTests
     PRIVATE
         BatidaEngine
+        BatidaFactoryData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)
@@ -166,6 +223,30 @@ target_link_libraries(BatidaSnapshot
     PRIVATE
         BatidaEngine
         BatidaFonts
+        BatidaFactoryData
         juce::juce_audio_utils
     PUBLIC
         juce::juce_recommended_config_flags)
+
+# ---------------------------------------------------------------------------
+# Developer tool: the preset factory (SPEC §11). Makes sound candidates for
+# review and builds the factory library in resources/factory from the engine.
+# ---------------------------------------------------------------------------
+juce_add_console_app(BatidaFactory PRODUCT_NAME "BatidaFactory")
+
+target_sources(BatidaFactory
+    PRIVATE
+        tools/factory/Main.cpp
+        tools/factory/Analysis.cpp
+        tools/factory/Sounds.cpp
+        tools/factory/Kits.cpp)
+
+target_include_directories(BatidaFactory PRIVATE tools/factory)
+target_compile_definitions(BatidaFactory PRIVATE ${BATIDA_DEFINITIONS})
+
+target_link_libraries(BatidaFactory
+    PRIVATE
+        BatidaEngine
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_warning_flags)

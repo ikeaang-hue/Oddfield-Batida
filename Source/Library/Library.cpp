@@ -17,12 +17,27 @@ const char* folderName (PresetType type)
     return "";
 }
 
-// The factory's sounds: the default kit, each with a category and a character.
-struct FactorySound { int voice; const char* category; const char* tags; };
-const FactorySound kFactorySounds[] = {
-    { 0, "kick", "warm" },      { 1, "perc", "digital" }, { 2, "snare", "organic" }, { 3, "snare", "organic" },
-    { 4, "perc", "warm" },      { 5, "bass", "warm" },    { 6, "hat", "metallic" },  { 7, "hat", "metallic" },
-};
+// The factory archive, set by the plugin (and tests) at startup.
+const void* archiveData = nullptr;
+size_t archiveSize = 0;
+
+// The archive's factory-version.txt: the version number, then an ID of the
+// content ("8 65a822caa00e0180").
+juce::String readArchiveStamp()
+{
+    if (archiveData == nullptr)
+        return {};
+    juce::ZipFile zip (new juce::MemoryInputStream (archiveData, archiveSize, false), true);
+    if (const auto* entry = zip.getEntry ("factory-version.txt"))
+        if (std::unique_ptr<juce::InputStream> in (zip.createStreamForEntry (*entry)); in != nullptr)
+            return in->readEntireStreamAsString().trim();
+    return {};
+}
+
+int readArchiveVersion()
+{
+    return readArchiveStamp().getIntValue();
+}
 } // namespace
 
 Library::Library() : Library (defaultRoot(), defaultSettingsFile()) {}
@@ -31,6 +46,7 @@ Library::Library (const juce::File& r, const juce::File& settings) : root (r), s
 {
     loadSettings();
     loadFavourites();
+    loadDecisions();
 }
 
 Library::~Library()
@@ -83,46 +99,37 @@ bool Library::isFactory (const juce::File& file) const
     return file.isAChildOf (root.getChildFile ("Factory"));
 }
 
+void Library::setFactoryArchive (const void* data, size_t size)
+{
+    archiveData = data;
+    archiveSize = size;
+}
+
+int Library::archiveVersion()
+{
+    return readArchiveVersion();
+}
+
 bool Library::installFactory()
 {
+    // Installed when the archive is newer, or the same version with other
+    // content (a factory rebuilt without a new number); never over a newer one.
+    const auto archive = readArchiveStamp();
+    const auto version = archive.getIntValue();
     const auto factory = root.getChildFile ("Factory");
     const auto stamp = factory.getChildFile (".version");
-    if (stamp.loadFileAsString().trim().getIntValue() >= kFactoryVersion)
+    const auto installed = stamp.loadFileAsString().trim();
+    if (version <= 0 || installed.getIntValue() > version || installed == archive)
         return false;
 
-    const auto kit = defaultKitPreset();
-    bool ok = factory.createDirectory();
-
-    for (const auto& fs : kFactorySounds)
-    {
-        SoundPreset s;
-        s.info.name = kit.names[(size_t) fs.voice];
-        s.info.author = "Negative Space";
-        s.info.category = fs.category;
-        s.info.tags.addTokens (fs.tags, ",", "");
-        s.params = kit.voices[(size_t) fs.voice];
-        ok = writeSound (folderFor (PresetType::Sound, true).getChildFile (categoryFolder (fs.category))
-                             .getChildFile (s.info.name + extensionFor (PresetType::Sound)), s) && ok;
-    }
-
-    auto neutral = kit;
-    neutral.info.tags = juce::StringArray { "warm", "organic" };
-    ok = writeKit (folderFor (PresetType::Kit, true).getChildFile ("Neutral.batida-kit"), neutral) && ok;
-
-    PatternPreset beat;
-    beat.info = { "Breakbeat", "Negative Space", {}, { "organic" }, {} };
-    beat.pattern = breakbeatPattern();
-    ok = writePattern (folderFor (PresetType::Pattern, true).getChildFile ("Breakbeat.batida-pattern"), beat) && ok;
-
-    SetPreset set;
-    set.info = { "Neutral Breakbeat", "Negative Space", {}, { "warm", "organic" }, {} };
-    set.kit = neutral;
-    set.kit.globals = defaultKitParams().global;
-    set.patterns.patterns[0] = breakbeatPattern();
-    ok = writeSet (folderFor (PresetType::Set, true).getChildFile ("Neutral Breakbeat.batida-set"), set) && ok;
-
-    if (ok)
-        stamp.replaceWithText (juce::String (kFactoryVersion));
+    // Batida's own folder: replaced whole, so files a newer factory dropped go too.
+    factory.deleteRecursively();
+    factory.createDirectory();
+    juce::ZipFile zip (new juce::MemoryInputStream (archiveData, archiveSize, false), true);
+    const auto result = zip.uncompressTo (factory, true);
+    factory.getChildFile ("factory-version.txt").deleteFile();
+    if (result.wasOk())
+        stamp.replaceWithText (archive);
     return true;
 }
 
@@ -142,20 +149,23 @@ std::vector<LibraryEntry> Library::scanFolder (const juce::File& root)
     if (! root.isDirectory())
         return found;
     const auto factory = root.getChildFile ("Factory");
+    const auto review = root.getChildFile ("Review");
     for (const auto& entry : juce::RangedDirectoryIterator (root, true, "*.batida-*", juce::File::findFiles))
     {
         const auto& f = entry.getFile();
         const auto type = presetTypeOf (f);
-        if (! type)
+        const auto inReview = f.isAChildOf (review);
+        if (! type || (inReview && ! kReviewBuild))
             continue;
         if (auto info = readInfo (f))
-            found.push_back ({ f, *type, f.isAChildOf (factory), std::move (*info) });
+            found.push_back ({ f, *type, f.isAChildOf (factory), inReview, std::move (*info) });
     }
     return found;
 }
 
 void Library::scanNow()
 {
+    loadDecisions();
     entries = scanFolder (root);
     ++scanGeneration;
     ++version;
@@ -177,6 +187,7 @@ void Library::refresh()
             if (self == nullptr || generation != self->scanGeneration)
                 return; // a newer scan is on its way
             self->entries = std::move (found);
+            self->loadDecisions();
             self->scanning = false;
             ++self->version;
             self->sendChangeMessage();
@@ -204,6 +215,8 @@ std::vector<LibraryEntry> Library::filtered (PresetType type, const LibraryFilte
         if (e.type != type)
             continue;
         using S = LibraryFilter::Source;
+        if ((filter.source == S::Review) != e.review)
+            continue; // candidates show only under Review, and only there
         if ((filter.source == S::Factory && ! e.factory) || (filter.source == S::User && e.factory)
             || (filter.source == S::Favourites && ! isFavourite (e.file)))
             continue;
@@ -329,6 +342,46 @@ void Library::saveFavourites() const
         xml.createNewChildElement ("FAVOURITE")->setAttribute ("path", f);
     root.createDirectory();
     xml.writeTo (root.getChildFile ("Favourites.xml"));
+}
+
+// Review --------------------------------------------------------------------------
+
+void Library::loadDecisions()
+{
+    decisions.clear();
+    if (const auto d = juce::JSON::parse (root.getChildFile ("Review/decisions.json")); d.isObject())
+        decisions = d.getDynamicObject()->getProperties();
+}
+
+void Library::saveDecisions() const
+{
+    auto* o = new juce::DynamicObject();
+    for (const auto& d : decisions)
+        o->setProperty (d.name, d.value);
+    root.getChildFile ("Review/decisions.json").replaceWithText (juce::JSON::toString (juce::var (o)));
+}
+
+Decision Library::getDecision (const juce::File& file) const
+{
+    if (! isReview (file))
+        return Decision::None;
+    const auto d = decisions[juce::Identifier (file.getRelativePathFrom (root.getChildFile ("Review")))].toString();
+    return d == "keep" ? Decision::Keep : d == "reject" ? Decision::Reject : Decision::None;
+}
+
+void Library::setDecision (const juce::File& file, Decision decision)
+{
+    if (! isReview (file))
+        return;
+    loadDecisions(); // the factory tool may have rewritten it
+    const juce::Identifier key (file.getRelativePathFrom (root.getChildFile ("Review")));
+    if (decision == Decision::None)
+        decisions.remove (key);
+    else
+        decisions.set (key, decision == Decision::Keep ? "keep" : "reject");
+    saveDecisions();
+    ++version;
+    sendChangeMessage();
 }
 
 void Library::setAuthor (const juce::String& name)

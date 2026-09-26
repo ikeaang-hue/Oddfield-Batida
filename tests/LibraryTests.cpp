@@ -41,6 +41,49 @@ std::unique_ptr<SampleData> bufferOf (int frames, bool noise)
     return d;
 }
 
+// A small factory archive (the neutral kit, its 8 sounds, the breakbeat and a
+// set), so these tests don't depend on the real factory library.
+juce::MemoryBlock smallArchive (const juce::File& temp, int version, bool withBreakbeat = true, const juce::String& id = {})
+{
+    const auto dir = temp.getChildFile ("archive");
+    dir.deleteRecursively();
+    const auto kit = defaultKitPreset();
+    const char* categories[] = { "kick", "perc", "snare", "snare", "perc", "bass", "hat", "hat" };
+    for (int v = 0; v < kNumVoices; ++v)
+    {
+        SoundPreset s;
+        s.info = { kit.names[(size_t) v], "Negative Space", categories[v], { v == 1 ? "digital" : "warm" }, {} };
+        s.params = kit.voices[(size_t) v];
+        const auto f = dir.getChildFile ("Sounds/" + Library::categoryFolder (categories[v]) + "/" + s.info.name + ".batida-sound");
+        f.getParentDirectory().createDirectory();
+        writeSound (f, s);
+    }
+    dir.getChildFile ("Kits").createDirectory();
+    writeKit (dir.getChildFile ("Kits/Neutral.batida-kit"), kit);
+    if (withBreakbeat)
+    {
+        PatternPreset beat;
+        beat.info = { "Breakbeat", "Negative Space", {}, { "organic" }, {} };
+        beat.pattern = breakbeatPattern();
+        dir.getChildFile ("Patterns").createDirectory();
+        writePattern (dir.getChildFile ("Patterns/Breakbeat.batida-pattern"), beat);
+    }
+    SetPreset set;
+    set.info = { "Neutral Breakbeat", "Negative Space", {}, { "warm" }, {} };
+    set.kit = kit;
+    set.patterns.patterns[0] = breakbeatPattern();
+    dir.getChildFile ("Sets").createDirectory();
+    writeSet (dir.getChildFile ("Sets/Neutral Breakbeat.batida-set"), set);
+    dir.getChildFile ("factory-version.txt").replaceWithText (juce::String (version) + (id.isNotEmpty() ? " " + id : juce::String()));
+
+    juce::ZipFile::Builder zip;
+    for (const auto& e : juce::RangedDirectoryIterator (dir, true, "*", juce::File::findFiles))
+        zip.addFile (e.getFile(), 6, e.getFile().getRelativePathFrom (dir));
+    juce::MemoryOutputStream out;
+    zip.writeToStream (out, nullptr);
+    return out.getMemoryBlock();
+}
+
 bool sameParams (const VoiceParams& a, const VoiceParams& b)
 {
     for (int k = 0; k < kNumVoiceParams; ++k)
@@ -228,10 +271,13 @@ public:
         }
 
         beginTest ("Factory install: written once, never touches User");
+        const auto archive1 = smallArchive (temp, 1);
+        Library::setFactoryArchive (archive1.getData(), archive1.getSize());
         {
             const auto root = temp.getChildFile ("Lib");
             Library lib (root, temp.getChildFile ("settings.xml"));
             expect (lib.installFactory(), "first install writes");
+            expect (! root.getChildFile ("Factory/factory-version.txt").exists(), "the version stays out of the library");
             expect (root.getChildFile ("Factory/Kits/Neutral.batida-kit").existsAsFile());
             expect (root.getChildFile ("Factory/Sounds/Kick/Kick.batida-sound").existsAsFile());
             expect (root.getChildFile ("Factory/Sounds/Hat/Closed Hat.batida-sound").existsAsFile());
@@ -303,6 +349,80 @@ public:
             expect (lib.updateInfo (mine, { "My Kick", "Me", "kick", { "harsh", "digital" }, {} }));
             expect (readSound (mine)->info.tags.contains ("digital"));
             expect (! lib.updateInfo (snare, { "Snare", "", "snare", { "harsh" }, {} }));
+        }
+
+        beginTest ("A newer factory replaces the old one whole, and leaves User and favourites alone");
+        {
+            const auto root = temp.getChildFile ("Lib");
+            Library lib (root, temp.getChildFile ("settings.xml"));
+            lib.scanNow();
+            const auto snare = root.getChildFile ("Factory/Sounds/Snare/Snare.batida-sound");
+            expect (lib.isFavourite (snare));
+            const auto user = root.getChildFile ("User/Sounds/Kick/My Kick.batida-sound");
+            const auto before = user.loadFileAsString();
+            expect (! lib.installFactory(), "the same version: nothing to do");
+
+            const auto archive2 = smallArchive (temp, 2, false); // version 2 drops the breakbeat
+            Library::setFactoryArchive (archive2.getData(), archive2.getSize());
+            expect (lib.installFactory(), "a newer archive installs");
+            expect (! root.getChildFile ("Factory/Patterns/Breakbeat.batida-pattern").exists(), "files the new factory dropped go");
+            expect (root.getChildFile ("Factory/Kits/Neutral.batida-kit").existsAsFile());
+            expectEquals (root.getChildFile ("Factory/.version").loadFileAsString().trim(), juce::String ("2"));
+            expectEquals (user.loadFileAsString(), before, "User untouched");
+            expect (lib.isFavourite (snare), "favourites kept");
+            // The same number with other content (a factory rebuilt in place) installs too.
+            const auto archive2b = smallArchive (temp, 2, true);
+            Library::setFactoryArchive (archive2b.getData(), archive2b.getSize());
+            expect (! lib.installFactory(), "same number, same content: nothing to do");
+            const auto archive2c = smallArchive (temp, 2, true, "other");
+            Library::setFactoryArchive (archive2c.getData(), archive2c.getSize());
+            expect (lib.installFactory(), "same number, other content: installs");
+            expect (root.getChildFile ("Factory/Patterns/Breakbeat.batida-pattern").existsAsFile());
+            const auto archive1old = smallArchive (temp, 1, true, "older");
+            Library::setFactoryArchive (archive1old.getData(), archive1old.getSize());
+            expect (! lib.installFactory(), "never over a newer factory");
+
+            Library::setFactoryArchive (archive1.getData(), archive1.getSize());
+            root.getChildFile ("Factory/.version").replaceWithText ("0");
+            lib.installFactory(); // back to the small factory for the tests below
+        }
+
+        beginTest ("Review: candidates, keep and reject");
+        {
+            const auto root = temp.getChildFile ("Lib");
+            SoundPreset s;
+            s.info = { "Candidate", "Negative Space", "kick", { "warm" }, {} };
+            s.params = oddParams (5);
+            const auto file = root.getChildFile ("Review/Sounds/Kick/Candidate.batida-sound");
+            file.getParentDirectory().createDirectory();
+            expect (writeSound (file, s));
+
+            Library lib (root, temp.getChildFile ("settings.xml"));
+            lib.scanNow();
+            LibraryFilter all, review;
+            review.source = LibraryFilter::Source::Review;
+            bool inAll = false;
+            for (const auto& e : lib.filtered (PresetType::Sound, all))
+                inAll = inAll || e.file == file;
+            expect (! inAll, "candidates stay out of All");
+            expectEquals ((int) lib.filtered (PresetType::Sound, review).size(), Library::kReviewBuild ? 1 : 0,
+                          "candidates show under Review, in review builds only");
+            expect (lib.hasReview() == Library::kReviewBuild);
+
+            expect (lib.getDecision (file) == Decision::None);
+            lib.setDecision (file, Decision::Keep);
+            expect (lib.getDecision (file) == Decision::Keep);
+            const auto json = juce::JSON::parse (root.getChildFile ("Review/decisions.json"));
+            expectEquals (json["Sounds/Kick/Candidate.batida-sound"].toString(), juce::String ("keep"));
+            Library again (root, temp.getChildFile ("settings.xml"));
+            expect (again.getDecision (file) == Decision::Keep, "decisions are kept");
+            again.setDecision (file, Decision::Reject);
+            expect (again.getDecision (file) == Decision::Reject);
+            again.setDecision (file, Decision::None);
+            expect (again.getDecision (file) == Decision::None);
+            expect (lib.getDecision (root.getChildFile ("User/Sounds/Kick/My Kick.batida-sound")) == Decision::None,
+                    "only Review files have decisions");
+            root.getChildFile ("Review").deleteRecursively();
         }
 
         beginTest ("Settings: author, folders");

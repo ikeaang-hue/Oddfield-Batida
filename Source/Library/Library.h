@@ -7,13 +7,21 @@
 // The library folder on disk:
 //
 //   ~/Music/Negative Space/Batida/
-//     Factory/  Sounds/<Category>/, Kits/, Patterns/, Sets/   (written by Batida)
+//     Factory/  Sounds/<Category>/, Kits/, Patterns/, Sets/, Samples/   (written by Batida)
 //     User/     the same layout, for the user's own files
+//     Review/   candidates from the preset factory, for listening (review builds only)
 //     Favourites.xml
 //
-// Batida writes the factory files itself and never edits User files except
-// when asked (save, tags). The index is read from disk in the background.
-// Message thread only, apart from the background scan.
+// The factory is built into the plugin as an archive and written out when
+// it's missing or older; Batida never edits User files except when asked
+// (save, tags). The index is read from disk in the background. Message
+// thread only, apart from the background scan.
+
+// Review builds (-DBATIDA_REVIEW=ON) show the preset factory's candidates in
+// LIB, with Keep and Reject (SPEC §11). Release builds leave Review alone.
+#ifndef BATIDA_REVIEW
+ #define BATIDA_REVIEW 0
+#endif
 
 namespace batida
 {
@@ -23,12 +31,15 @@ struct LibraryEntry
     juce::File file;
     PresetType type = PresetType::Sound;
     bool factory = false;
+    bool review = false;  // a preset factory candidate (review builds)
     PresetInfo info;
 };
 
+enum class Decision { None, Keep, Reject };
+
 struct LibraryFilter
 {
-    enum class Source { All, Factory, User, Favourites };
+    enum class Source { All, Factory, User, Favourites, Review };
     Source source = Source::All;
     juce::String category;  // sounds: empty = any
     juce::StringArray tags; // every one must match
@@ -54,11 +65,22 @@ public:
     bool isFactory (const juce::File& file) const;
     static juce::String categoryFolder (const juce::String& category); // "fx" -> "FX", "" -> "Other"
 
-    // Writes the factory files when they're missing or older than this
-    // version. Never touches User. Call before first use.
-    static constexpr int kFactoryVersion = 1;
+    // The factory archive (a zip built into the plugin, with its version in
+    // factory-version.txt). Set once at startup, before the first prepare().
+    static void setFactoryArchive (const void* data, size_t size);
+    static int archiveVersion(); // 0 without an archive
+
+    // Writes the factory when it's missing or older than the archive: the
+    // Factory folder is Batida's, so it's replaced whole. Never touches User.
     bool installFactory();
     void prepare(); // installFactory once, then refresh()
+
+    // Review (review builds): candidates in Review/, and what was decided.
+    static constexpr bool kReviewBuild = BATIDA_REVIEW != 0;
+    bool hasReview() const { return kReviewBuild && root.getChildFile ("Review").isDirectory(); }
+    bool isReview (const juce::File& file) const { return file.isAChildOf (root.getChildFile ("Review")); }
+    Decision getDecision (const juce::File& file) const;
+    void setDecision (const juce::File& file, Decision decision);
 
     // The index.
     void scanNow();  // reads on this thread
@@ -96,12 +118,15 @@ private:
     void saveSettings() const;
     void loadFavourites();
     void saveFavourites() const;
+    void loadDecisions();
+    void saveDecisions() const;
     juce::String keyFor (const juce::File& file) const;
 
     juce::File root, settingsFile;
     std::vector<LibraryEntry> entries;
     std::array<LibraryFilter, kNumPresetTypes> filters {};
     juce::StringArray favourites; // paths relative to the root
+    juce::NamedValueSet decisions; // Review: path relative to Review → "keep" | "reject"
     juce::String author;
     int zoom = 100;
     juce::Array<juce::File> sampleFolders, relinkFolders;

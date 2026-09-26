@@ -3,6 +3,7 @@
 // reviewed without a host; then runs gesture checks on the real editor.
 //
 //   BatidaSnapshot <out-dir> [sample.wav]
+//   BatidaSnapshot --startup     how long opening Batida blocks the UI, on the real library
 
 #include "Plugin/PluginProcessor.h"
 #include "UI/PluginEditor.h"
@@ -34,11 +35,100 @@ juce::Button* findButton (juce::Component& parent, const juce::String& text)
     }
     return nullptr;
 }
+// Opens Batida as a host would (a processor, audio running, the editor in a
+// window) on the user's real library, and reports how long the message
+// thread is blocked: while creating the editor, and afterwards.
+int runStartup()
+{
+    auto ms = [] { return juce::Time::getMillisecondCounterHiRes(); };
+    auto t = ms();
+    BatidaProcessor proc;
+    proc.prepareToPlay (48000.0, 512);
+    std::printf ("processor        %7.1f ms\n", ms() - t);
+
+    std::atomic<bool> running { true };
+    std::thread audio ([&]
+    {
+        juce::AudioBuffer<float> buffer (2, 512);
+        juce::MidiBuffer midi;
+        while (running)
+        {
+            proc.processBlock (buffer, midi);
+            std::this_thread::sleep_for (std::chrono::milliseconds (10));
+        }
+    });
+
+    t = ms();
+    std::unique_ptr<juce::AudioProcessorEditor> editor (proc.createEditor());
+    std::printf ("editor           %7.1f ms\n", ms() - t);
+    t = ms();
+    editor->setOpaque (true);
+    editor->addToDesktop (juce::ComponentPeer::windowHasTitleBar);
+    editor->setVisible (true);
+    std::printf ("window shown     %7.1f ms\n", ms() - t);
+
+    struct Gaps final : juce::Timer
+    {
+        double last = juce::Time::getMillisecondCounterHiRes(), worst = 0.0;
+        int over50 = 0;
+        void timerCallback() override
+        {
+            const auto now = juce::Time::getMillisecondCounterHiRes();
+            const auto gap = now - last;
+            worst = std::max (worst, gap);
+            over50 += gap > 50.0 ? 1 : 0;
+            last = now;
+        }
+    } gaps;
+    gaps.startTimer (5);
+    for (int second = 1; second <= 6; ++second)
+    {
+        gaps.worst = 0.0;
+        gaps.over50 = 0;
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (1000);
+        std::printf ("second %d         worst stall %6.1f ms, %d stalls over 50 ms\n", second, gaps.worst, gaps.over50);
+    }
+    // What would a click hit? Every 40 px over the window: the top-most component.
+    auto hits = [&] (const char* when)
+    {
+        std::map<juce::String, int> count;
+        for (int y = 5; y < editor->getHeight(); y += 40)
+            for (int x = 5; x < editor->getWidth(); x += 40)
+            {
+                auto* c = editor->getComponentAt (x, y);
+                juce::String name = c == nullptr ? juce::String ("nothing") : juce::String (typeid (*c).name());
+                if (c != nullptr && c->getComponentID().isNotEmpty())
+                    name << " #" << c->getComponentID();
+                if (c != nullptr && c->isCurrentlyBlockedByAnotherModalComponent())
+                    name << " (BLOCKED by a modal)";
+                ++count[name];
+            }
+        std::printf ("clicks %s: modal components %d\n", when, juce::ModalComponentManager::getInstance()->getNumModalComponents());
+        for (const auto& [name, n] : count)
+            std::printf ("  %4d  %s\n", n, name.toRawUTF8());
+    };
+    hits ("after opening");
+
+    if (auto* e = dynamic_cast<BatidaEditor*> (editor.get()))
+        for (auto page : { BatidaEditor::Lib, BatidaEditor::Seq, BatidaEditor::Kit })
+        {
+            t = ms();
+            e->showPage (page);
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (200);
+            std::printf ("page %d           %7.1f ms (incl. 200 ms of events), worst stall %.1f ms\n", (int) page, ms() - t, gaps.worst);
+        }
+    running = false;
+    audio.join();
+    editor.reset();
+    return 0;
+}
 } // namespace
 
 int main (int argc, char* argv[])
 {
     juce::ScopedJuceInitialiser_GUI gui;
+    if (argc > 1 && juce::String (argv[1]) == "--startup")
+        return runStartup();
 
     const auto cwd = juce::File::getCurrentWorkingDirectory();
     const auto outDir = cwd.getChildFile (argc > 1 ? argv[1] : "snapshots");
@@ -377,7 +467,7 @@ int main (int argc, char* argv[])
                    "the factory library is installed");
             editor->showPage (BatidaEditor::Lib);
             libPage->setMode (LibraryPage::Mode::Sounds);
-            check (libPage->getNumShown() == 8, "the 8 factory sounds are listed");
+            check (libPage->getNumShown() >= 150, "the factory sounds are listed");
             auto rowOf = [&] (PresetType type, const juce::String& n)
             {
                 const auto list = lib.shown (type);
@@ -409,7 +499,11 @@ int main (int argc, char* argv[])
             save ("09-Lib-Kits");
             if (auto* strip = dynamic_cast<BrowseStrip*> (findDeep (&content, "kitStrip")))
                 strip->onNext();
-            check (proc.getOrigins().kitName == "Neutral" && proc.getOrigins().kitFile.existsAsFile(), "the kit strip steps to a library kit");
+            check (proc.getOrigins().kitName == lib.shown (PresetType::Kit).front().info.name && proc.getOrigins().kitFile.existsAsFile(),
+                   "the kit strip steps to a library kit");
+            // The checks below expect the neutral kit's sounds.
+            proc.loadPresetFile (lib.getRoot().getChildFile ("Factory/Kits/Neutral.batida-kit"), 0, 0, BatidaProcessor::LoadMode::Step);
+            check (proc.getVoiceName (3) == "Clap", "and the neutral kit loads back");
 
             // Save a sound through the panel; the same name asks before replacing.
             libPage->setMode (LibraryPage::Mode::Sounds);
@@ -478,6 +572,42 @@ int main (int argc, char* argv[])
             // A pattern file into slot 2.
             proc.loadPresetFile (lib.getRoot().getChildFile ("Factory/Patterns/Breakbeat.batida-pattern"), 0, 1, BatidaProcessor::LoadMode::Step);
             check (! proc.patterns().get().patterns[1].isEmpty() && proc.getPatternName (1) == "Breakbeat", "a pattern loads into its slot");
+
+            // Review builds: candidates under REVIEW, kept or rejected with K / R.
+            if (Library::kReviewBuild)
+            {
+                const auto review = lib.getRoot().getChildFile ("Review/Sounds/Kick");
+                review.createDirectory();
+                int copied = 0;
+                for (const auto& e : juce::RangedDirectoryIterator (lib.getRoot().getChildFile ("Factory/Sounds/Kick"), false, "*.batida-sound"))
+                    if (copied++ < 4)
+                        e.getFile().copyFileTo (review.getChildFile (e.getFile().getFileName()));
+                lib.scanNow();
+                libPage->setMode (LibraryPage::Mode::Sounds);
+                if (auto* chip = findButton (*libPage, "REVIEW"))
+                {
+                    check (chip->isVisible(), "a review build shows REVIEW");
+                    chip->onClick();
+                }
+                else
+                    check (false, "a review build shows REVIEW");
+                check (libPage->getNumShown() == 4, "REVIEW lists only the candidates");
+                libPage->clickRow (0);
+                const auto first = lib.shown (PresetType::Sound)[0].file;
+                libPage->keyPressed (juce::KeyPress ('K', {}, 'k'));
+                check (lib.getDecision (first) == Decision::Keep, "K keeps it");
+                check (proc.getOrigins().soundFiles[(size_t) proc.selectedVoice.load()] == lib.shown (PresetType::Sound)[1].file,
+                       "and tries the next one");
+                if (auto* reject = findButton (*libPage, "REJECT"))
+                    reject->onClick();
+                check (lib.getDecision (lib.shown (PresetType::Sound)[1].file) == Decision::Reject, "REJECT rejects it");
+                juce::MessageManager::getInstance()->runDispatchLoopUntil (300);
+                save ("09-Lib-Review");
+                libPage->setMode (LibraryPage::Mode::Sounds);
+                lib.filterFor (PresetType::Sound).source = LibraryFilter::Source::All;
+                lib.getRoot().getChildFile ("Review").deleteRecursively();
+                lib.scanNow();
+            }
 
             // Missing samples: move a sample away, reopen, relink.
             const auto tone = writeTone (sampleDir.getChildFile ("a/relink-me.wav"), 330.0f);

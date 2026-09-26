@@ -1,6 +1,6 @@
 # Batida
 
-**A drum instrument for sound design**, by Negative Space. macOS · Audio Unit · version 0.6.1
+**A drum instrument for sound design**, by Negative Space. macOS · Audio Unit · version 0.7.2
 (pre-release).
 
 Eight sounds play into one shared effects chain. An **XY pad** pushes the whole chain at once:
@@ -98,6 +98,10 @@ master level. Click **BATIDA/** for the version.
 - Browse sounds, kits, patterns and sets. **Clicking one loads it right away**, even while a
   pattern plays. One **UNDO** takes back a whole run of clicks.
 - ♥ marks a favourite. Use **SAVE AS…** to keep your own.
+- The factory library: about 290 sounds, 40 kits, 58 patterns and 19 sets, all made with Batida's
+  own engine (no outside samples). Techno, breakbeat and glitch at the core, plus house, garage,
+  hip hop and trap: search a style's name to find its kits, patterns and sets. Four moods, *neutral*,
+  *synth-aggressive*, *neon* and *tender*, each have tonal sounds, a kit and a set; search the mood.
 - Files live in `~/Music/Negative Space/Batida/`, with *Factory* and *User* folders you can open
   in Finder.
 
@@ -138,12 +142,18 @@ swiftc -O -o build/au_check tests/au_check.swift && build/au_check     # the ins
 
 - **Demo defaults:** builds start empty, like a release. `cmake -B build -DBATIDA_DEMO=ON` puts a
   breakbeat in pattern 1 and has Mod 1 move the pad. The tests pass either way.
+- **Factory library:** `BatidaFactory` makes it from the engine (SPEC §11). `BatidaFactory
+  candidates` writes sound candidates to the library's `Review` folder; a review build
+  (`-DBATIDA_REVIEW=ON`) shows them in LIB under REVIEW, with KEEP and REJECT (K / R).
+  `BatidaFactory build` then assembles the kits, patterns and sets from what was kept and writes
+  `resources/factory`, which is zipped into the plugin. Recipes are in `tools/factory`.
 - **Code:**
   - `Source/Engine`: the sound (no UI);
   - `Source/Library`: preset files and samples;
   - `Source/Plugin`: the AU;
   - `Source/UI`: the editor (`Look/Theme` holds colours, fonts and styles);
-  - `tests/`: tests and tools.
+  - `tests/`: tests and tools;
+  - `tools/factory`: the preset factory (recipes, kits, patterns).
 - The design is in [SPEC.md](SPEC.md).
 
 </details>

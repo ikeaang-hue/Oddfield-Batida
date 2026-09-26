@@ -1,6 +1,6 @@
 # Negative Space Batida: Design Spec
 
-*Version 1.8, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice")*
+*Version 1.10, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
 
 ## 1. Identity
 
@@ -120,10 +120,13 @@ Reverb, delay and stereo/spatial effects are left to the DAW.
 
 The main way the chain is operated: one gesture moves the whole chain.
 
-- **Y = heat** (clean → destroyed): raises drive, compression and exciter together, and
-  shortens the compressor attack so transients are caught rather than spiking.
-  **Automatic gain compensation** keeps loudness roughly steady, so heat changes character, not
-  volume. The clean-low-end crossover rises with heat, so the sub stays solid.
+- **Y = heat** (clean → destroyed): destroys by **crushing, not squashing**. The weight is on the
+  distortion (full drive at the top) and the exciter; compression rises only a little, with a
+  slightly *longer* attack so kick transients punch through. The clean-low-end crossover rises
+  a little, so the sub stays solid while a kick's body is crushed.
+  **Gain compensation** keeps the distortion level, and a small output lift makes up for the
+  loudness that clipping costs a kick. A destroyed kit ends about as loud as a clean one, or a
+  touch louder, never muted.
 - **X = character** (warm → aggressive → digital): blends the distortion types continuously;
   the exciter's tone follows.
 - **Offsets, like the FM macros:** the stage controls set a base; the XY pushes the stages around
@@ -215,14 +218,26 @@ the other channels stay fully chromatic for the Keys Sound.
 
 ## 11. Factory content (preset factory)
 
-- **Target:** about 100–150 sounds, 10–15 kits and about 10 patterns.
-- **Method:** an offline tool built on the same engine.
+- **Target:** about 160 sounds, 22 kits, 22 patterns (one per kit) and 8 sets.
+- **Styles:** techno, breakbeat and glitch at the core, with the most kits; house, garage,
+  hip hop and trap as well. Kits, patterns and sets carry their style as a tag, so search finds
+  them. There is no separate style filter.
+- **Moods:** four more tags, *neutral*, *synth-aggressive*, *neon* and *tender*, each with its own
+  tonal sounds (built from tones, not noise), a kit and a set.
+- **Method:** an offline tool (`BatidaFactory`) built on the same engine.
   1. Archetype recipes per category.
   2. Guided variations around each archetype.
   3. Render, measure and auto-tag each sound, discarding duds.
   4. Assemble kits from sounds with matching character.
-  5. The user listens and keeps or rejects each result on a review page.
-- **Samples:** rendered from the engine itself, or CC0.
+  5. The user listens and keeps or rejects each result in a Review area of LIB (dev builds
+     only), in Logic, while a pattern plays.
+- **Samples:** 100% rendered from the engine itself. The factory contains no third-party or
+  CC0 audio.
+- **Slot layout:** the neutral kit's layout is the reference (1 kick · 2 rim/perc · 3 snare ·
+  4 clap · 5 perc/tom · 6 bass · 7 closed hat · 8 open hat). A kit changes a slot only where its
+  style needs to, and the replacement keeps the slot's rough job, so patterns cross over.
+- **Levels:** sounds are matched by their loudest 50 ms, with offsets per category; kits are
+  matched at the output across the XY pad.
 
 ## 12. UI and visual design
 

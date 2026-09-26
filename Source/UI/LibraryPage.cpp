@@ -7,7 +7,7 @@ using namespace batida;
 namespace
 {
 const char* kModeNames[] = { "SOUNDS", "KITS", "PATTERNS", "SETS", "SAMPLES" };
-const char* kSourceNames[] = { "ALL", "FACTORY", "USER", "\xe2\x99\xa5" };
+const char* kSourceNames[] = { "ALL", "FACTORY", "USER", "\xe2\x99\xa5", "REVIEW" };
 constexpr int kRowHeight = 25, kHeart = 26;
 constexpr int kNameW = 190, kCategoryW = 80, kTagsW = 110, kAuthorW = 130;
 
@@ -46,13 +46,21 @@ LibraryPage::LibraryPage (BatidaProcessor& p, LibraryController& c) : proc (p), 
 
     showLabel.setText ("", juce::dontSendNotification);
     addAndMakeVisible (showLabel);
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 5; ++i)
     {
         auto& b = sourceButtons[(size_t) i];
         styleChip (b, juce::String::fromUTF8 (kSourceNames[i]));
         b.onClick = [this, i] { filter().source = (LibraryFilter::Source) i; rebuild(); };
-        addAndMakeVisible (b);
+        addChildComponent (b);
     }
+
+    // Review builds: keep or reject a preset factory candidate (K / R).
+    keepButton.setTooltip ("Keep (K)");
+    rejectButton.setTooltip ("Reject (R)");
+    keepButton.onClick = [this] { decide (Decision::Keep); };
+    rejectButton.onClick = [this] { decide (Decision::Reject); };
+    addChildComponent (keepButton);
+    addChildComponent (rejectButton);
 
     styleChip (categoryButtons[0], "all");
     categoryButtons[0].onClick = [this] { filter().category = {}; rebuild(); };
@@ -154,6 +162,20 @@ LibraryPage::LibraryPage (BatidaProcessor& p, LibraryController& c) : proc (p), 
     for (auto* l : { &detailName, &detailWhat, &detailInfo, &detailPath })
         addAndMakeVisible (*l);
 
+    // A User (or Review) file's name: double-click to rename.
+    detailName.onTextChange = [this]
+    {
+        const auto r = list.getSelectedRow();
+        if (r < 0 || r >= (int) rows.size() || mode == Mode::Samples || rows[(size_t) r].factory)
+            return;
+        auto info = rows[(size_t) r].info;
+        info.name = detailName.getText().trim();
+        if (info.name.isNotEmpty() && info.name != rows[(size_t) r].info.name)
+            proc.library().updateInfo (rows[(size_t) r].file, info);
+        else
+            detailName.setText (rows[(size_t) r].info.name, juce::dontSendNotification);
+    };
+
     // Editing a User file's category and tags.
     detailCategory.addItem ("No category", 1);
     for (int i = 0; i < soundCategories().size(); ++i)
@@ -237,8 +259,8 @@ void LibraryPage::setMode (Mode m)
         b.setVisible (m == Mode::Sounds);
     for (auto& b : tagButtons)
         b.setVisible (! samples);
-    for (auto& b : sourceButtons)
-        b.setVisible (! samples);
+    for (int i = 0; i < 5; ++i)
+        sourceButtons[(size_t) i].setVisible (! samples && (i < 4 || proc.library().hasReview()));
     showLabel.setVisible (! samples);
     search.setVisible (! samples);
     for (auto* c : { (juce::Component*) &rootBox, (juce::Component*) &upButton, (juce::Component*) &addFolderButton,
@@ -284,9 +306,22 @@ void LibraryPage::rebuild()
 
     const auto n = (int) rows.size();
     const juce::String noun = juce::String (typeName (presetType())) + (n == 1 ? "" : "s");
-    countLabel.setText (proc.library().isScanning() && n == 0 ? juce::String ("Reading the library...")
-                                                              : juce::String (n) + " " + noun,
+    auto count = juce::String (n) + " " + noun;
+    if (filter().source == LibraryFilter::Source::Review)
+    {
+        int kept = 0, rejected = 0;
+        for (const auto& e : rows)
+        {
+            const auto d = proc.library().getDecision (e.file);
+            kept += d == Decision::Keep ? 1 : 0;
+            rejected += d == Decision::Reject ? 1 : 0;
+        }
+        count << juce::String::fromUTF8 (" \xc2\xb7 ") << kept << " kept" << juce::String::fromUTF8 (" \xc2\xb7 ")
+              << rejected << " rejected";
+    }
+    countLabel.setText (proc.library().isScanning() && n == 0 ? juce::String ("Reading the library...") : count,
                         juce::dontSendNotification);
+    sourceButtons[4].setVisible (mode != Mode::Samples && proc.library().hasReview());
 
     // Show the one in use.
     int current = -1;
@@ -311,7 +346,7 @@ void LibraryPage::updateFilterButtons()
     if (mode == Mode::Samples)
         return;
     const auto& f = filter();
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 5; ++i)
         sourceButtons[(size_t) i].setToggleState ((int) f.source == i, juce::dontSendNotification);
     categoryButtons[0].setToggleState (f.category.isEmpty(), juce::dontSendNotification);
     for (int i = 0; i < soundCategories().size(); ++i)
@@ -334,6 +369,9 @@ void LibraryPage::updateDetails()
     for (auto& b : detailTags)
         b.setVisible (false);
     detailCategory.setVisible (false);
+    keepButton.setVisible (false);
+    rejectButton.setVisible (false);
+    detailName.setEditable (false, false, false);
 
     auto target = [this]
     {
@@ -380,8 +418,17 @@ void LibraryPage::updateDetails()
 
     const auto& e = rows[(size_t) r];
     detailName.setText (e.info.name, juce::dontSendNotification);
+    detailName.setEditable (false, ! e.factory, false);
     const auto dot = juce::String::fromUTF8 ("  \xc2\xb7  ");
-    detailWhat.setText (juce::String (typeName (e.type)).toUpperCase() + dot + (e.factory ? "Factory" : "User")
+    if (e.review)
+    {
+        const auto d = proc.library().getDecision (e.file);
+        keepButton.setVisible (true);
+        rejectButton.setVisible (true);
+        keepButton.setToggleState (d == Decision::Keep, juce::dontSendNotification);
+        rejectButton.setToggleState (d == Decision::Reject, juce::dontSendNotification);
+    }
+    detailWhat.setText (juce::String (typeName (e.type)).toUpperCase() + dot + (e.factory ? "Factory" : e.review ? "Review" : "User")
                             + (proc.library().isFavourite (e.file) ? dot + juce::String::fromUTF8 ("\xe2\x99\xa5") : juce::String()),
                         juce::dontSendNotification);
     juce::StringArray lines;
@@ -481,6 +528,15 @@ void LibraryPage::Row::paint (juce::Graphics& g)
     g.drawText (e.type == PresetType::Sound ? e.info.category : juce::String(), r.removeFromLeft (kCategoryW), juce::Justification::centredLeft);
     g.drawText (e.info.tags.joinIntoString (", "), r.removeFromLeft (kTagsW), juce::Justification::centredLeft);
     g.drawText (e.info.author, r.removeFromLeft (kAuthorW), juce::Justification::centredLeft);
+    if (e.review)
+    {
+        const auto d = p.proc.library().getDecision (e.file);
+        g.setFont (mono (10.0f, d == Decision::Keep ? Weight::Bold : Weight::Regular));
+        g.setColour (d == Decision::Keep ? fg : d == Decision::Reject ? (selected ? bg.withAlpha (0.5f) : faint) : dim);
+        g.drawText (d == Decision::Keep ? "KEEP" : d == Decision::Reject ? "REJECT" : juce::String::fromUTF8 ("\xe2\x80\x94"),
+                    r.withTrimmedRight (10), juce::Justification::centredRight);
+        return;
+    }
     g.drawText (e.factory ? "FACTORY" : "USER", r.withTrimmedRight (10), juce::Justification::centredRight);
 }
 
@@ -546,6 +602,40 @@ void LibraryPage::step (int delta)
     list.selectRow (r);
     selecting = false;
     tryRow (r);
+}
+
+void LibraryPage::decide (Decision decision)
+{
+    const auto r = list.getSelectedRow();
+    if (mode == Mode::Samples || r < 0 || r >= (int) rows.size() || ! rows[(size_t) r].review)
+        return;
+    const auto file = rows[(size_t) r].file;
+    const auto now = proc.library().getDecision (file) == decision ? Decision::None : decision; // a second press clears it
+    proc.library().setDecision (file, now);
+    if (now != Decision::None && r + 1 < (int) rows.size())
+        step (1); // on to the next, playing it
+    else
+    {
+        list.repaint();
+        updateDetails();
+    }
+}
+
+bool LibraryPage::keyPressed (const juce::KeyPress& key)
+{
+    if (! keepButton.isVisible()) // (typing in the search field never gets here: the field takes its keys)
+        return false;
+    if (key.getModifiers().isAnyModifierKeyDown() && ! key.getModifiers().isShiftDown())
+        return false;
+    auto c = juce::CharacterFunctions::toLowerCase (key.getTextCharacter());
+    if (c == 0)
+        c = juce::CharacterFunctions::toLowerCase ((juce::juce_wchar) key.getKeyCode()); // letter keys: the upper-case code
+    if (c == 'k' || c == 'r')
+    {
+        decide (c == 'k' ? Decision::Keep : Decision::Reject);
+        return true;
+    }
+    return false;
 }
 
 void LibraryPage::timerCallback()
@@ -751,7 +841,12 @@ void LibraryPage::resized()
         detailTags[(size_t) i].setBounds (cell);
     }
     d.removeFromTop (4);
-    detailCategory.setBounds (d.removeFromTop (22).withWidth (150));
+    auto categoryRow = d.removeFromTop (22);
+    detailCategory.setBounds (categoryRow.removeFromLeft (150));
+    categoryRow.removeFromLeft (6);
+    rejectButton.setBounds (categoryRow.removeFromRight (62));
+    categoryRow.removeFromRight (4);
+    keepButton.setBounds (categoryRow.removeFromRight (52));
     reveal.setBounds (d.removeFromBottom (22));
     d.removeFromBottom (6);
     auto actions = d.removeFromBottom (22);

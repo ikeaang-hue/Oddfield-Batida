@@ -22,6 +22,7 @@ public:
     void paint (juce::Graphics& g) override;
     void resized() override;
     void visibilityChanged() override;
+    bool keyPressed (const juce::KeyPress& key) override;
 
     // Tries in this browsing run (one Undo takes them all back); reset by Undo.
     void resetTries() { tries = 0; repaint(); }
@@ -57,6 +58,7 @@ private:
     void tryRow (int row);
     void step (int delta);
     bool isCurrent (int row) const;
+    void decide (batida::Decision decision); // Review: keep or reject the selected one, then try the next
 
     // Samples mode
     void setFolder (const juce::File& folder);
@@ -73,7 +75,8 @@ private:
     bool selecting = false;
 
     std::array<juce::TextButton, 5> modeButtons;
-    std::array<juce::TextButton, 4> sourceButtons;
+    std::array<juce::TextButton, 5> sourceButtons; // ALL FACTORY USER ♥, and REVIEW in review builds
+    juce::TextButton keepButton { "KEEP" }, rejectButton { "REJECT" };
     std::array<juce::TextButton, 8> categoryButtons; // All + 7
     std::array<juce::TextButton, 5> tagButtons;
     juce::TextEditor search;
