@@ -25,12 +25,21 @@ juce::String drumNoteName (int voice)
 constexpr int kSide = 16;
 } // namespace
 
+// Open Batida windows in this process: the shared look stays the default
+// until the last one closes (message thread only).
+static int& openEditors()
+{
+    static int count = 0;
+    return count;
+}
+
 BatidaEditor::BatidaEditor (BatidaProcessor& p)
     : AudioProcessorEditor (&p), proc (p), library (p, content), top (p), kitPage (p), seqPage (p), modPage (p), soundPage (p),
       libraryPage (p, library), settings (p)
 {
     setLookAndFeel (&look->look);
     juce::LookAndFeel::setDefaultLookAndFeel (&look->look);
+    ++openEditors();
     addAndMakeVisible (content);
 
     top.setComponentID ("topBar");
@@ -117,7 +126,7 @@ BatidaEditor::~BatidaEditor()
     proc.clearPreviews(); // a held tile or a previewed suggestion must not outlive the window
     // The look is shared by every open Batida window: only the last one to
     // close takes it down as the default.
-    if (look.getReferenceCount() <= 1)
+    if (--openEditors() == 0)
         juce::LookAndFeel::setDefaultLookAndFeel (nullptr);
     setLookAndFeel (nullptr);
 }
@@ -283,39 +292,44 @@ void BatidaEditor::voiceMenu (int voice, juce::Component& target)
     for (int g = 0; g <= 4; ++g)
         chokeMenu.addItem (kChokeItem + g, g == 0 ? juce::String ("Off") : juce::String (g), true, g == group);
     m.addSubMenu ("Choke group", chokeMenu);
-    m.addSubMenu ("Resample here", resampleMenu (proc, voice));
+    const auto pattern = proc.displayPattern(); // the one the menu names
+    m.addSubMenu ("Resample here", resampleMenu (proc, voice, pattern));
     m.addSeparator();
     m.addItem (2, "Init sound");
     m.addItem (3, "Load sound...");
     m.addItem (4, "Save sound...");
     m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (target),
-                     [this, voice, safe = juce::Component::SafePointer<juce::Component> (&target)] (int choice)
+                     [editor = juce::Component::SafePointer<BatidaEditor> (this), voice, pattern,
+                      safe = juce::Component::SafePointer<juce::Component> (&target)] (int choice)
                      {
+                         if (editor == nullptr || choice == 0) // the window may have closed while the menu was open
+                             return;
+                         auto& self = *editor;
                          if (choice == 1 && safe != nullptr)
-                             renameVoice (voice, *safe);
+                             self.renameVoice (voice, *safe);
                          else if (choice >= kChokeItem && choice <= kChokeItem + 4)
                          {
-                             auto* p = proc.getState().getParameter (voiceParamID (voice, vp::Choke));
+                             auto* p = self.proc.getState().getParameter (voiceParamID (voice, vp::Choke));
                              p->beginChangeGesture();
                              p->setValueNotifyingHost (p->convertTo0to1 ((float) (choice - kChokeItem)));
                              p->endChangeGesture();
                          }
-                         else if (runResample (proc, choice, voice))
+                         else if (runResample (self.proc, choice, voice, pattern))
                          {
-                             selectVoice (voice);
-                             libraryChanged();
+                             self.selectVoice (voice);
+                             self.libraryChanged();
                          }
                          else if (choice >= 100 && choice < 100 + kNumVoices)
-                             swapVoices (voice, choice - 100);
+                             self.swapVoices (voice, choice - 100);
                          else if (choice >= 2 && choice <= 4)
                          {
-                             selectVoice (voice);
+                             self.selectVoice (voice);
                              if (choice == 2)
-                                 library.init (PresetType::Sound);
+                                 self.library.init (PresetType::Sound);
                              else if (choice == 3)
-                                 library.loadFromDisk (PresetType::Sound);
+                                 self.library.loadFromDisk (PresetType::Sound);
                              else
-                                 library.saveAs (PresetType::Sound);
+                                 self.library.saveAs (PresetType::Sound);
                          }
                      });
 }
@@ -376,8 +390,10 @@ void BatidaEditor::fileDragEnter (const juce::StringArray& files, int x, int y)
 
 bool BatidaEditor::isOverGrid (juce::Point<int> contentPoint)
 {
+    // Only the grid itself: not through the Vary panel or the settings over it.
     auto& grid = seqPage.getGrid();
-    return page == Seq && grid.isShowing() && content.getLocalArea (&grid, grid.getLocalBounds()).contains (contentPoint);
+    return page == Seq && grid.isShowing() && ! seqPage.isOverlayOpen() && ! settings.isVisible()
+        && content.getLocalArea (&grid, grid.getLocalBounds()).contains (contentPoint);
 }
 
 void BatidaEditor::fileDragMove (const juce::StringArray& files, int x, int y)

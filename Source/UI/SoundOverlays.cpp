@@ -206,7 +206,7 @@ VaryOverlay::VaryOverlay (BatidaProcessor& p) : proc (p)
         for (auto* b : slotLocks)
             b->setVisible (isKitScope());
         save.setButtonText (juce::String::fromUTF8 (isKitScope() ? "SAVE KIT\xe2\x80\xa6" : "SAVE TO LIBRARY\xe2\x80\xa6"));
-        shownVersion = -1;
+        shownVersion = shownResults = -1;
         refresh();
         startIfNeeded();
     };
@@ -334,6 +334,8 @@ void VaryOverlay::startIfNeeded()
 {
     if (isKitScope() ? ! proc.hasKitVary() : (proc.varyVoice() != voice || proc.varyCandidates().empty()))
         startVary();
+    else
+        refresh();
 }
 
 std::vector<float> VaryOverlay::kitPeaks (const std::array<VoiceParams, kNumVoices>& params) const
@@ -359,8 +361,9 @@ void VaryOverlay::setVoice (int v)
     if (v != voice && proc.previewedCandidate() >= 0 && ! isKitScope())
         proc.previewCandidate (-1);
     voice = v;
-    shownVersion = -1;
-    refresh();
+    shownVersion = shownResults = -1;
+    if (isVisible()) // hidden, it renders nothing; the timer catches up once it opens
+        refresh();
 }
 
 void VaryOverlay::startVary()
@@ -382,13 +385,16 @@ void VaryOverlay::startVary()
 
 void VaryOverlay::timerCallback()
 {
-    if (isVisible() && proc.getVaryVersion() != shownVersion)
+    if (isVisible() && (proc.getVaryVersion() != shownVersion || proc.getVaryResultsVersion() != shownResults))
         refresh();
 }
 
 void VaryOverlay::refresh()
 {
-    const auto versionChanged = proc.getVaryVersion() != shownVersion;
+    // Tiles are rendered only when the suggestions change, not when one is
+    // pressed (a press only changes which one is heard).
+    const auto versionChanged = proc.getVaryResultsVersion() != shownResults;
+    shownResults = proc.getVaryResultsVersion();
     shownVersion = proc.getVaryVersion();
 
     if (isKitScope())

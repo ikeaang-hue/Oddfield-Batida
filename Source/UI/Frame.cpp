@@ -207,10 +207,9 @@ void SoundCell::itemDropped (const SourceDetails& d)
         onSwapFrom (from);
 }
 
-juce::PopupMenu resampleMenu (BatidaProcessor& proc, int target)
+juce::PopupMenu resampleMenu (BatidaProcessor& proc, int target, int pattern)
 {
     juce::PopupMenu m;
-    const auto pattern = proc.displayPattern();
     const auto empty = proc.patterns().get().patterns[(size_t) pattern].isEmpty();
     m.addItem (kResamplePatternItem, "P" + juce::String (pattern + 1).paddedLeft ('0', 2) + " " + proc.getPatternName (pattern) + " (loop)", ! empty);
     m.addSeparator();
@@ -219,7 +218,7 @@ juce::PopupMenu resampleMenu (BatidaProcessor& proc, int target)
     return m;
 }
 
-bool runResample (BatidaProcessor& proc, int choice, int target)
+bool runResample (BatidaProcessor& proc, int choice, int target, int pattern)
 {
     const auto isPattern = choice == kResamplePatternItem;
     const auto isSound = choice >= kResampleSoundItem && choice < kResampleSoundItem + kNumVoices;
@@ -227,7 +226,7 @@ bool runResample (BatidaProcessor& proc, int choice, int target)
         return false;
     juce::String error;
     juce::MouseCursor::showWaitCursor();
-    const auto ok = isPattern ? proc.resamplePattern (proc.displayPattern(), target, &error)
+    const auto ok = isPattern ? proc.resamplePattern (pattern, target, &error) // the pattern the menu named
                               : proc.resampleSound (choice - kResampleSoundItem, target, &error);
     juce::MouseCursor::hideWaitCursor();
     if (! ok)

@@ -121,10 +121,10 @@ void PatternSlots::mouseDown (const juce::MouseEvent& e)
 // SeqPage --------------------------------------------------------------------------
 
 SeqPage::SeqPage (BatidaProcessor& p)
-    : proc (p), grid (p), pageMap (p, grid), slots (p), vary (p),
+    : proc (p), grid (p), pageMap (p, grid), slots (p),
       tempo (paramOf (p, gp::SeqTempo), 2, "bpm"),
       sync (p.getState(), "Sync"), play (p.getState(), juce::String::fromUTF8 ("\xe2\x96\xb6 Play")), run (p.getState(), "Run"),
-      quantise (p.getState(), "Start on"), latch (p.getState(), "Latch"), swing (p.getState(), "Swing")
+      quantise (p.getState(), "Start on"), latch (p.getState(), "Latch"), swing (p.getState(), "Swing"), vary (p)
 {
     sync.bind (globalParamID (gp::SeqSync));
     play.bind (globalParamID (gp::SeqPlay));

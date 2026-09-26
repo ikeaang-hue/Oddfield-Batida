@@ -58,8 +58,8 @@ private:
 // Slot menus (sound row and SEQ tracks): Choke group and "Resample here",
 // which renders the pattern on screen or any slot's sound into this slot.
 constexpr int kChokeItem = 500, kResamplePatternItem = 300, kResampleSoundItem = 400;
-juce::PopupMenu resampleMenu (BatidaProcessor& proc, int target);
-bool runResample (BatidaProcessor& proc, int choice, int target); // true if `choice` was a resample item
+juce::PopupMenu resampleMenu (BatidaProcessor& proc, int target, int pattern);
+bool runResample (BatidaProcessor& proc, int choice, int target, int pattern); // true if `choice` was a resample item
 
 void refreshSoundCells (BatidaProcessor& proc, std::array<SoundCell*, batida::kNumVoices> cells, int selected,
                         const std::function<juce::String (int)>& detail);

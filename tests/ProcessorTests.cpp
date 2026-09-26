@@ -270,9 +270,9 @@ public:
             expect (result.has_value(), error);
             if (result)
             {
-                logMessage ("  break: " + juce::String (result->hits) + " hits, " + juce::String (result->bars) + " bar(s), "
+                logMessage ("  break: " + juce::String (result->hits) + " hits, " + juce::String (result->steps) + " steps, "
                             + juce::String (result->bpm, 1) + " bpm");
-                expectEquals (result->bars, 1);
+                expectEquals (result->steps, 16);
                 expectWithinAbsoluteError (result->bpm, 120.0, 0.5);
                 expectGreaterThan (result->hits, 5);
                 expect (proc.getVoiceName (0).startsWith ("Break"), proc.getVoiceName (0));
@@ -394,6 +394,68 @@ public:
             BatidaProcessor current;
             current.setStateInformation (saved.getData(), (int) saved.getSize());
             expectEquals ((int) getParam (current, voiceParamID (6, vp::Choke)), 1, "a 0.8 project keeps its groups");
+        }
+
+        beginTest ("Vary suggestions never outlive the sound they came from");
+        {
+            BatidaProcessor proc;
+            proc.prepareToPlay (kRate, kBlock);
+            auto waitVary = [&]
+            {
+                const auto until = juce::Time::getMillisecondCounter() + 60000;
+                while ((proc.isVarying() || proc.isKitVarying()) && juce::Time::getMillisecondCounter() < until)
+                    juce::MessageManager::getInstance()->runDispatchLoopUntil (20);
+                juce::MessageManager::getInstance()->runDispatchLoopUntil (50);
+            };
+            proc.startVary (2, 0.4f, VaryDirection::None, false, false, false);
+            waitVary();
+            expect (! proc.varyCandidates().empty());
+            proc.initSound (2);
+            expect (proc.varyCandidates().empty(), "a load drops them");
+            expectEquals (proc.varyVoice(), -1);
+
+            proc.startKitVary (0.4f, VaryDirection::None, false, false, false, {});
+            proc.initKit(); // while it runs
+            waitVary();
+            expect (! proc.hasKitVary() && proc.kitCandidates().empty(), "a result that arrives after a load is dropped");
+
+            proc.startKitVary (0.4f, VaryDirection::None, false, false, false, {});
+            waitVary();
+            expect (proc.hasKitVary());
+            const auto results = proc.getVaryResultsVersion();
+            proc.previewKitCandidate (0);
+            proc.previewKitCandidate (1);
+            expectEquals (proc.getVaryResultsVersion(), results, "pressing a tile changes nothing to re-render");
+        }
+
+        beginTest ("Swaps share samples in memory; a break keeps one copy through undo and redo");
+        {
+            BatidaProcessor proc;
+            proc.prepareToPlay (kRate, kBlock);
+            const auto gone = writeTone (dir.getChildFile ("gone.wav"), 330.0f);
+            expect (proc.loadSample (1, gone));
+            gone.deleteFile();
+            proc.swapVoices (1, 4);
+            expect (proc.sampleSlot (4).getStatus() == SampleSlot::Status::Loaded, "still playing though its file is gone");
+
+            proc.patterns().edit ([] (PatternBank& b) { b.patterns[0] = breakbeatPattern(); });
+            setParam (proc, globalParamID (gp::SeqTempo), 120.0f);
+            juce::String error;
+            expect (proc.resamplePattern (0, 5, &error), error);
+            const juce::File loop (proc.sampleSlot (5).getPath());
+            expect (proc.loadBreak (loop, 1, &error).has_value(), error);
+            proc.undo();
+            proc.redo();
+            const auto* kick = proc.sampleSlot (0).getDisplayData();
+            expect (kick != nullptr && kick == proc.sampleSlot (2).getDisplayData() && kick == proc.sampleSlot (5).getDisplayData(),
+                    "after undo and redo, one copy for the break's slots (and the loop's own slot)");
+
+            juce::MemoryBlock saved;
+            proc.getStateInformation (saved);
+            BatidaProcessor reopened;
+            reopened.setStateInformation (saved.getData(), (int) saved.getSize());
+            const auto* k2 = reopened.sampleSlot (0).getDisplayData();
+            expect (k2 != nullptr && k2 == reopened.sampleSlot (2).getDisplayData(), "and when the project opens again");
         }
 
         beginTest ("Saved state round-trips parameters, names, samples and patterns");

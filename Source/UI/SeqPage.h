@@ -59,6 +59,7 @@ public:
     // A drum loop dragged over the grid becomes a kit and this pattern.
     void setBreakDrop (bool on);
     void closeOverlays() { vary.close(); }
+    bool isOverlayOpen() const { return vary.isVisible(); }
     void paintOverChildren (juce::Graphics&) override;
 
 private:

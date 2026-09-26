@@ -469,7 +469,13 @@ void Kit::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& mid
     // A held Vary suggestion plays in place of the real patterns.
     const auto* realBank = patterns.acquire();
     const auto* pv = preview.acquire();
-    const auto* bank = pv != nullptr && pv->active ? &pv->bank : realBank;
+    const PatternBank* bank = realBank;
+    if (pv != nullptr && pv->active && realBank != nullptr)
+    {
+        previewBank = *realBank; // a plain copy into a member: fixed size, no allocation
+        previewBank.patterns[(size_t) std::clamp (pv->index, 0, kNumPatterns - 1)] = pv->pattern;
+        bank = &previewBank;
+    }
 
     seqEvents.clear();
     sequencer.generate (total, transport, seqSettings, bank, seqEvents);
