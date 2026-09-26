@@ -104,10 +104,14 @@ void Kit::setParameters (const KitParams& params)
     const auto mode = (MidiMode) std::clamp ((int) (params.global[gp::MidiMode] + 0.5f), 0, 1);
     const auto keys = std::clamp ((int) (params.global[gp::KeysVoice] + 0.5f), 0, kNumVoices - 1);
 
-    // Held notes would otherwise get their note-offs routed to another voice.
-    if (mode != midiMode || keys != keysVoice)
+    // Held notes would otherwise get their note-offs routed to another voice:
+    // all of them when the mode changes, and the old Keys Sound's in Chromatic
+    // mode (in Drum map mode Keys Sound routes nothing).
+    if (mode != midiMode)
         for (auto& v : voices)
             v.allNotesOff();
+    else if (mode == MidiMode::Chromatic && keys != keysVoice)
+        voices[(size_t) keysVoice].allNotesOff();
 
     midiMode = mode;
     keysVoice = keys;
@@ -360,9 +364,22 @@ void Kit::process (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& mid
     if (scratch.getNumSamples() == 0) // not prepared yet
         return;
 
+    // A switching voice finishes on its old sample. A sounding voice whose
+    // sample has changed fades out first, like a switch, instead of cutting.
     for (int v = 0; v < kNumVoices; ++v)
-        if (((switching >> v) & 1u) == 0) // a switching voice finishes on its old sample
-            voices[(size_t) v].setSampleData (slots[(size_t) v].acquire());
+    {
+        if (((switching >> v) & 1u) != 0)
+            continue;
+        auto& voice = voices[(size_t) v];
+        if (voice.isActive() && slots[(size_t) v].peek() != voice.getSampleData())
+        {
+            voice.choke();
+            switching |= 1u << v;
+            uiSwitching = switching;
+        }
+        else
+            voice.setSampleData (slots[(size_t) v].acquire());
+    }
 
     const auto total = buffer.getNumSamples();
 

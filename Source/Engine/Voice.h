@@ -22,6 +22,7 @@ public:
     void prepare (double sampleRate);
     void setParameters (const VoiceParams& p);
     void setSampleData (const SampleData* data) { sampleSource.setData (data); }
+    const SampleData* getSampleData() const { return sampleSource.getData(); }
 
     // Mute/solo, decided by the kit: fades the voice out (or back in) over a
     // few ms. A muted voice still plays underneath, so unmuting mid-note works.

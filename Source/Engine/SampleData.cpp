@@ -106,11 +106,48 @@ void computeOnsets (SampleData& data)
 }
 } // namespace
 
-bool SampleSlot::load (const juce::File& file, juce::AudioFormatManager& formats)
+std::unique_ptr<SampleData> SampleSlot::decode (const juce::File& file, juce::AudioFormatManager& formats, juce::String& note)
 {
     std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (file));
-
     if (reader == nullptr)
+        return nullptr;
+
+    const auto channels = (int) std::min (2u, reader->numChannels);
+    const auto maxFrames = (juce::int64) (kMaxSeconds * reader->sampleRate);
+    const auto frames = (int) std::min (reader->lengthInSamples, maxFrames);
+    if (frames <= 0)
+        return nullptr;
+
+    auto data = std::make_unique<SampleData>();
+    data->audio.setSize (channels, frames);
+    reader->read (&data->audio, 0, frames, 0, true, channels > 1);
+    data->sampleRate = reader->sampleRate;
+    data->path = file.getFullPathName();
+    computePeaks (*data);
+    computeOnsets (*data);
+    note = reader->lengthInSamples > maxFrames ? "Trimmed to 2 minutes" : "";
+    return data;
+}
+
+void SampleSlot::setDecoded (std::unique_ptr<SampleData> data, const juce::String& note)
+{
+    if (data == nullptr)
+        return;
+    {
+        const juce::ScopedLock sl (lock);
+        status = Status::Loaded;
+        path = data->path;
+        error = note;
+    }
+    publish (std::move (data));
+}
+
+bool SampleSlot::load (const juce::File& file, juce::AudioFormatManager& formats)
+{
+    juce::String note;
+    auto data = decode (file, formats, note);
+
+    if (data == nullptr)
     {
         if (! file.existsAsFile())
             markMissing (file.getFullPathName());
@@ -122,25 +159,7 @@ bool SampleSlot::load (const juce::File& file, juce::AudioFormatManager& formats
         return false;
     }
 
-    const auto channels = (int) std::min (2u, reader->numChannels);
-    const auto maxFrames = (juce::int64) (kMaxSeconds * reader->sampleRate);
-    const auto frames = (int) std::min (reader->lengthInSamples, maxFrames);
-
-    auto data = std::make_unique<SampleData>();
-    data->audio.setSize (channels, frames);
-    reader->read (&data->audio, 0, frames, 0, true, channels > 1);
-    data->sampleRate = reader->sampleRate;
-    data->path = file.getFullPathName();
-    computePeaks (*data);
-    computeOnsets (*data);
-
-    {
-        const juce::ScopedLock sl (lock);
-        status = Status::Loaded;
-        path = file.getFullPathName();
-        error = reader->lengthInSamples > maxFrames ? "Trimmed to 2 minutes" : "";
-    }
-    publish (std::move (data));
+    setDecoded (std::move (data), note);
     return true;
 }
 
@@ -170,6 +189,27 @@ void SampleSlot::markMissing (const juce::String& missingPath)
         error = {};
     }
     publish (nullptr);
+}
+
+void SampleSlot::markUnreadable (const juce::String& unreadablePath)
+{
+    {
+        const juce::ScopedLock sl (lock);
+        status = Status::Error;
+        path = unreadablePath;
+        error = "Can't read " + juce::File (unreadablePath).getFileName();
+    }
+    publish (nullptr);
+}
+
+std::shared_ptr<const SampleData> SampleSlot::share() const
+{
+    const juce::ScopedLock sl (lock);
+    const auto* current = latest.load();
+    for (const auto& entry : pool)
+        if (entry.data.get() == current)
+            return entry.data;
+    return nullptr;
 }
 
 void SampleSlot::clear()

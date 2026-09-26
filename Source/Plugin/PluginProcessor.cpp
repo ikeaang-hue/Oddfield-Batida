@@ -80,8 +80,17 @@ juce::String formatValue (const ParamSpec& spec, float v)
 float parseValue (const ParamSpec& spec, const juce::String& text)
 {
     const auto t = text.trim().toLowerCase();
-    auto v = t.retainCharacters ("0123456789.-+").getFloatValue();
     const auto& u = spec.unit;
+
+    // "-inf dB" is the bottom of the range; text with no number keeps the default.
+    if (t.contains ("inf"))
+        return t.startsWith ("-") ? spec.min : spec.max;
+    const auto digits = t.retainCharacters ("0123456789");
+    const auto named = u == "wave" || (u == "pan" && t.startsWith ("c"));
+    if (digits.isEmpty() && ! named)
+        return spec.def;
+
+    auto v = t.retainCharacters ("0123456789.-+").getFloatValue();
 
     if (u == "ms" && t.endsWith ("s") && ! t.endsWith ("ms"))
         v *= 1000.0f;
@@ -142,7 +151,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout BatidaProcessor::createLayou
     for (int v = 0; v < kNumVoices; ++v)
     {
         auto group = std::make_unique<juce::AudioProcessorParameterGroup> (
-            "voice" + juce::String (v + 1), "Voice " + juce::String (v + 1), " | ");
+            "voice" + juce::String (v + 1), "Sound " + juce::String (v + 1), " | "); // the ID stays "voice"
 
         for (int p = 0; p < kNumVoiceParams; ++p)
             group->addChild (makeParameter (voiceParamSpecs()[(size_t) p], voiceParamID (v, p),
@@ -241,7 +250,13 @@ void BatidaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
         if (sidechainCopy.getNumSamples() < n)
             sidechainCopy.setSize (2, n, false, false, true); // only if the host exceeds its block size
         for (int ch = 0; ch < 2; ++ch)
+        {
             sidechainCopy.copyFrom (ch, 0, in, std::min (ch, in.getNumChannels() - 1), 0, n);
+            auto* x = sidechainCopy.getWritePointer (ch);
+            for (int i = 0; i < n; ++i)
+                if (! std::isfinite (x[i]))
+                    x[i] = 0.0f;
+        }
         sidechain = &sidechainCopy;
     }
 
@@ -258,16 +273,26 @@ void BatidaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
                 transport.beatsPerBar = sig->numerator * 4.0 / std::max (1, sig->denominator);
         }
 
-    kit.process (buffer, midi, sidechain, transport);
+    // Only the output bus: with a mono output and a stereo sidechain the
+    // buffer has two channels, but the kit must mix down to one.
+    buffer.clear();
+    auto out = getBusBuffer (buffer, false, 0);
+    kit.process (out, midi, sidechain, transport);
 
     // Peak hold for the editor's meter: the highest level until it's read.
-    for (int ch = 0; ch < std::min (2, buffer.getNumChannels()); ++ch)
+    for (int ch = 0; ch < std::min (2, out.getNumChannels()); ++ch)
     {
-        const auto level = buffer.getMagnitude (ch, 0, buffer.getNumSamples());
+        const auto level = out.getMagnitude (ch, 0, out.getNumSamples());
         auto& held = outputPeaks[(size_t) ch];
         auto was = held.load (std::memory_order_relaxed);
         while (level > was && ! held.compare_exchange_weak (was, level, std::memory_order_relaxed)) {}
     }
+}
+
+void BatidaProcessor::processBlockBypassed (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+{
+    // Bypassed: silence. The input bus is the sidechain, which must not pass through.
+    buffer.clear();
 }
 
 std::array<float, 2> BatidaProcessor::takeOutputPeaks()
@@ -306,6 +331,7 @@ void BatidaProcessor::swapVoices (int a, int b)
         return;
     beginUndoStep (true, true);
     ++actionCounter;
+    kit.beginSwitch ((1u << a) | (1u << b)); // sounding slots fade before their sounds trade places
 
     // Settings (host parameters, so the host sees the change).
     for (int p = 0; p < kNumVoiceParams; ++p)
@@ -330,13 +356,26 @@ void BatidaProcessor::swapVoices (int a, int b)
         auto& slot = kit.sampleSlot (voice);
         if (h.status == SampleSlot::Status::Loaded && slot.load (juce::File (h.path), formats))
             return;
-        if (h.path.isNotEmpty())
-            slot.markMissing (h.path);
-        else
+        if (h.path.isEmpty())
             slot.clear();
+        else if (juce::File (h.path).existsAsFile())
+            slot.markUnreadable (h.path);
+        else
+            slot.markMissing (h.path);
     };
     takeOver (a, hb);
     takeOver (b, ha);
+
+    // What each sound was loaded from (Save writes there) and its sample's
+    // size (for finding it again) go with it.
+    std::swap (origins.soundFiles[(size_t) a], origins.soundFiles[(size_t) b]);
+    std::swap (sampleBytes[(size_t) a], sampleBytes[(size_t) b]);
+    ++originsVersion;
+    if (candidatesVoice == a || candidatesVoice == b)
+    {
+        previewCandidate (-1);
+        candidatesVoice = candidatesVoice == a ? b : a;
+    }
 
     // Names (an unnamed slot keeps showing its sound's default name).
     const auto na = getVoiceName (a), nb = getVoiceName (b);
@@ -424,7 +463,7 @@ void BatidaProcessor::restore (const HistorySnapshot& s)
             if (path.isEmpty())
                 slot.clear();
             else if (! slot.load (juce::File (path), formats))
-                slot.markMissing (path);
+                juce::File (path).existsAsFile() ? slot.markUnreadable (path) : slot.markMissing (path);
             sampleBytes[(size_t) v] = juce::File (path).existsAsFile() ? juce::File (path).getSize() : -1;
         }
     ++actionCounter;
@@ -576,7 +615,8 @@ void BatidaProcessor::startVary (int voice, float amount, VaryDirection directio
 
     VaryRequest req;
     req.base = readVoiceParams (voice);
-    req.sample = kit.sampleSlot (voice).getDisplayData();
+    req.keepAlive = kit.sampleSlot (voice).share(); // freed only after the job is done with it
+    req.sample = req.keepAlive.get();
     req.amount = amount;
     req.direction = direction;
     req.lockSource = lockSource;
@@ -708,22 +748,39 @@ SampleRef BatidaProcessor::sampleRefFor (int voice) const
     return { path, f.existsAsFile() ? f.getSize() : sampleBytes[(size_t) voice] };
 }
 
-void BatidaProcessor::setSample (int voice, const SampleRef& ref)
+BatidaProcessor::PendingSample BatidaProcessor::prepareSample (const SampleRef& ref)
 {
-    auto& slot = kit.sampleSlot (voice);
-    sampleBytes[(size_t) voice] = ref.bytes;
+    PendingSample p;
+    p.path = ref.path;
+    p.bytes = ref.bytes;
     if (ref.isEmpty())
-    {
-        slot.clear();
-        return;
-    }
+        return p;
     auto file = juce::File (ref.path);
     if (! file.existsAsFile())
         file = findSample (file.getFileName(), ref.bytes, library().searchFolders(), 20000);
-    if (file.existsAsFile() && slot.load (file, formats))
-        sampleBytes[(size_t) voice] = file.getSize();
-    else if (! file.existsAsFile())
-        slot.markMissing (ref.path);
+    if (! file.existsAsFile())
+    {
+        p.kind = PendingSample::Missing;
+        return p;
+    }
+    p.data = SampleSlot::decode (file, formats, p.note);
+    p.kind = p.data != nullptr ? PendingSample::Loaded : PendingSample::Unreadable;
+    if (p.data != nullptr)
+        p.bytes = file.getSize();
+    return p;
+}
+
+void BatidaProcessor::commitSample (int voice, PendingSample&& p)
+{
+    auto& slot = kit.sampleSlot (voice);
+    sampleBytes[(size_t) voice] = p.bytes;
+    switch (p.kind)
+    {
+        case PendingSample::Empty:      slot.clear(); break;
+        case PendingSample::Loaded:     slot.setDecoded (std::move (p.data), p.note); break;
+        case PendingSample::Missing:    slot.markMissing (p.path); break;
+        case PendingSample::Unreadable: slot.markUnreadable (p.path); break; // never the previous sample
+    }
 }
 
 SoundPreset BatidaProcessor::captureSound (int voice) const
@@ -782,14 +839,15 @@ void BatidaProcessor::applySound (int voice, const SoundPreset& sound, const juc
 {
     const auto key = "sound" + juce::String (voice);
     beginLoadStep (key, mode);
+    auto sample = prepareSample (sound.sample); // decoded before the old sound starts fading
     kit.beginSwitch (1u << voice);
 
     auto values = sound.params;
     const auto live = readVoiceParams (voice);
     for (const auto k : { vp::Pan, vp::Mute, vp::Solo })
         values[k] = live[k];
+    commitSample (voice, std::move (sample));
     writeVoiceParameters (voice, values);
-    setSample (voice, sound.sample);
     setNameQuietly (voice, sound.info.name);
     origins.soundFiles[(size_t) voice] = from;
     endLoadStep (key, mode);
@@ -798,6 +856,9 @@ void BatidaProcessor::applySound (int voice, const SoundPreset& sound, const juc
 void BatidaProcessor::applyKit (const KitPreset& k, const juce::File& from, LoadMode mode)
 {
     beginLoadStep ("kit", mode);
+    std::array<PendingSample, kNumVoices> samples;
+    for (int v = 0; v < kNumVoices; ++v)
+        samples[(size_t) v] = prepareSample (k.samples[(size_t) v]);
     kit.beginSwitch (0xffu);
     for (int v = 0; v < kNumVoices; ++v)
     {
@@ -805,8 +866,8 @@ void BatidaProcessor::applyKit (const KitPreset& k, const juce::File& from, Load
         const auto live = readVoiceParams (v);
         values[vp::Mute] = live[vp::Mute];
         values[vp::Solo] = live[vp::Solo];
+        commitSample (v, std::move (samples[(size_t) v]));
         writeVoiceParameters (v, values);
-        setSample (v, k.samples[(size_t) v]);
         setNameQuietly (v, k.names[(size_t) v]);
     }
     for (int g = 0; g < kNumGlobalParams; ++g)
@@ -833,11 +894,14 @@ void BatidaProcessor::applyPattern (int pattern, const PatternPreset& preset, co
 void BatidaProcessor::applySet (const SetPreset& set, const juce::File& from, LoadMode mode)
 {
     beginLoadStep ("set", mode);
+    std::array<PendingSample, kNumVoices> samples;
+    for (int v = 0; v < kNumVoices; ++v)
+        samples[(size_t) v] = prepareSample (set.kit.samples[(size_t) v]);
     kit.beginSwitch (0xffu);
     for (int v = 0; v < kNumVoices; ++v)
     {
+        commitSample (v, std::move (samples[(size_t) v]));
         writeVoiceParameters (v, set.kit.voices[(size_t) v]);
-        setSample (v, set.kit.samples[(size_t) v]);
         setNameQuietly (v, set.kit.names[(size_t) v]);
     }
     for (int g = 0; g < kNumGlobalParams; ++g)
@@ -883,15 +947,7 @@ bool BatidaProcessor::browseSample (int voice, const juce::File& file)
 {
     const auto key = "sample" + juce::String (voice);
     beginLoadStep (key, LoadMode::Browse);
-    kit.beginSwitch (1u << voice);
-    const auto ok = kit.sampleSlot (voice).load (file, formats);
-    if (ok)
-    {
-        sampleBytes[(size_t) voice] = file.getSize();
-        auto* mode = state.getParameter (voiceParamID (voice, vp::SrcMode));
-        if ((SourceMode) juce::roundToInt (mode->convertFrom0to1 (mode->getValue())) == SourceMode::FM)
-            mode->setValueNotifyingHost (mode->convertTo0to1 ((float) SourceMode::Sample));
-    }
+    const auto ok = decodeAndSwitch (voice, file);
     endLoadStep (key, LoadMode::Browse);
     return ok;
 }
@@ -1144,7 +1200,11 @@ void BatidaProcessor::setKeysVoice (int voice)
     auto* keys = state.getParameter (globalParamID (gp::KeysVoice));
     const auto value = keys->convertTo0to1 ((float) voice);
     if (keys->getValue() != value)
+    {
+        keys->beginChangeGesture();
         keys->setValueNotifyingHost (value);
+        keys->endChangeGesture();
+    }
 }
 
 std::array<float, kNumGlobalParams> BatidaProcessor::readGlobalParams() const
@@ -1166,17 +1226,33 @@ VoiceParams BatidaProcessor::readVoiceParams (int voice) const
 bool BatidaProcessor::loadSample (int voice, const juce::File& file)
 {
     beginLoadStep ("sample" + juce::String (voice), LoadMode::Step);
-    kit.beginSwitch (1u << voice);
-    const auto ok = kit.sampleSlot (voice).load (file, formats);
+    const auto ok = decodeAndSwitch (voice, file);
     endLoadStep ("sample" + juce::String (voice), LoadMode::Step);
-    if (! ok)
-        return false;
+    return ok;
+}
+
+bool BatidaProcessor::decodeAndSwitch (int voice, const juce::File& file)
+{
+    // A file that can't be read leaves the slot as it was, with the reason in
+    // its error (the drop or click simply didn't take).
+    juce::String note;
+    auto data = SampleSlot::decode (file, formats, note);
+    auto& slot = kit.sampleSlot (voice);
+    if (data == nullptr)
+        return slot.load (file, formats); // records why, or that the file is gone
+
+    kit.beginSwitch (1u << voice);
+    slot.setDecoded (std::move (data), note);
     sampleBytes[(size_t) voice] = file.getSize();
 
+    // A sound on FM switches to Sample, so the new sample is heard straight away.
     auto* mode = state.getParameter (voiceParamID (voice, vp::SrcMode));
     if ((SourceMode) juce::roundToInt (mode->convertFrom0to1 (mode->getValue())) == SourceMode::FM)
+    {
+        mode->beginChangeGesture();
         mode->setValueNotifyingHost (mode->convertTo0to1 ((float) SourceMode::Sample));
-
+        mode->endChangeGesture();
+    }
     return true;
 }
 
@@ -1242,6 +1318,8 @@ void BatidaProcessor::setStateInformation (const void* data, int sizeInBytes)
     if (xml == nullptr || ! xml->hasTagName (state.state.getType()))
         return;
 
+    kit.beginSwitch (0xffu); // sounding voices fade before the project's sounds replace them
+
     auto tree = juce::ValueTree::fromXml (*xml);
     const auto samples = tree.getChildWithName (kSamplesTag);
     tree.removeChild (samples, nullptr);
@@ -1257,13 +1335,16 @@ void BatidaProcessor::setStateInformation (const void* data, int sizeInBytes)
         originsFromXml (xml.get());
     else
         originsFromXml (nullptr);
-    if (movementTree.isValid())
-        if (const auto xml = movementTree.createXml())
-        {
-            MovementData m;
-            m.fromXml (*xml);
-            kit.movementStore().replace (m);
-        }
+    // Projects from before phase 4 have no movement, and ones from before
+    // phase 3 no patterns: they get the defaults, not this instance's last ones.
+    {
+        MovementData m;
+        if (const auto mx = movementTree.isValid() ? movementTree.createXml() : nullptr)
+            m.fromXml (*mx);
+        else
+            m = defaultMovement();
+        kit.movementStore().replace (m);
+    }
     state.replaceState (tree);
 
     for (auto& n : voiceNames)
@@ -1276,14 +1357,14 @@ void BatidaProcessor::setStateInformation (const void* data, int sizeInBytes)
     }
     ++namesVersion;
 
-    // Projects from before phase 3 have no patterns: keep the defaults.
-    if (patternTree.isValid())
-        if (const auto patternXml = patternTree.createXml())
-        {
-            PatternBank bank;
-            bank.fromXml (*patternXml);
-            kit.patternStore().replace (bank);
-        }
+    {
+        PatternBank bank;
+        if (const auto px = patternTree.isValid() ? patternTree.createXml() : nullptr)
+            bank.fromXml (*px);
+        else
+            bank = defaultPatternBank();
+        kit.patternStore().replace (bank);
+    }
 
     std::array<juce::String, kNumVoices> paths;
     sampleBytes.fill (-1);
@@ -1303,7 +1384,11 @@ void BatidaProcessor::setStateInformation (const void* data, int sizeInBytes)
         if (paths[(size_t) v].isEmpty())
             slot.clear();
         else if (paths[(size_t) v] != slot.getPath() || slot.getStatus() != SampleSlot::Status::Loaded)
-            slot.load (juce::File (paths[(size_t) v]), formats); // marks it missing if the file is gone
+        {
+            const juce::File f (paths[(size_t) v]);
+            if (! slot.load (f, formats) && f.existsAsFile()) // a gone file is marked missing by load()
+                slot.markUnreadable (f.getFullPathName());
+        }
     }
 
     // Samples that moved: look in the library and the folders relinked from before.

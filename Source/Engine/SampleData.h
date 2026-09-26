@@ -39,8 +39,19 @@ public:
     bool load (const juce::File& file, juce::AudioFormatManager& formats);
     bool setData (std::unique_ptr<SampleData> data); // for tests and generated audio
     void markMissing (const juce::String& path);     // keeps the path so it is saved again
+    void markUnreadable (const juce::String& path);  // the file is there but can't be read: silent, path kept
     void clear();
     void collectGarbage();
+
+    // Reads a file without touching the slot (nullptr if it can't be read), so
+    // a load can decode first and switch the sound over in one go.
+    static std::unique_ptr<SampleData> decode (const juce::File& file, juce::AudioFormatManager& formats,
+                                               juce::String& note);
+    void setDecoded (std::unique_ptr<SampleData> data, const juce::String& note);
+
+    // The current sample, kept alive for as long as the caller holds it (for
+    // background jobs such as Vary; the audio thread uses acquire()).
+    std::shared_ptr<const SampleData> share() const;
 
     Status getStatus() const { const juce::ScopedLock sl (lock); return status; }
     juce::String getPath() const { const juce::ScopedLock sl (lock); return path; }
@@ -49,6 +60,9 @@ public:
     int getVersion() const { return version.load(); }
 
     // Audio thread --------------------------------------------------------
+    // The latest sample, without marking it in use.
+    const SampleData* peek() const { return latest.load (std::memory_order_acquire); }
+
     const SampleData* acquire()
     {
         auto* data = latest.load (std::memory_order_acquire);
@@ -61,7 +75,7 @@ private:
 
     struct Entry
     {
-        std::unique_ptr<SampleData> data;
+        std::shared_ptr<SampleData> data;
         double retiredAt = 0.0; // 0 = still current
     };
 

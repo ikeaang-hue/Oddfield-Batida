@@ -25,10 +25,33 @@ ParamControl::ParamControl (juce::AudioProcessorValueTreeState& s, juce::String 
 ParamControl::~ParamControl()
 {
     stopTimer();
+    finishGestures();
+}
+
+// A drag or glide in progress ends on the parameter it started on, so the
+// host always gets an end for every begin.
+void ParamControl::finishGestures()
+{
+    if (attachment == nullptr)
+        return;
+    if (glide)
+    {
+        attachment->setValueAsPartOfGesture (param->convertFrom0to1 (glide->to));
+        attachment->endGesture();
+        glide.reset();
+    }
+    if (dragging)
+    {
+        attachment->endGesture();
+        dragging = false;
+        fine = false;
+    }
 }
 
 void ParamControl::bind (const juce::String& paramID)
 {
+    finishGestures();
+    editor.reset(); // a half-typed value belongs to the old parameter
     attachment.reset();
     param = state.getParameter (paramID);
     jassert (param != nullptr);
@@ -605,7 +628,7 @@ void ParamControl::showMenu()
     }
     juce::PopupMenu::Item type ("Type a value...");
     type.itemID = 10;
-    type.shortcutKeyDescription = "click the number";
+    type.shortcutKeyDescription = "double-click the number";
     m.addItem (type);
     juce::PopupMenu::Item reset ("Back to default");
     reset.itemID = 11;

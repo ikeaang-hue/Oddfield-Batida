@@ -64,6 +64,8 @@ float Compressor::gainFor (float detectorLevel, float amount)
 {
     // Peak envelope with separate attack and release.
     envelope = detectorLevel + (envelope - detectorLevel) * (detectorLevel > envelope ? attackCoef : releaseCoef);
+    if (! std::isfinite (envelope)) // one bad input sample must not stick for good
+        envelope = 0.0f;
 
     const auto levelDb = 20.0f * std::log10 (std::max (envelope, 1.0e-6f));
     reductionDb = amount > 0.0f ? staticGainDb (levelDb, amount) : 0.0f;
@@ -75,6 +77,8 @@ float Compressor::makeupFor (float inputEnergy, float compressedEnergy)
 {
     meanIn = inputEnergy + (meanIn - inputEnergy) * makeupCoef;
     meanOut = compressedEnergy + (meanOut - compressedEnergy) * makeupCoef;
+    if (! std::isfinite (meanIn) || ! std::isfinite (meanOut))
+        meanIn = meanOut = 0.0f;
     if (meanOut < 1.0e-9f)
         return 1.0f;
     return std::clamp (std::sqrt (meanIn / meanOut), 1.0f, 16.0f); // up to +24 dB

@@ -377,7 +377,14 @@ void RelinkPanel::timerCallback()
 {
     if (search != nullptr && search->done)
     {
-        const auto found = proc.relinkFound (search->found);
+        // Only slots still missing the same file: a swap or a load during the
+        // search must not receive another slot's result.
+        std::vector<std::pair<int, juce::File>> stillWanted;
+        for (const auto& [v, f] : search->found)
+            if (proc.sampleSlot (v).getStatus() == SampleSlot::Status::Missing
+                && proc.sampleSlot (v).getPath() == search->wantedPaths[(size_t) v])
+                stillWanted.push_back ({ v, f });
+        const auto found = proc.relinkFound (stillWanted);
         status.setText ("Found " + juce::String (found) + " of " + juce::String (shownMissing) + " in that folder.",
                         juce::dontSendNotification);
         search = nullptr;
@@ -405,6 +412,8 @@ void RelinkPanel::searchFolder()
                                       wanted.push_back ({ v, juce::File (safe->proc.sampleSlot (v).getPath()).getFileName(),
                                                           safe->proc.missingSampleBytes (v) });
                               auto s = std::make_shared<Search>();
+                              for (const auto& w : wanted)
+                                  s->wantedPaths[(size_t) w.voice] = safe->proc.sampleSlot (w.voice).getPath();
                               safe->search = s;
                               safe->searchButton.setEnabled (false);
                               safe->status.setText ("Searching " + folder.getFullPathName() + "...", juce::dontSendNotification);

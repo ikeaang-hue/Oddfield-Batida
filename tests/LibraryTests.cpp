@@ -503,13 +503,16 @@ public:
                     afterPeak = std::max (afterPeak, out.getMagnitude (0, 0, 256));
                 }
             };
-            float jumpFade = 0, peakFade = 0, jumpHard = 0, peakHard = 0;
+            // Without beginSwitch the new sample alone triggers the same fade
+            // (loads decode first, so the sample can land in any order).
+            float jumpFade = 0, peakFade = 0, jumpSample = 0, peakSample = 0;
             run (true, jumpFade, peakFade);
-            run (false, jumpHard, peakHard);
-            logMessage ("  largest step with the fade " + juce::String (jumpFade, 4) + ", without " + juce::String (jumpHard, 4));
+            run (false, jumpSample, peakSample);
+            logMessage ("  largest step with beginSwitch " + juce::String (jumpFade, 4) + ", sample change only " + juce::String (jumpSample, 4));
             expectLessThan (jumpFade, 0.05f, "no click");
-            expectGreaterThan (jumpHard, 0.15f, "(the test would catch one)");
+            expectLessThan (jumpSample, 0.05f, "no click when only the sample changes");
             expectGreaterThan (peakFade, 0.3f, "the next hit plays the new sound");
+            expectGreaterThan (peakSample, 0.3f, "the next hit plays the new sample");
         }
 
         beginTest ("A hit during the fade waits for the new sound");

@@ -1,10 +1,15 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(Batida VERSION 0.7.2)
+# Before project(), which otherwise creates an empty entry and builds for the
+# macOS doing the building. Empty (from an older configure) counts as unset.
+if(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "Minimum macOS version" FORCE)
+endif()
+
+project(Batida VERSION 0.7.3)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "Minimum macOS version")
 
 # Local fixes to JUCE, kept as patches (patches/) and applied to the
 # submodule once, when configuring:
@@ -193,16 +198,21 @@ target_sources(BatidaTests
         tests/MovementTests.cpp
         tests/LibraryTests.cpp
         tests/FactoryTests.cpp
+        tests/ProcessorTests.cpp
         tests/Tools.cpp
-        tools/factory/Analysis.cpp)
+        tools/factory/Analysis.cpp
+        ${BATIDA_UI_SOURCES})
 
 target_include_directories(BatidaTests PRIVATE tools/factory)
-target_compile_definitions(BatidaTests PRIVATE ${BATIDA_DEFINITIONS} BATIDA_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+target_compile_definitions(BatidaTests PRIVATE ${BATIDA_DEFINITIONS} BATIDA_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+                           JucePlugin_Name="Batida")
 
 target_link_libraries(BatidaTests
     PRIVATE
         BatidaEngine
+        BatidaFonts
         BatidaFactoryData
+        juce::juce_audio_utils
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)

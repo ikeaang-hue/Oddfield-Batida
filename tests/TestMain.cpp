@@ -1,5 +1,7 @@
 #include "Tools.h"
 
+#include <juce_gui_basics/juce_gui_basics.h>
+
 // BatidaTests                 run the unit tests
 // BatidaTests --bench         measure CPU for the worst-case voice load
 // BatidaTests --render <dir>  render the default kit to WAV files
@@ -25,6 +27,8 @@ int main (int argc, char* argv[])
         return batida::tools::runRender (dir);
     }
 
+    // The processor tests need a message thread (timers, async callbacks).
+    juce::ScopedJuceInitialiser_GUI gui;
     juce::UnitTestRunner runner;
     runner.setAssertOnFailure (false);
     runner.runTestsInCategory ("Batida");
