@@ -56,8 +56,8 @@ Every value is a **bar**:
 |---|---|
 | change it | drag left/right (or up/down), always starting from where it is |
 | change it finely | hold **Shift** while dragging |
-| type an exact value | click the number |
-| reset it | double-click |
+| type an exact value | double-click the number |
+| reset it | double-click the bar (or Option-click) |
 | modulate it | right-click → *Modulate with Mod 1 / Mod 2* |
 
 ---

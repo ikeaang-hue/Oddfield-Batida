@@ -13,9 +13,9 @@
 //   bool   -> a chip ([TEXT] off, lime when on)
 //
 // Bars drag left/right or up/down, always from the current value (never
-// jumping); Shift = fine; clicking the number types a value; double-click (or
-// Option-click) glides back to the default; right-click opens Modulate / Type /
-// Default; the wheel nudges.
+// jumping); Shift = fine; double-clicking the number types a value;
+// double-clicking the bar (or Option-click) glides back to the default;
+// right-click opens Modulate / Type / Default; the wheel nudges.
 // A lime tick and segment show where Batida moves the value (setMarker: XY,
 // macros); a dim lime band and tick show modulation. bind() re-attaches to
 // another parameter (the selected sound changes).
@@ -91,7 +91,6 @@ private:
 
     // Drag state
     bool dragging = false, fine = false, pressedOnValue = false, movedSincePress = false;
-    int clickToken = 0;
     float dragStartNorm = 0.0f;
     juce::Point<float> dragOrigin;
     juce::Point<float> lastMouse;
