@@ -1,0 +1,51 @@
+# Builds Batida on macOS and runs its checks: the unit tests, the editor's
+# gesture checks, and Apple's AU validation. On pushes to main, on pull
+# requests, and by hand (Actions → Tests → Run workflow).
+#
+# macOS runners use GitHub Actions minutes at 10x on private repositories,
+# so this runs for main and pull requests only, not every branch.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure
+        run: cmake -S . -B build -G Xcode
+
+      - name: Build
+        run: cmake --build build --config Release --target BatidaTests BatidaSnapshot Batida -- -quiet
+
+      - name: Unit tests
+        run: build/BatidaTests_artefacts/Release/BatidaTests
+
+      - name: Editor snapshots and gesture checks
+        run: build/BatidaSnapshot_artefacts/Release/BatidaSnapshot "$RUNNER_TEMP/snapshots"
+
+      - name: AU validation
+        run: |
+          killall -9 AudioComponentRegistrar || true
+          auval -v aumu Btda Ngsp
+
+      - name: Keep the snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshots
+          path: ${{ runner.temp }}/snapshots
+          if-no-files-found: ignore

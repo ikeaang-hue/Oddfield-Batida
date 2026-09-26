@@ -127,6 +127,7 @@ int runStartup()
 
 int main (int argc, char* argv[])
 {
+    int gestureFailures = 0;
     juce::ScopedJuceInitialiser_GUI gui;
     if (argc > 1 && juce::String (argv[1]) == "--startup")
         return runStartup();
@@ -822,8 +823,9 @@ int main (int argc, char* argv[])
         }
 
         std::printf ("%s\n", failures == 0 ? "GESTURES PASS" : "GESTURES FAIL");
+        gestureFailures = failures;
     }
 
     editorHolder.reset();
-    return 0;
+    return gestureFailures == 0 ? 0 : 1; // CI fails when a gesture check does
 }
