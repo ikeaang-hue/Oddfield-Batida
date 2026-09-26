@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="sound" format="1" madeWith="0.7.1">
+<BATIDA type="sound" format="1" madeWith="0.7.2">
   <INFO name="Pixel Sweep" author="Negative Space" category="fx" tags="digital"/>
   <VOICE src_mode="FM" balance="0.5" level="-4.44874239" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="672.113892"

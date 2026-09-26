@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="sound" format="1" madeWith="0.7.1">
+<BATIDA type="sound" format="1" madeWith="0.7.2">
   <INFO name="Long Reverse" author="Negative Space" category="fx" tags="organic"/>
-  <VOICE src_mode="Sample" balance="0.5" level="1.49090672" pan="0" vel_sens="0.699999988"
+  <VOICE src_mode="Sample" balance="0.5" level="1.42123222" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="8000"
          amp_sustain="0" amp_release="60" pitch_amt="0" pitch_decay="60"
          fm_pitch="0" fm_algo="1" fm_feedback="0" fm_harm="0" fm_bright="0"
@@ -20,6 +20,6 @@
          op3_fold="0" op3_attack="0" op3_decay="600" op3_sustain="1" op3_release="1500"
          op4_ratio="1" op4_fixed="0" op4_freq="1000" op4_level="0" op4_wave="0"
          op4_fold="0" op4_attack="0" op4_decay="600" op4_sustain="1" op4_release="1500">
-    <SAMPLE file="../../Samples/FX/Long Reverse.flac" bytes="129761"/>
+    <SAMPLE file="../../Samples/FX/Long Reverse.flac" bytes="129192"/>
   </VOICE>
 </BATIDA>

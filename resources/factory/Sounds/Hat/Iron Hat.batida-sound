@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="sound" format="1" madeWith="0.7.1">
+<BATIDA type="sound" format="1" madeWith="0.7.2">
   <INFO name="Iron Hat" author="Negative Space" category="hat" tags="metallic"/>
   <VOICE src_mode="FM" balance="0.5" level="5.21112442" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="35.4011078"

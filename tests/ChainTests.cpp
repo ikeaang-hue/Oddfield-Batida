@@ -219,7 +219,10 @@ public:
             auto on = computeEffectiveChain (g);
             expectWithinAbsoluteError (on.drive, 1.0f, 1.0e-6f);
             expectWithinAbsoluteError (on.type, 0.8f, 1.0e-6f);
-            expectWithinAbsoluteError (on.compAmount, 0.6f, 1.0e-6f);
+            expectWithinAbsoluteError (on.compAmount, 0.25f, 1.0e-6f, "heat adds only a little compression");
+            expectGreaterThan (on.compAttack, 10.0f, "and a longer attack, so transients punch through");
+            expectWithinAbsoluteError (on.lowKeepHz, 90.0f * std::sqrt (2.0f), 0.01f, "the crossover rises only a little");
+            expectGreaterThan (on.outGain, 1.3f, "heat lifts the output (crushed, not muted)");
             expectWithinAbsoluteError (on.highDb, -3.0f, 1.0e-4f);
 
             g[gp::CompFollow] = g[gp::DistFollow] = g[gp::EqFollow] = 0.0f;
@@ -229,6 +232,23 @@ public:
             expectWithinAbsoluteError (off.compAmount, 0.0f, 1.0e-6f);
             expectWithinAbsoluteError (off.highDb, 2.0f, 1.0e-6f);
             expectWithinAbsoluteError (off.lowKeepHz, 90.0f, 1.0e-3f);
+            expectWithinAbsoluteError (off.outGain, 1.0f, 1.0e-6f);
+        }
+
+        beginTest ("Heat crushes rather than mutes: a kick keeps its loudness");
+        {
+            // The default kick on its own, through the chain, clean and at full heat.
+            auto params = defaultKitParams();
+            params.global[gp::XyX] = 0.5f;
+            auto loudness = [&] (float heat)
+            {
+                params.global[gp::XyY] = heat;
+                const auto audio = tools::renderVoice (params, 0, kDrumMapFirstNote, 0.9f, 1.0, kRate);
+                return tools::measure (audio, kRate).rmsDb;
+            };
+            const auto clean = loudness (0.0f), destroyed = loudness (1.0f);
+            logMessage ("  kick RMS clean / full heat: " + juce::String (clean, 1) + " / " + juce::String (destroyed, 1) + " dB");
+            expectGreaterThan (destroyed, clean - 1.5f);
         }
 
         beginTest ("4x oversampling reduces aliasing in the distortion");
@@ -286,7 +306,7 @@ public:
             juce::AudioBuffer<float> buf (2, 64);
             k.noteOn (5, 60, 1.0f); // bass, sustained
             float lastPeak = 0.0f, maxStep = 0.0f, prev = 0.0f;
-            for (int b = 0; b < 60; ++b) // mute at block 20 (27 ms in), measure ~40 ms later
+            for (int b = 0; b < 100; ++b) // mute at block 20 (27 ms in), measure ~100 ms later (the crossover rings out)
             {
                 auto p = kit;
                 if (b >= 20)

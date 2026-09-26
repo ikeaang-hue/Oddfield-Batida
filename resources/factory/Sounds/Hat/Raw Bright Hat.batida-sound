@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="sound" format="1" madeWith="0.7.1">
+<BATIDA type="sound" format="1" madeWith="0.7.2">
   <INFO name="Raw Bright Hat" author="Negative Space" category="hat"
         tags="harsh,metallic"/>
   <VOICE src_mode="FM" balance="0.5" level="-7.06268501" pan="0" vel_sens="0.699999988"

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="pattern" format="1" madeWith="0.7.1">
+<BATIDA type="pattern" format="1" madeWith="0.7.2">
   <INFO name="Pressure" author="Negative Space" category="" tags="techno"/>
   <PATTERN length="16" xy="-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-">
     <TRACK voice="0" length="16" noteLength="0.5" gate="1000100010001000000000000000000000000000000000000000000000000000"

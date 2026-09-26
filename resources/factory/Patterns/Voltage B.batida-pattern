@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="pattern" format="1" madeWith="0.7.1">
+<BATIDA type="pattern" format="1" madeWith="0.7.2">
   <INFO name="Voltage B" author="Negative Space" category="" tags="breaks"/>
   <PATTERN length="32" xy="-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-">
     <TRACK voice="0" length="32" noteLength="0.5" gate="1000001000100100100000101010000000000000000000000000000000000000"

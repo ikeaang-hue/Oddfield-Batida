@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="pattern" format="1" madeWith="0.7.1">
+<BATIDA type="pattern" format="1" madeWith="0.7.2">
   <INFO name="Strobe B" author="Negative Space" category="" tags="house"/>
   <PATTERN length="32" xy="0.500:0.200,-,-,-,-,-,-,-,0.500:0.300,-,-,-,-,-,-,-,0.550:0.450,-,-,-,-,-,-,-,0.600:0.600,-,-,-,-,-,0.700:0.800,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-">
     <TRACK voice="0" length="32" noteLength="0.5" gate="0000000000000000100010001000100000000000000000000000000000000000"

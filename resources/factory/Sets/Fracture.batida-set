@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="set" format="1" madeWith="0.7.1">
+<BATIDA type="set" format="1" madeWith="0.7.2">
   <INFO name="Fracture" author="Negative Space" category="" tags="glitch,harsh"/>
   <KIT midi_mode="Drum map" master="-8" keys_voice="1" xy_x="0.850000024"
        xy_y="0.5" comp_amount="0.200000003" comp_attack="10" comp_release="120"
        comp_mix="1" comp_detector="Internal" comp_follow="1" dist_drive="0"
        dist_type="0.5" dist_low_keep="90" exc_amount="0.200000003" exc_tone="5000"
        dist_follow="1" eq_hp="20" eq_lp="20000" eq_low="0" eq_mid="0"
-       eq_high="0" eq_follow="1" chain_out="-3.15230179" safety_clip="1"
+       eq_high="0" eq_follow="1" chain_out="-3.47119808" safety_clip="1"
        seq_pattern="1" seq_run="Keys" seq_play="0" seq_tempo="124" seq_swing="0.5"
        seq_quantise="Beat" seq_latch="0" seq_sync="1" mod1_mode="Sync"
        mod1_rate="1 bar" mod1_hz="1" mod1_polarity="Unipolar" mod1_smooth="0"
@@ -184,26 +184,26 @@
              comp_follow="1.0" dist_drive="0.0" dist_type="0.5" dist_low_keep="90.0"
              exc_amount="0.2000000029802322" exc_tone="5000.0" dist_follow="1.0"
              eq_hp="20.0" eq_lp="20000.0" eq_low="0.0" eq_mid="0.0" eq_high="0.0"
-             eq_follow="1.0" chain_out="-3.152301788330078" safety_clip="1.0"/>
+             eq_follow="1.0" chain_out="-3.471198081970215" safety_clip="1.0"/>
       <SCENE index="1" xy_x="0.8500000238418579" xy_y="0.800000011920929"
              comp_amount="0.3500000238418579" comp_attack="10.0" comp_release="120.0"
              comp_mix="1.0" comp_detector="0.0" comp_follow="1.0" dist_drive="0.0"
              dist_type="0.5" dist_low_keep="90.0" exc_amount="0.2000000029802322"
              exc_tone="5000.0" dist_follow="1.0" eq_hp="20.0" eq_lp="20000.0"
-             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="-3.152301788330078"
+             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="-3.471198081970215"
              safety_clip="1.0"/>
       <SCENE index="2" xy_x="0.4000000357627869" xy_y="0.5" comp_amount="0.2000000029802322"
              comp_attack="10.0" comp_release="120.0" comp_mix="1.0" comp_detector="0.0"
              comp_follow="1.0" dist_drive="0.0" dist_type="0.5" dist_low_keep="90.0"
              exc_amount="0.3500000238418579" exc_tone="5000.0" dist_follow="1.0"
              eq_hp="20.0" eq_lp="20000.0" eq_low="0.0" eq_mid="0.0" eq_high="0.0"
-             eq_follow="1.0" chain_out="-3.152301788330078" safety_clip="1.0"/>
+             eq_follow="1.0" chain_out="-3.471198081970215" safety_clip="1.0"/>
       <SCENE index="3" xy_x="0.8500000238418579" xy_y="0.3499999940395355"
              comp_amount="0.2000000029802322" comp_attack="10.0" comp_release="120.0"
              comp_mix="1.0" comp_detector="0.0" comp_follow="1.0" dist_drive="0.0"
              dist_type="0.5" dist_low_keep="90.0" exc_amount="0.2000000029802322"
              exc_tone="5000.0" dist_follow="1.0" eq_hp="220.0" eq_lp="3500.0"
-             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="-3.152301788330078"
+             eq_low="0.0" eq_mid="0.0" eq_high="0.0" eq_follow="1.0" chain_out="-3.471198081970215"
              safety_clip="1.0"/>
     </MOVEMENT>
   </KIT>

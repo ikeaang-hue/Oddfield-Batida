@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="sound" format="1" madeWith="0.7.1">
+<BATIDA type="sound" format="1" madeWith="0.7.2">
   <INFO name="Clean Rim" author="Negative Space" category="snare" tags="neutral,warm"/>
   <VOICE src_mode="FM" balance="0.5" level="-0.952266693" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="50.6495705"

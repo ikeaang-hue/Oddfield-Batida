@@ -1,6 +1,6 @@
 # Negative Space Batida: Design Spec
 
-*Version 1.9, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library)*
+*Version 1.10, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
 
 ## 1. Identity
 
@@ -120,10 +120,13 @@ Reverb, delay and stereo/spatial effects are left to the DAW.
 
 The main way the chain is operated: one gesture moves the whole chain.
 
-- **Y = heat** (clean → destroyed): raises drive, compression and exciter together, and
-  shortens the compressor attack so transients are caught rather than spiking.
-  **Automatic gain compensation** keeps loudness roughly steady, so heat changes character, not
-  volume. The clean-low-end crossover rises with heat, so the sub stays solid.
+- **Y = heat** (clean → destroyed): destroys by **crushing, not squashing**. The weight is on the
+  distortion (full drive at the top) and the exciter; compression rises only a little, with a
+  slightly *longer* attack so kick transients punch through. The clean-low-end crossover rises
+  a little, so the sub stays solid while a kick's body is crushed.
+  **Gain compensation** keeps the distortion level, and a small output lift makes up for the
+  loudness that clipping costs a kick. A destroyed kit ends about as loud as a clean one, or a
+  touch louder, never muted.
 - **X = character** (warm → aggressive → digital): blends the distortion types continuously;
   the exciter's tone follows.
 - **Offsets, like the FM macros:** the stage controls set a base; the XY pushes the stages around

@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="set" format="1" madeWith="0.7.1">
+<BATIDA type="set" format="1" madeWith="0.7.2">
   <INFO name="Hush" author="Negative Space" category="" tags="tender"/>
   <KIT midi_mode="Drum map" master="-8" keys_voice="1" xy_x="0.150000006"
-       xy_y="0.150000006" comp_amount="0.200000003" comp_attack="10"
-       comp_release="120" comp_mix="1" comp_detector="Internal" comp_follow="1"
-       dist_drive="0" dist_type="0.5" dist_low_keep="90" exc_amount="0"
-       exc_tone="5000" dist_follow="1" eq_hp="20" eq_lp="9000" eq_low="0"
-       eq_mid="0" eq_high="-2" eq_follow="1" chain_out="0.585505962"
-       safety_clip="1" seq_pattern="1" seq_run="Keys" seq_play="0" seq_tempo="86"
-       seq_swing="0.579999983" seq_quantise="Beat" seq_latch="0" seq_sync="1"
-       mod1_mode="Sync" mod1_rate="8 bars" mod1_hz="1" mod1_polarity="Unipolar"
-       mod1_smooth="0" mod1_humanise="0" mod1_amount="1" mod1_trigger="Any hit"
-       mod2_mode="Sync" mod2_rate="1 bar" mod2_hz="1" mod2_polarity="Unipolar"
-       mod2_smooth="0" mod2_humanise="0" mod2_amount="1" mod2_trigger="Any hit"
-       scene_a="A" scene_b="B" scene_morph="0" scene_morph_on="0">
+       xy_y="0.150000006" comp_amount="0.25" comp_attack="2" comp_release="120"
+       comp_mix="1" comp_detector="Internal" comp_follow="1" dist_drive="0"
+       dist_type="0.5" dist_low_keep="90" exc_amount="0" exc_tone="5000"
+       dist_follow="1" eq_hp="20" eq_lp="9000" eq_low="0" eq_mid="0"
+       eq_high="-2" eq_follow="1" chain_out="1.16027963" safety_clip="1"
+       seq_pattern="1" seq_run="Keys" seq_play="0" seq_tempo="86" seq_swing="0.579999983"
+       seq_quantise="Beat" seq_latch="0" seq_sync="1" mod1_mode="Sync"
+       mod1_rate="8 bars" mod1_hz="1" mod1_polarity="Unipolar" mod1_smooth="0"
+       mod1_humanise="0" mod1_amount="1" mod1_trigger="Any hit" mod2_mode="Sync"
+       mod2_rate="1 bar" mod2_hz="1" mod2_polarity="Unipolar" mod2_smooth="0"
+       mod2_humanise="0" mod2_amount="1" mod2_trigger="Any hit" scene_a="A"
+       scene_b="B" scene_morph="0" scene_morph_on="0">
     <VOICE index="0" name="Silk Kick" src_mode="FM" balance="0.5" level="5.17927885"
            pan="0" vel_sens="0.699999988" play_mode="One-shot" glide="0"
            amp_attack="2.66199493" amp_decay="463.528839" amp_sustain="0"
@@ -173,32 +173,31 @@
       </MOD>
       <MOD index="1" points="0.0000:0.0000:0.000,0.5000:1.0000:0.000"/>
       <SCENE index="0" xy_x="0.1500000059604645" xy_y="0.1500000059604645"
-             comp_amount="0.2000000029802322" comp_attack="10.0" comp_release="120.0"
-             comp_mix="1.0" comp_detector="0.0" comp_follow="1.0" dist_drive="0.0"
-             dist_type="0.5" dist_low_keep="90.0" exc_amount="0.0" exc_tone="5000.0"
-             dist_follow="1.0" eq_hp="20.0" eq_lp="9000.0" eq_low="0.0" eq_mid="0.0"
-             eq_high="-2.0" eq_follow="1.0" chain_out="0.5855059623718262"
-             safety_clip="1.0"/>
+             comp_amount="0.25" comp_attack="2.0" comp_release="120.0" comp_mix="1.0"
+             comp_detector="0.0" comp_follow="1.0" dist_drive="0.0" dist_type="0.5"
+             dist_low_keep="90.0" exc_amount="0.0" exc_tone="5000.0" dist_follow="1.0"
+             eq_hp="20.0" eq_lp="9000.0" eq_low="0.0" eq_mid="0.0" eq_high="-2.0"
+             eq_follow="1.0" chain_out="1.160279631614685" safety_clip="1.0"/>
       <SCENE index="1" xy_x="0.1500000059604645" xy_y="0.4500000178813934"
-             comp_amount="0.3500000238418579" comp_attack="10.0" comp_release="120.0"
+             comp_amount="0.4000000059604645" comp_attack="2.0" comp_release="120.0"
              comp_mix="1.0" comp_detector="0.0" comp_follow="1.0" dist_drive="0.0"
              dist_type="0.5" dist_low_keep="90.0" exc_amount="0.0" exc_tone="5000.0"
              dist_follow="1.0" eq_hp="20.0" eq_lp="9000.0" eq_low="0.0" eq_mid="0.0"
-             eq_high="-2.0" eq_follow="1.0" chain_out="0.5855059623718262"
+             eq_high="-2.0" eq_follow="1.0" chain_out="1.160279631614685"
              safety_clip="1.0"/>
       <SCENE index="2" xy_x="0.6000000238418579" xy_y="0.1500000059604645"
-             comp_amount="0.2000000029802322" comp_attack="10.0" comp_release="120.0"
-             comp_mix="1.0" comp_detector="0.0" comp_follow="1.0" dist_drive="0.0"
-             dist_type="0.5" dist_low_keep="90.0" exc_amount="0.1500000059604645"
-             exc_tone="5000.0" dist_follow="1.0" eq_hp="20.0" eq_lp="9000.0"
-             eq_low="0.0" eq_mid="0.0" eq_high="-2.0" eq_follow="1.0" chain_out="0.5855059623718262"
+             comp_amount="0.25" comp_attack="2.0" comp_release="120.0" comp_mix="1.0"
+             comp_detector="0.0" comp_follow="1.0" dist_drive="0.0" dist_type="0.5"
+             dist_low_keep="90.0" exc_amount="0.1500000059604645" exc_tone="5000.0"
+             dist_follow="1.0" eq_hp="20.0" eq_lp="9000.0" eq_low="0.0" eq_mid="0.0"
+             eq_high="-2.0" eq_follow="1.0" chain_out="1.160279631614685"
              safety_clip="1.0"/>
-      <SCENE index="3" xy_x="0.1500000059604645" xy_y="0.0" comp_amount="0.2000000029802322"
-             comp_attack="10.0" comp_release="120.0" comp_mix="1.0" comp_detector="0.0"
+      <SCENE index="3" xy_x="0.1500000059604645" xy_y="0.0" comp_amount="0.25"
+             comp_attack="2.0" comp_release="120.0" comp_mix="1.0" comp_detector="0.0"
              comp_follow="1.0" dist_drive="0.0" dist_type="0.5" dist_low_keep="90.0"
              exc_amount="0.0" exc_tone="5000.0" dist_follow="1.0" eq_hp="220.0"
              eq_lp="3500.0" eq_low="0.0" eq_mid="0.0" eq_high="-2.0" eq_follow="1.0"
-             chain_out="0.5855059623718262" safety_clip="1.0"/>
+             chain_out="1.160279631614685" safety_clip="1.0"/>
     </MOVEMENT>
   </KIT>
   <PATTERNS>

@@ -677,6 +677,84 @@ int runExplain (const juce::String& prefix)
     return 0;
 }
 
+// How Heat plays on the factory kits: each kit with its own pattern at heat
+// 0, 0.5 and 1 (loudness relative to heat 0), and its kick alone (how much
+// transient it keeps: crest, peak over loudness).
+int runHeat (const juce::File& factory)
+{
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::printf ("%-10s %7s %7s %7s | kick alone: loud  crest  at heat 0 -> 1\n", "kit", "heat 0", "0.5", "1");
+    for (const auto& e : juce::RangedDirectoryIterator (factory.getChildFile ("Kits"), false, "*.batida-kit"))
+    {
+        const auto kit = readKit (e.getFile());
+        const auto pat = readPattern (factory.getChildFile ("Patterns/" + e.getFile().getFileNameWithoutExtension() + ".batida-pattern"));
+        if (! kit)
+            continue;
+        const auto pattern = pat ? pat->pattern : breakbeatPattern();
+        std::array<std::shared_ptr<SampleSlot>, kNumVoices> slots;
+        for (int v = 0; v < kNumVoices; ++v)
+            if (! kit->samples[(size_t) v].isEmpty())
+            {
+                slots[(size_t) v] = std::make_shared<SampleSlot>();
+                slots[(size_t) v]->load (juce::File (kit->samples[(size_t) v].path), formats);
+            }
+        const auto x = kit->globals[gp::XyX];
+        float base = 0.0f;
+        std::printf ("%-10s", kit->info.name.toRawUTF8());
+        for (const auto y : { 0.0f, 0.5f, 1.0f })
+        {
+            const auto l = beatLoudnessDb (renderKit (*kit, slots, pattern, 120.0f, 0.5f, 4, { { "xy_x", x }, { "xy_y", y } }));
+            if (y == 0.0f)
+                base = l;
+            std::printf (" %+7.1f", y == 0.0f ? l : l - base);
+        }
+        auto kickOnly = *kit;
+        for (int v = 1; v < kNumVoices; ++v)
+            kickOnly.voices[(size_t) v][vp::Level] = -60.0f;
+        std::printf (" |");
+        for (const auto y : { 0.0f, 1.0f })
+        {
+            const auto audio = renderKit (kickOnly, slots, pattern, 120.0f, 0.5f, 4, { { "xy_x", x }, { "xy_y", y } });
+            const auto l = beatLoudnessDb (audio);
+            std::printf ("  %6.1f %5.1f", l, factory::peakDb (audio) - l);
+        }
+        std::printf ("\n");
+    }
+    return 0;
+}
+
+// Which chain stage makes heat quieter: the kick alone at heat 1 vs 0, with
+// each stage's Follow XY off in turn.
+int runHeatStages (const juce::File& factory)
+{
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    for (const auto* name : { "Neutral", "Weight", "Slide", "Pressure", "Balance" })
+    {
+        auto kit = readKit (factory.getChildFile ("Kits/" + juce::String (name) + ".batida-kit"));
+        const auto pat = readPattern (factory.getChildFile ("Patterns/" + juce::String (name) + ".batida-pattern"));
+        const auto pattern = pat ? pat->pattern : breakbeatPattern();
+        for (int v = 1; v < kNumVoices; ++v)
+            kit->voices[(size_t) v][vp::Level] = -60.0f;
+        std::printf ("%-9s", name);
+        for (const auto& [label, off] : { std::pair { "all", "" }, { "no comp", "comp_follow" }, { "no dist", "dist_follow" },
+                                          { "no eq", "eq_follow" } })
+        {
+            auto at = [&] (float y)
+            {
+                Overrides o { { "xy_y", y } };
+                if (juce::String (off).isNotEmpty())
+                    o.push_back ({ off, 0.0f });
+                return beatLoudnessDb (renderKit (*kit, {}, pattern, 120.0f, 0.5f, 4, o));
+            };
+            std::printf ("  %s %+5.1f", label, at (1.0f) - at (0.0f));
+        }
+        std::printf ("\n");
+    }
+    return 0;
+}
+
 int runCalibrate()
 {
     const auto kit = defaultKitParams();
@@ -703,6 +781,10 @@ int main (int argc, char** argv)
         return runBuild (library, out);
     if (command == "explain")
         return runExplain (argc > 2 ? argv[2] : "");
+    if (command == "heat-stages")
+        return runHeatStages (out);
+    if (command == "heat")
+        return runHeat (out);
     if (command == "calibrate")
         return runCalibrate();
     std::printf ("usage: BatidaFactory candidates|build|calibrate [--library <root>] [--out <folder>]\n");
