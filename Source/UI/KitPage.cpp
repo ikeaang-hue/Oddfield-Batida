@@ -376,12 +376,10 @@ KitPage::KitPage (BatidaProcessor& p) : proc (p), pad (p)
     morphFrom->withLabelWidth (34);
     morphTo->withLabelWidth (22);
 
-    xyRec.setTooltip ("Record pad moves into the playing pattern's XY lane");
     addAndMakeVisible (xyRec);
     pad.onGestureStart = [this] { recPattern = recStep = -1; };
     pad.onMove = [this] (float x, float y) { recordXy (x, y); };
 
-    store.setTooltip ("Store the chain into a scene: STORE, then a letter");
     store.onClick = [this]
     {
         for (auto* t : tiles)

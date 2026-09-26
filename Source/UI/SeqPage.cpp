@@ -18,7 +18,7 @@ juce::RangedAudioParameter& paramOf (BatidaProcessor& p, int g)
 MidiHandle::MidiHandle()
 {
     setMouseCursor (juce::MouseCursor::DraggingHandCursor);
-    setTooltip (juce::String::fromUTF8 ("Drag to a track \xc2\xb7 click to save"));
+    setTooltip ("Pattern as MIDI");
 }
 
 void MidiHandle::paint (juce::Graphics& g)
@@ -132,7 +132,7 @@ SeqPage::SeqPage (BatidaProcessor& p)
     quantise.withLabelWidth (58).bind (globalParamID (gp::SeqQuantise));
     latch.bind (globalParamID (gp::SeqLatch));
     swing.withLabelWidth (40).withValueWidth (38).bind (globalParamID (gp::SeqSwing));
-    sync.setTooltip ("Follow the project's tempo and position while it plays");
+    sync.setTooltip ("Follow the host");
 
     // While following the project, show its tempo instead of our own.
     tempo.overrideText = [this]() -> std::optional<juce::String>

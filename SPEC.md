@@ -280,7 +280,8 @@ the other channels stay fully chromatic for the Keys Sound.
 
 ## 11. Factory content (preset factory)
 
-- **Target:** about 160 sounds, 22 kits, 22 patterns (one per kit) and 8 sets.
+- **Size:** the first target was about 160 sounds, 22 kits, 22 patterns and 8 sets. Factory 14
+  (under review) has about 290 sounds, 40 kits, 58 patterns and 19 sets.
 - **Styles:** techno, breakbeat and glitch at the core, with the most kits; house, garage,
   hip hop and trap as well. Kits, patterns and sets carry their style as a tag, so search finds
   them. There is no separate style filter.

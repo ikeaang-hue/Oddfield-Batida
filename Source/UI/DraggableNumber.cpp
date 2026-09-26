@@ -14,7 +14,6 @@ DraggableNumber::DraggableNumber (juce::RangedAudioParameter& p, int d, juce::St
     : param (p), decimals (d), suffix (std::move (s)), scale (displayScale)
 {
     setMouseCursor (juce::MouseCursor::UpDownResizeCursor);
-    setTooltip (d > 0 ? "Whole number and decimals drag separately; double-click to type, Option-click for the default" : juce::String());
     startTimerHz (15);
 }
 

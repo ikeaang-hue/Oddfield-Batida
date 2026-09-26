@@ -421,7 +421,6 @@ void PatternGrid::mouseUp (const juce::MouseEvent&)
 
 PageMap::PageMap (BatidaProcessor& p, PatternGrid& g) : proc (p), grid (g)
 {
-    setTooltip ("Bars 1-4: click to show one; right-click to copy, paste or clear it");
     startTimerHz (15);
 }
 
