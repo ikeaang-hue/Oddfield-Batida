@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="pattern" format="1" madeWith="0.7.0">
+<BATIDA type="pattern" format="1" madeWith="0.7.1">
   <INFO name="Furnace B" author="Negative Space" category="" tags="techno"/>
   <PATTERN length="32" xy="-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-">
     <TRACK voice="0" length="32" noteLength="0.5" gate="1000100010001000100010001010111100000000000000000000000000000000"

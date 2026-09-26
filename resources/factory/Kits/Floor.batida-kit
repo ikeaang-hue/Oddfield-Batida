@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="kit" format="1" madeWith="0.7.0">
+<BATIDA type="kit" format="1" madeWith="0.7.1">
   <INFO name="Floor" author="Negative Space" category="" tags="warm,house"/>
   <KIT xy_x="0.349999994" xy_y="0.300000012" comp_amount="0.300000012"
        comp_attack="10" comp_release="120" comp_mix="0.699999988" comp_detector="Internal"

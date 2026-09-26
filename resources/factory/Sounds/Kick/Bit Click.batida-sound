@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="sound" format="1" madeWith="0.7.0">
+<BATIDA type="sound" format="1" madeWith="0.7.1">
   <INFO name="Bit Click" author="Negative Space" category="kick" tags="digital"/>
   <VOICE src_mode="FM" balance="0.5" level="2.2391715" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="296.868347"

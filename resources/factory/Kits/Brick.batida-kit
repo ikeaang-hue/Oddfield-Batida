@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="kit" format="1" madeWith="0.7.0">
+<BATIDA type="kit" format="1" madeWith="0.7.1">
   <INFO name="Brick" author="Negative Space" category="" tags="harsh,hip hop"/>
   <KIT xy_x="0.349999994" xy_y="0.5" comp_amount="0.200000003" comp_attack="10"
        comp_release="120" comp_mix="0.800000012" comp_detector="Internal"

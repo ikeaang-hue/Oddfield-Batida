@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="set" format="1" madeWith="0.7.0">
+<BATIDA type="set" format="1" madeWith="0.7.1">
   <INFO name="Bitrate" author="Negative Space" category="" tags="glitch"/>
   <KIT midi_mode="Drum map" master="-8" keys_voice="1" xy_x="0.899999976"
        xy_y="0.5" comp_amount="0.5" comp_attack="2" comp_release="120"

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="pattern" format="1" madeWith="0.7.0">
+<BATIDA type="pattern" format="1" madeWith="0.7.1">
   <INFO name="Breakbeat" author="Negative Space" category="" tags="breaks"/>
   <PATTERN length="16" xy="-,-,-,-,-,-,-,-,-,-,-,-,0.850:0.750,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-">
     <TRACK voice="0" length="16" noteLength="0.5" gate="1010000000110000000000000000000000000000000000000000000000000000"

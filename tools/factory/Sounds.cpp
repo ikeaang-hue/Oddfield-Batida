@@ -732,6 +732,233 @@ std::vector<Archetype> build()
              { "fm_feedback", 0.5f, 0.9f }, { "op2_ratio", 1.0f, 3.0f }, { "op3_ratio", 0.5f, 2.0f },
              { "amp_decay", 300.0f, 800.0f, true }, { "drive", 0.4f, 0.7f } },
            9, 2, { "harsh", "digital" } });
+
+    // Moods (after the second listen: the sets leaned too much on noise).
+    // Tonal recipes, one group per mood tag: neutral, synth-aggressive, neon,
+    // tender. Hats come from square-wave clusters or FM metal, snares from
+    // tuned bodies with at most a trace of noise; a result that measures
+    // noisier than `maxFlatness` is a dud.
+    auto mood = [&] (Archetype x, float maxFlat, float hot = 0.0f)
+    {
+        x.maxFlatness = maxFlat;
+        x.hotDb = hot;
+        add (std::move (x));
+    };
+    const Overrides squareHat { { "fm_algo", 7 }, { "op1_fixed", 1 }, { "op2_fixed", 1 }, { "op3_fixed", 1 }, { "op4_fixed", 1 },
+                                { "op1_wave", 0.75f }, { "op2_wave", 0.75f }, { "op3_wave", 0.75f }, { "op4_wave", 0.75f },
+                                { "op1_level", 0.6f }, { "op2_level", 0.6f }, { "op3_level", 0.6f }, { "op4_level", 0.6f },
+                                { "flt_type", 1 }, { "amp_release", 20.0f } };
+
+    // Neutral: clean and balanced.
+    mood ({ "neutral.kick", "kick", { "Kick" },
+            { { "fm_algo", 3 }, { "op2_ratio", 1.0f }, { "op2_decay", 20.0f }, { "op2_sustain", 0.0f }, { "amp_release", 50.0f } },
+            { { "fm_pitch", -30.0f, -27.0f }, { "pitch_amt", 14.0f, 22.0f }, { "pitch_decay", 40.0f, 90.0f, true },
+              { "amp_decay", 320.0f, 520.0f, true }, { "op2_level", 0.05f, 0.12f }, { "punch", 0.15f, 0.3f } },
+            10, 3, { "neutral" } }, 0.3f);
+    mood ({ "neutral.snare", "snare", { "Snare" },
+            { { "fm_algo", 5 }, { "op1_level", 0.6f }, { "op1_sustain", 0.0f }, { "op2_level", 0.35f }, { "op2_sustain", 0.0f },
+              { "op3_sustain", 0.0f }, { "op4_sustain", 0.0f }, { "amp_release", 40.0f }, { "punch", 0.25f } },
+            { { "fm_pitch", -5.0f, 0.0f }, { "op1_decay", 90.0f, 150.0f, true }, { "op2_ratio", 1.47f, 1.62f },
+              { "op2_decay", 60.0f, 110.0f, true }, { "op3_ratio", 4.1f, 5.3f }, { "op3_level", 0.3f, 0.45f },
+              { "op3_decay", 60.0f, 140.0f, true }, { "op4_ratio", 6.9f, 9.3f }, { "op4_level", 0.4f, 0.6f },
+              { "op4_decay", 40.0f, 90.0f, true }, { "fm_feedback", 0.15f, 0.3f }, { "pitch_amt", 4.0f, 8.0f },
+              { "pitch_decay", 25.0f, 40.0f }, { "amp_decay", 180.0f, 280.0f, true }, { "flt_cutoff", 9000.0f, 14000.0f, true } },
+            11, 3, { "neutral" } }, 0.3f);
+    mood ({ "neutral.rim", "snare", { "Rim" },
+            { { "fm_algo", 3 }, { "op2_sustain", 0.0f }, { "flt_type", 1 }, { "amp_release", 15.0f } },
+            { { "fm_pitch", 10.0f, 16.0f }, { "op2_ratio", 3.2f, 3.6f }, { "op2_level", 0.3f, 0.5f }, { "op2_decay", 10.0f, 20.0f },
+              { "amp_decay", 30.0f, 60.0f }, { "flt_cutoff", 300.0f, 500.0f, true } },
+            9, 2, { "neutral" } }, 0.3f);
+    mood ({ "neutral.hat", "hat", { "Hat" }, squareHat,
+            { { "op1_freq", 300.0f, 320.0f }, { "op2_freq", 540.0f, 560.0f }, { "op3_freq", 790.0f, 810.0f },
+              { "op4_freq", 1045.0f, 1080.0f }, { "flt_cutoff", 6500.0f, 9000.0f, true }, { "flt_res", 0.1f, 0.2f },
+              { "amp_decay", 35.0f, 80.0f, true } },
+            11, 3, { "neutral" } }, 0.45f);
+    mood ({ "neutral.openhat", "hat", { "Open Hat" }, squareHat,
+            { { "op1_freq", 300.0f, 320.0f }, { "op2_freq", 540.0f, 560.0f }, { "op3_freq", 790.0f, 810.0f },
+              { "op4_freq", 1045.0f, 1080.0f }, { "flt_cutoff", 6500.0f, 9000.0f, true }, { "flt_res", 0.1f, 0.2f },
+              { "amp_decay", 250.0f, 500.0f, true } },
+            9, 2, { "neutral" } }, 0.45f);
+    mood ({ "neutral.tom", "perc", { "Tom" },
+            { { "fm_algo", 3 }, { "op2_ratio", 2.0f }, { "op2_decay", 30.0f }, { "op2_sustain", 0.0f }, { "amp_release", 60.0f } },
+            { { "fm_pitch", -18.0f, -6.0f }, { "pitch_amt", 5.0f, 10.0f }, { "pitch_decay", 100.0f, 200.0f, true },
+              { "amp_decay", 250.0f, 500.0f, true }, { "op2_level", 0.05f, 0.1f } },
+            9, 2, { "neutral" } }, 0.3f);
+    mood ({ "neutral.bass", "bass", { "Bass" },
+            { { "play_mode", 1 }, { "fm_pitch", -24.0f }, { "fm_algo", 3 }, { "fm_harm", -1.0f }, { "op2_sustain", 0.2f },
+              { "amp_decay", 300.0f } },
+            { { "op2_ratio", 0.9f, 2.4f }, { "op2_level", 0.1f, 0.4f }, { "op2_decay", 100.0f, 500.0f, true },
+              { "amp_sustain", 0.6f, 0.95f }, { "amp_release", 60.0f, 200.0f, true },
+              { "flt_cutoff", 500.0f, 2500.0f, true }, { "glide", 0.0f, 40.0f } },
+            9, 2, { "neutral" } }, 0.3f);
+
+    // Synth-aggressive: saw, square and FM tones, driven hard; no noise.
+    mood ({ "synth.kick", "kick", { "Kick" },
+            { { "fm_algo", 3 }, { "op2_ratio", 1.0f }, { "op2_sustain", 0.0f }, { "drive_type", 1 }, { "punch", 0.4f },
+              { "amp_release", 40.0f } },
+            { { "fm_pitch", -29.0f, -25.0f }, { "pitch_amt", 24.0f, 38.0f }, { "pitch_decay", 25.0f, 60.0f, true },
+              { "amp_decay", 250.0f, 450.0f, true }, { "op2_level", 0.35f, 0.6f }, { "op2_decay", 30.0f, 80.0f, true },
+              { "op1_wave", 0.0f, 0.15f }, { "drive", 0.3f, 0.55f }, { "flt_cutoff", 5000.0f, 9000.0f, true } },
+            11, 3, { "synth-aggressive" } }, 0.3f, 2.0f);
+    mood ({ "synth.snare", "snare", { "Snare" },
+            { { "fm_algo", 5 }, { "op1_level", 0.5f }, { "op1_sustain", 0.0f }, { "op2_ratio", 1.5f }, { "op2_level", 0.3f },
+              { "op2_sustain", 0.0f }, { "op3_level", 0.4f }, { "op3_sustain", 0.0f }, { "op4_sustain", 0.0f },
+              { "drive_type", 1 }, { "amp_release", 40.0f } },
+            { { "op1_wave", 0.5f, 0.75f }, { "op1_decay", 80.0f, 150.0f, true }, { "op2_decay", 60.0f, 100.0f, true },
+              { "op3_ratio", 3.3f, 4.7f }, { "op3_decay", 80.0f, 160.0f, true }, { "op4_ratio", 5.5f, 8.5f },
+              { "op4_level", 0.5f, 0.8f }, { "op4_decay", 50.0f, 120.0f, true }, { "fm_feedback", 0.2f, 0.45f },
+              { "fm_pitch", -3.0f, 4.0f }, { "pitch_amt", 8.0f, 16.0f }, { "pitch_decay", 20.0f, 40.0f },
+              { "amp_decay", 150.0f, 260.0f, true }, { "drive", 0.35f, 0.6f }, { "punch", 0.4f, 0.6f } },
+            11, 3, { "synth-aggressive" } }, 0.35f, 2.0f);
+    mood ({ "synth.zap", "perc", { "Zap", "Laser" },
+            { { "op1_wave", 0.75f }, { "drive_type", 1 }, { "amp_release", 30.0f } },
+            { { "fm_pitch", 6.0f, 18.0f }, { "pitch_amt", 24.0f, 40.0f }, { "pitch_decay", 30.0f, 90.0f, true },
+              { "amp_decay", 90.0f, 220.0f, true }, { "drive", 0.3f, 0.5f }, { "flt_cutoff", 3000.0f, 7000.0f, true },
+              { "flt_res", 0.3f, 0.5f } },
+            9, 2, { "synth-aggressive" } }, 0.3f, 2.0f);
+    const Overrides fmHat { { "fm_algo", 4 }, { "op1_wave", 0.75f }, { "op2_wave", 0.75f }, { "op3_wave", 0.75f },
+                            { "op1_level", 0.5f }, { "op2_level", 0.5f }, { "op2_ratio", 1.48f }, { "op3_level", 0.5f },
+                            { "op3_ratio", 2.13f }, { "flt_type", 1 }, { "drive_type", 1 }, { "amp_release", 30.0f } };
+    mood ({ "synth.hat", "hat", { "Hat" }, fmHat,
+            { { "op4_ratio", 3.1f, 5.7f }, { "op4_level", 0.5f, 0.8f }, { "fm_pitch", 24.0f, 32.0f }, { "fm_feedback", 0.1f, 0.3f },
+              { "flt_cutoff", 6000.0f, 9000.0f, true }, { "amp_decay", 40.0f, 100.0f, true }, { "drive", 0.3f, 0.5f } },
+            9, 2, { "synth-aggressive" } }, 0.45f, 2.0f);
+    mood ({ "synth.openhat", "hat", { "Open Hat" }, fmHat,
+            { { "op4_ratio", 3.1f, 5.7f }, { "op4_level", 0.5f, 0.8f }, { "fm_pitch", 24.0f, 32.0f }, { "fm_feedback", 0.1f, 0.3f },
+              { "flt_cutoff", 6000.0f, 9000.0f, true }, { "amp_decay", 250.0f, 450.0f, true }, { "drive", 0.3f, 0.5f } },
+            9, 2, { "synth-aggressive" } }, 0.45f, 2.0f);
+    mood ({ "synth.stab", "bass", { "Stab" },
+            { { "fm_algo", 7 }, { "fm_pitch", -12.0f }, { "op1_wave", 0.5f }, { "op2_wave", 0.5f }, { "op3_wave", 0.5f },
+              { "op4_wave", 0.5f }, { "op1_level", 0.5f }, { "op2_level", 0.5f }, { "op3_ratio", 1.4983f }, { "op3_level", 0.35f },
+              { "op4_ratio", 2.0f }, { "op4_level", 0.3f }, { "op1_sustain", 0.1f }, { "op2_sustain", 0.1f },
+              { "op3_sustain", 0.1f }, { "op4_sustain", 0.1f }, { "drive_type", 1 }, { "amp_release", 80.0f } },
+            { { "op2_ratio", 1.006f, 1.012f }, { "op1_decay", 150.0f, 350.0f, true }, { "op2_decay", 150.0f, 350.0f, true },
+              { "op3_decay", 150.0f, 350.0f, true }, { "op4_decay", 150.0f, 350.0f, true }, { "amp_decay", 180.0f, 350.0f, true },
+              { "flt_cutoff", 1500.0f, 4000.0f, true }, { "flt_res", 0.3f, 0.5f }, { "drive", 0.3f, 0.55f } },
+            9, 2, { "synth-aggressive" } }, 0.3f, 2.0f);
+    mood ({ "synth.tom", "perc", { "Tom" },
+            { { "drive_type", 1 }, { "amp_release", 50.0f } },
+            { { "op1_wave", 0.6f, 0.75f }, { "fm_pitch", -14.0f, -2.0f }, { "pitch_amt", 10.0f, 20.0f },
+              { "pitch_decay", 60.0f, 160.0f, true }, { "amp_decay", 200.0f, 400.0f, true }, { "drive", 0.3f, 0.5f },
+              { "flt_cutoff", 2000.0f, 5000.0f, true } },
+            9, 2, { "synth-aggressive" } }, 0.3f, 2.0f);
+    mood ({ "synth.bass", "bass", { "Bass" },
+            { { "play_mode", 1 }, { "fm_pitch", -24.0f }, { "fm_algo", 3 }, { "fm_harm", -1.0f }, { "op1_wave", 0.5f },
+              { "op2_sustain", 0.3f }, { "amp_sustain", 0.85f }, { "amp_decay", 300.0f }, { "amp_release", 80.0f },
+              { "drive_type", 2 } },
+            { { "op2_ratio", 0.9f, 2.4f }, { "op2_level", 0.3f, 0.6f }, { "op2_decay", 100.0f, 300.0f, true },
+              { "drive", 0.2f, 0.4f }, { "flt_cutoff", 600.0f, 1800.0f, true }, { "flt_res", 0.3f, 0.6f },
+              { "glide", 20.0f, 70.0f } },
+            11, 3, { "synth-aggressive" } }, 0.3f, 2.0f);
+
+    // Neon: bright, glossy synth percussion, bells and chords.
+    mood ({ "neon.kick", "kick", { "Kick" },
+            { { "fm_algo", 3 }, { "op2_sustain", 0.0f }, { "amp_release", 40.0f }, { "punch", 0.3f } },
+            { { "fm_pitch", -28.0f, -25.0f }, { "pitch_amt", 20.0f, 30.0f }, { "pitch_decay", 30.0f, 60.0f, true },
+              { "amp_decay", 250.0f, 400.0f, true }, { "op2_ratio", 6.0f, 8.0f }, { "op2_level", 0.1f, 0.2f },
+              { "op2_decay", 5.0f, 10.0f } },
+            9, 2, { "neon" } }, 0.3f);
+    mood ({ "neon.snare", "snare", { "Snare" },
+            { { "fm_algo", 7 }, { "op1_wave", 0.25f }, { "op1_level", 0.6f }, { "op1_sustain", 0.0f }, { "op2_level", 0.3f },
+              { "op2_sustain", 0.0f }, { "op3_wave", 1.0f }, { "op3_sustain", 0.0f }, { "amp_release", 50.0f }, { "punch", 0.3f } },
+            { { "fm_pitch", -2.0f, 4.0f }, { "op1_decay", 120.0f, 200.0f, true }, { "op2_ratio", 2.3f, 2.8f },
+              { "op2_decay", 60.0f, 120.0f, true }, { "op3_level", 0.15f, 0.3f }, { "op3_decay", 150.0f, 250.0f, true },
+              { "pitch_amt", 8.0f, 12.0f }, { "pitch_decay", 20.0f, 35.0f }, { "amp_decay", 220.0f, 350.0f, true } },
+            11, 3, { "neon" } }, 0.35f);
+    mood ({ "neon.bell", "perc", { "Bell" },
+            { { "fm_algo", 3 }, { "op1_ratio", 1.0f }, { "op2_ratio", 3.5f }, { "op3_ratio", 1.0f }, { "op3_level", 0.5f },
+              { "op4_level", 0.3f }, { "op1_sustain", 0.0f }, { "op2_sustain", 0.0f }, { "op3_sustain", 0.0f },
+              { "op4_sustain", 0.0f }, { "amp_release", 300.0f } },
+            { { "fm_pitch", 12.0f, 24.0f }, { "op2_level", 0.4f, 0.6f }, { "op2_decay", 400.0f, 900.0f, true },
+              { "op4_ratio", 1.41f, 7.0f }, { "op4_decay", 300.0f, 800.0f, true }, { "op1_decay", 600.0f, 1400.0f, true },
+              { "op3_decay", 600.0f, 1400.0f, true }, { "amp_decay", 600.0f, 1400.0f, true } },
+            9, 2, { "neon" } }, 0.3f);
+    mood ({ "neon.chord", "texture", { "Chord" },
+            { { "fm_algo", 7 }, { "op1_ratio", 1.0f }, { "op2_ratio", 1.2599f }, { "op3_ratio", 1.4983f }, { "op4_ratio", 1.8877f },
+              { "op1_level", 0.45f }, { "op2_level", 0.45f }, { "op3_level", 0.45f }, { "op4_level", 0.45f },
+              { "op1_sustain", 0.2f }, { "op2_sustain", 0.2f }, { "op3_sustain", 0.2f }, { "op4_sustain", 0.2f },
+              { "amp_release", 200.0f } },
+            { { "fm_pitch", -12.0f, -5.0f }, { "op1_wave", 0.4f, 0.55f }, { "op2_wave", 0.4f, 0.55f }, { "op3_wave", 0.4f, 0.55f },
+              { "op4_wave", 0.4f, 0.55f }, { "op1_decay", 300.0f, 700.0f, true }, { "op2_decay", 300.0f, 700.0f, true },
+              { "op3_decay", 300.0f, 700.0f, true }, { "op4_decay", 300.0f, 700.0f, true }, { "amp_decay", 300.0f, 700.0f, true },
+              { "flt_cutoff", 2500.0f, 6000.0f, true }, { "flt_res", 0.2f, 0.35f } },
+            9, 2, { "neon" } }, 0.3f);
+    mood ({ "neon.tom", "perc", { "Tom" },
+            { { "amp_release", 60.0f }, { "flt_res", 0.2f } },
+            { { "op1_wave", 0.25f, 0.4f }, { "fm_pitch", -12.0f, 0.0f }, { "pitch_amt", 12.0f, 24.0f },
+              { "pitch_decay", 80.0f, 200.0f, true }, { "amp_decay", 250.0f, 500.0f, true }, { "flt_cutoff", 3000.0f, 8000.0f, true } },
+            9, 2, { "neon" } }, 0.3f);
+    mood ({ "neon.bass", "bass", { "Bass" },
+            { { "play_mode", 1 }, { "fm_pitch", -24.0f }, { "fm_algo", 7 }, { "op1_wave", 0.5f }, { "op1_level", 0.6f },
+              { "op2_wave", 0.5f }, { "op2_ratio", 2.0f }, { "op2_level", 0.25f }, { "amp_sustain", 0.8f }, { "amp_decay", 300.0f },
+              { "amp_release", 80.0f } },
+            { { "flt_cutoff", 900.0f, 2500.0f, true }, { "flt_res", 0.25f, 0.45f }, { "glide", 0.0f, 40.0f } },
+            9, 2, { "neon" } }, 0.3f);
+    mood ({ "neon.hat", "hat", { "Hat" },
+            { { "fm_algo", 3 }, { "op1_ratio", 1.0f }, { "op2_sustain", 0.0f }, { "op3_ratio", 1.41f }, { "op3_level", 0.5f },
+              { "op4_ratio", 13.0f }, { "op4_level", 0.5f }, { "op4_sustain", 0.0f }, { "op4_decay", 40.0f }, { "flt_type", 1 },
+              { "amp_release", 20.0f } },
+            { { "op2_ratio", 7.1f, 11.3f }, { "op2_level", 0.4f, 0.7f }, { "op2_decay", 20.0f, 60.0f }, { "fm_pitch", 30.0f, 38.0f },
+              { "flt_cutoff", 5000.0f, 8000.0f, true }, { "amp_decay", 30.0f, 90.0f, true } },
+            9, 2, { "neon" } }, 0.45f);
+    mood ({ "neon.pluck", "bass", { "Pluck", "Arp" },
+            { { "fm_algo", 3 }, { "op2_ratio", 1.0f }, { "op2_sustain", 0.0f }, { "amp_release", 60.0f } },
+            { { "op1_wave", 0.7f, 0.75f }, { "op2_level", 0.2f, 0.4f }, { "op2_decay", 60.0f, 150.0f, true },
+              { "fm_pitch", -12.0f, 0.0f }, { "amp_decay", 150.0f, 300.0f, true }, { "flt_cutoff", 1500.0f, 4000.0f, true },
+              { "flt_res", 0.4f, 0.6f } },
+            9, 2, { "neon" } }, 0.3f);
+
+    // Tender: soft, round and gentle.
+    mood ({ "tender.kick", "kick", { "Kick" },
+            { { "fm_algo", 3 }, { "amp_release", 60.0f } },
+            { { "fm_pitch", -30.0f, -27.0f }, { "pitch_amt", 6.0f, 12.0f }, { "pitch_decay", 50.0f, 120.0f, true },
+              { "amp_attack", 1.0f, 3.0f }, { "amp_decay", 300.0f, 550.0f, true }, { "flt_cutoff", 800.0f, 2000.0f, true } },
+            10, 3, { "tender", "warm" } }, 0.3f);
+    mood ({ "tender.snare", "snare", { "Snare" },
+            { { "fm_algo", 7 }, { "op1_level", 0.5f }, { "op1_sustain", 0.0f }, { "op2_wave", 0.25f }, { "op2_level", 0.35f },
+              { "op2_sustain", 0.0f }, { "op3_wave", 1.0f }, { "op3_sustain", 0.0f }, { "op4_level", 0.25f }, { "op4_sustain", 0.0f },
+              { "amp_release", 60.0f } },
+            { { "fm_pitch", 2.0f, 8.0f }, { "op1_decay", 100.0f, 180.0f, true }, { "op2_ratio", 1.5f, 1.8f },
+              { "op2_decay", 80.0f, 140.0f, true }, { "op3_level", 0.1f, 0.2f }, { "op3_decay", 120.0f, 220.0f, true },
+              { "op4_ratio", 2.2f, 2.8f }, { "op4_decay", 40.0f, 90.0f, true },
+              { "amp_attack", 2.0f, 6.0f }, { "amp_decay", 180.0f, 300.0f, true }, { "flt_cutoff", 5000.0f, 8000.0f, true } },
+            9, 2, { "tender" } }, 0.3f);
+    mood ({ "tender.rim", "snare", { "Knock", "Rim" },
+            { { "fm_algo", 3 }, { "op2_ratio", 2.7f }, { "op2_decay", 10.0f }, { "op2_sustain", 0.0f }, { "amp_attack", 1.0f },
+              { "amp_release", 20.0f } },
+            { { "fm_pitch", 5.0f, 12.0f }, { "op2_level", 0.1f, 0.2f }, { "amp_decay", 30.0f, 70.0f },
+              { "flt_cutoff", 3000.0f, 5000.0f, true } },
+            9, 2, { "tender" } }, 0.3f);
+    mood ({ "tender.hat", "hat", { "Hat" },
+            { { "fm_algo", 4 }, { "op1_level", 0.4f }, { "op2_level", 0.4f }, { "op2_ratio", 1.48f }, { "op3_level", 0.4f },
+              { "op3_ratio", 2.13f }, { "op4_ratio", 3.3f }, { "flt_type", 1 }, { "flt_cutoff", 3000.0f }, { "amp_release", 20.0f } },
+            { { "fm_pitch", 36.0f, 42.0f }, { "op4_level", 0.2f, 0.35f }, { "amp_attack", 0.5f, 1.0f },
+              { "amp_decay", 25.0f, 60.0f, true } },
+            9, 2, { "tender" } }, 0.45f);
+    mood ({ "tender.marimba", "perc", { "Mallet", "Marimba" },
+            { { "fm_algo", 3 }, { "op2_ratio", 4.0f }, { "op2_sustain", 0.0f }, { "op3_ratio", 4.0f }, { "op3_sustain", 0.0f },
+              { "op3_decay", 50.0f }, { "amp_release", 100.0f } },
+            { { "fm_pitch", 0.0f, 12.0f }, { "op2_level", 0.25f, 0.45f }, { "op2_decay", 30.0f, 80.0f, true },
+              { "op3_level", 0.05f, 0.12f }, { "amp_decay", 300.0f, 700.0f, true } },
+            9, 2, { "tender" } }, 0.3f);
+    mood ({ "tender.kalimba", "perc", { "Kalimba", "Tine" },
+            { { "fm_algo", 3 }, { "op2_sustain", 0.0f }, { "amp_release", 200.0f } },
+            { { "fm_pitch", 12.0f, 24.0f }, { "op2_ratio", 5.4f, 6.3f }, { "op2_level", 0.2f, 0.35f },
+              { "op2_decay", 40.0f, 100.0f, true }, { "amp_decay", 400.0f, 900.0f, true } },
+            9, 2, { "tender" } }, 0.3f);
+    mood ({ "tender.bass", "bass", { "Bass" },
+            { { "play_mode", 1 }, { "fm_pitch", -24.0f }, { "fm_algo", 3 }, { "op2_ratio", 2.0f }, { "amp_decay", 400.0f } },
+            { { "op1_wave", 0.0f, 0.25f }, { "op2_level", 0.0f, 0.15f }, { "amp_sustain", 0.6f, 0.9f },
+              { "amp_attack", 5.0f, 15.0f }, { "amp_release", 150.0f, 300.0f, true },
+              { "flt_cutoff", 300.0f, 1200.0f, true }, { "glide", 0.0f, 50.0f } },
+            9, 2, { "tender", "warm" } }, 0.3f);
+    mood ({ "tender.pad", "texture", { "Pad" },
+            { { "play_mode", 1 }, { "fm_pitch", -12.0f }, { "fm_algo", 7 }, { "op1_wave", 0.25f }, { "op2_wave", 0.25f },
+              { "op3_wave", 0.25f }, { "op4_wave", 0.25f }, { "op1_level", 0.4f }, { "op2_level", 0.4f }, { "op3_ratio", 1.4983f },
+              { "op3_level", 0.3f }, { "op4_ratio", 2.0f }, { "op4_level", 0.2f }, { "amp_sustain", 0.9f } },
+            { { "op2_ratio", 1.002f, 1.005f }, { "amp_attack", 200.0f, 600.0f, true }, { "amp_release", 800.0f, 1600.0f, true },
+              { "flt_cutoff", 1000.0f, 2500.0f, true } },
+            9, 2, { "tender", "warm" } }, 0.3f);
     return a;
 }
 
@@ -758,6 +985,12 @@ const Archetype* findArchetype (const std::string& id)
     return nullptr;
 }
 
+const juce::StringArray& moodTags()
+{
+    static const juce::StringArray tags { "neutral", "synth-aggressive", "neon", "tender" };
+    return tags;
+}
+
 float loudnessTarget (const std::string& id)
 {
     // K-weighted, the loudest 50 ms, dry. Measured against the neutral kit
@@ -772,7 +1005,8 @@ float loudnessTarget (const std::string& id)
     };
     if (const auto it = byId.find (id); it != byId.end())
         return it->second;
-    const auto category = id.substr (0, id.find ('.'));
+    const auto* archetype = findArchetype (id);
+    const auto category = archetype != nullptr ? archetype->category : id.substr (0, id.find ('.'));
     if (category == "kick") return -4.5f;
     if (category == "bass") return -8.0f;
     if (category == "snare") return -9.0f;
@@ -798,6 +1032,7 @@ bool fitsCategory (const Archetype& a, const Features& f, juce::String* why)
     if (c == "bass" && f.centroidHz > 3000.0f) return fail ("too bright for a bass");
     if (c == "fx" && f.lengthMs < 80.0f) return fail ("too short for FX");
     if (c == "texture" && f.lengthMs < 150.0f) return fail ("too short for a texture");
+    if (f.flatness > a.maxFlatness) return fail ("too noisy for a tonal recipe");
     return true;
 }
 
@@ -819,10 +1054,12 @@ juce::StringArray guessTags (const Archetype& a, const VoiceParams& p, const Fea
         tags.addIfNotAlreadyThere ("metallic");
     if (f.centroidHz > 6000.0f && f.flatness > 0.45f && a.category != "hat" && a.category != "fx")
         tags.addIfNotAlreadyThere ("harsh");
-    if (tags.isEmpty() && f.centroidHz < 1200.0f && p[vp::Drive] < 0.3f)
+    // Every sound gets a character (a mood tag isn't one).
+    auto hasCharacter = [&] { for (const auto& t : tags) if (characterTags().contains (t)) return true; return false; };
+    if (! hasCharacter() && f.centroidHz < 1200.0f && p[vp::Drive] < 0.3f)
         tags.add ("warm");
-    if (tags.isEmpty())
-        tags.add ("organic");
+    if (! hasCharacter())
+        tags.add (f.inharmonic > 0.3f ? "metallic" : "organic");
 
     // Opposites can't both hold; the recipe's own aim wins.
     if (tags.contains ("warm") && tags.contains ("harsh"))
@@ -1065,6 +1302,10 @@ void nameCandidates (std::vector<Candidate*>& list, const std::map<juce::String,
 
     // Descriptors (no kit names among them, so a sound never reads as a kit).
     const std::map<juce::String, std::vector<const char*>> byTag {
+        { "neutral", { "Clean", "Even", "Pure", "Simple", "Level", "Steady", "Balanced" } },
+        { "synth-aggressive", { "Saw", "Pulse", "Square", "Synth", "Laser", "Fuzz", "Razor" } },
+        { "neon", { "Neon", "Prism", "Chroma", "Lumen", "Halo", "Flash", "Beam" } },
+        { "tender", { "Tender", "Feather", "Gentle", "Cotton", "Silk", "Velour", "Mellow" } },
         { "warm", { "Warm", "Tape", "Round", "Soft", "Mellow", "Amber", "Plush" } },
         { "harsh", { "Raw", "Burnt", "Hard", "Rough", "Harsh", "Jagged", "Scorched" } },
         { "digital", { "Bit", "Grain", "Pixel", "Byte", "Data", "Lo-Res", "Stepped" } },

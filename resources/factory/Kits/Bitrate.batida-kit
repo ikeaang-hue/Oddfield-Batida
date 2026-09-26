@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="kit" format="1" madeWith="0.7.0">
+<BATIDA type="kit" format="1" madeWith="0.7.1">
   <INFO name="Bitrate" author="Negative Space" category="" tags="digital,glitch"/>
   <KIT xy_x="0.899999976" xy_y="0.5" comp_amount="0.5" comp_attack="2"
        comp_release="120" comp_mix="1" comp_detector="Internal" comp_follow="1"

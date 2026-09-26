@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="set" format="1" madeWith="0.7.0">
+<BATIDA type="set" format="1" madeWith="0.7.1">
   <INFO name="Neutral Breakbeat" author="Negative Space" category=""
         tags="warm,organic"/>
   <KIT midi_mode="Drum map" master="-8" keys_voice="1" xy_x="0.5" xy_y="0.200000003"

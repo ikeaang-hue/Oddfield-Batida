@@ -146,6 +146,8 @@ juce_add_binary_data(BatidaFonts
 
 # The factory library (resources/factory, written by BatidaFactory), zipped
 # at build time and built into the plugin; Batida writes it out on first use.
+# resources/factory-version.txt changes with every new factory, so the zip
+# (which lists the folder as it builds) is made again even for new files.
 file(GLOB_RECURSE BATIDA_FACTORY_FILES CONFIGURE_DEPENDS RELATIVE ${CMAKE_SOURCE_DIR}/resources/factory
      ${CMAKE_SOURCE_DIR}/resources/factory/*)
 list(FILTER BATIDA_FACTORY_FILES EXCLUDE REGEX "(^|/)\\.")
@@ -153,10 +155,9 @@ list(TRANSFORM BATIDA_FACTORY_FILES PREPEND ${CMAKE_SOURCE_DIR}/resources/factor
 set(BATIDA_FACTORY_ZIP ${CMAKE_BINARY_DIR}/factory/Factory.zip)
 add_custom_command(OUTPUT ${BATIDA_FACTORY_ZIP}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/factory
-    COMMAND ${CMAKE_COMMAND} -E rm -f ${BATIDA_FACTORY_ZIP}
-    COMMAND ${CMAKE_COMMAND} -E tar cf ${BATIDA_FACTORY_ZIP} --format=zip -- ${BATIDA_FACTORY_FILES}
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/resources/factory
-    DEPENDS ${BATIDA_FACTORY_DEPENDS}
+    COMMAND ${CMAKE_COMMAND} -DSOURCE=${CMAKE_SOURCE_DIR}/resources/factory -DOUTPUT=${BATIDA_FACTORY_ZIP}
+            -P ${CMAKE_SOURCE_DIR}/cmake/ZipFactory.cmake
+    DEPENDS ${BATIDA_FACTORY_DEPENDS} ${CMAKE_SOURCE_DIR}/resources/factory-version.txt ${CMAKE_SOURCE_DIR}/cmake/ZipFactory.cmake
     COMMENT "Zipping the factory library"
     VERBATIM)
 add_custom_target(BatidaFactoryZip DEPENDS ${BATIDA_FACTORY_ZIP})

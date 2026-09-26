@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="kit" format="1" madeWith="0.7.0">
+<BATIDA type="kit" format="1" madeWith="0.7.1">
   <INFO name="Splinter" author="Negative Space" category="" tags="harsh,breaks"/>
   <KIT xy_x="0.649999976" xy_y="0.550000012" comp_amount="0.200000003"
        comp_attack="3" comp_release="120" comp_mix="1" comp_detector="Internal"

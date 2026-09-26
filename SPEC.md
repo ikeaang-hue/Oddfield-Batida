@@ -219,6 +219,8 @@ the other channels stay fully chromatic for the Keys Sound.
 - **Styles:** techno, breakbeat and glitch at the core, with the most kits; house, garage,
   hip hop and trap as well. Kits, patterns and sets carry their style as a tag, so search finds
   them. There is no separate style filter.
+- **Moods:** four more tags, *neutral*, *synth-aggressive*, *neon* and *tender*, each with its own
+  tonal sounds (built from tones, not noise), a kit and a set.
 - **Method:** an offline tool (`BatidaFactory`) built on the same engine.
   1. Archetype recipes per category.
   2. Guided variations around each archetype.

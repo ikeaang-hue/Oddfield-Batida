@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<BATIDA type="sound" format="1" madeWith="0.7.0">
+<BATIDA type="sound" format="1" madeWith="0.7.1">
   <INFO name="Glass Hiss" author="Negative Space" category="texture"
         tags="organic"/>
   <VOICE src_mode="FM" balance="0.5" level="-0.844223022" pan="0" vel_sens="0.699999988"

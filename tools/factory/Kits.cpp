@@ -3,7 +3,8 @@
 #include <cstring>
 
 // The factory kits (SPEC §11): the neutral kit, then 35 more across techno,
-// breaks, glitch, house, garage, hip hop and trap. Each
+// breaks, glitch, house, garage, hip hop and trap, and one per mood (neutral,
+// synth-aggressive, neon, tender). Each
 // takes the reference layout (1 kick · 2 rim/perc · 3 snare · 4 clap ·
 // 5 perc/tom · 6 bass · 7 closed hat · 8 open hat) unless its style needs a
 // different sound in a slot, and then the replacement keeps the slot's job.
@@ -1008,6 +1009,113 @@ std::vector<KitConcept> build()
                  .note (B, 1.0f); },
         "Smoke", 135.0f, 0.5f });
 
+    // Moods: one kit per mood tag, built from the tonal recipes.
+    k.push_back ({ "Balance", "neutral", { "neutral", "organic" },
+        { { { "Kick", { "neutral.kick" }, {} },
+            { "Rim", { "neutral.rim" }, {}, -3.0f, {}, 0.25f },
+            { "Snare", { "neutral.snare" }, {} },
+            { "Tom 2", { "neutral.tom" }, {}, -3.0f, { { "fm_pitch", -4.0f } }, 0.3f },
+            { "Tom", { "neutral.tom" }, {}, -3.0f, {}, -0.3f },
+            { "Bass", { "neutral.bass" }, {}, -2.0f },
+            { "Hat", { "neutral.hat" }, {}, -1.0f, {}, -0.1f },
+            { "Open Hat", { "neutral.openhat" }, {}, -3.0f, {}, 0.1f } } },
+        { { "xy_x", 0.4f }, { "xy_y", 0.2f }, { "comp_amount", 0.25f } },
+        {}, {},
+        [] { return (Pattern) P (16)
+                 .row (K, "X.....x...X.....")
+                 .row (R, "..o.....o.....o.")
+                 .row (S, "....X.......X...")
+                 .row (C, "......o.....o.o.")
+                 .row (T, "...o.......o....")
+                 .row (B, "X.....x...X..x..")
+                 .row (H, "x.x.x.x.x.x.x.x.")
+                 .row (O, "..............o.")
+                 .pitch (C, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0 })
+                 .pitch (B, { 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, -2, 0, 0, 5 }); },
+        "Balance", 112.0f, 0.52f });
+
+    k.push_back ({ "Surge", "synth-aggressive", { "synth-aggressive", "harsh" },
+        { { { "Kick", { "synth.kick" }, {} },
+            { "Zap", { "synth.zap" }, {}, -5.0f, {}, -0.3f },
+            { "Snare", { "synth.snare" }, {} },
+            { "Stab", { "synth.stab" }, {}, -3.0f, {}, 0.2f },
+            { "Tom", { "synth.tom" }, {}, -4.0f, {}, 0.3f },
+            { "Bass", { "synth.bass" }, {}, -1.0f },
+            { "Hat", { "synth.hat" }, {}, -1.0f, {}, -0.1f },
+            { "Open Hat", { "synth.openhat" }, {}, -3.0f, {}, 0.1f } } },
+        { { "xy_x", 0.7f }, { "xy_y", 0.45f }, { "comp_amount", 0.2f }, { "dist_drive", 0.2f }, { "exc_amount", 0.1f } },
+        [] (MovementData& m, auto& g) { modulate (m, g, 0, ShapePreset::Triangle, k2Bars, false, vp::FltCutoff, 0.3f, 5); },
+        {},
+        [] { return (Pattern) P (16)
+                 .row (K, "X...X..xX...X.x.")
+                 .row (R, "..o...?...o...3.")
+                 .row (S, "....X.......X...")
+                 .row (C, "x.....x...x.....")
+                 .row (T, "..........o.o.oo")
+                 .row (B, "x.xx.x.xx.x.x.xx")
+                 .row (H, "xoxoxoxoxoxoxoxo")
+                 .row (O, "..x...x...x...x.")
+                 .pitch (R, { 0, 0, 7, 0, 0, 0, 12, 0, 0, 0, 5, 0, 0, 0, 10 })
+                 .pitch (C, { 0, 0, 0, 0, 0, 0, -2, 0, 0, 0, 3 })
+                 .pitch (T, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 3, 0, 0, -2 })
+                 .pitch (B, { 0, 0, 12, 0, 0, 3, 0, 0, 12, 0, -2, 0, 0, 0, 5, 7 })
+                 .note (B, 0.6f); },
+        "Surge", 128.0f, 0.5f });
+
+    k.push_back ({ "Glow", "neon", { "neon", "digital" },
+        { { { "Kick", { "neon.kick" }, {} },
+            { "Bell", { "neon.bell" }, {}, -5.0f, {}, -0.3f },
+            { "Snare", { "neon.snare" }, {} },
+            { "Chord", { "neon.chord" }, {}, -3.0f, { { "fm_pitch", -12.0f } } },
+            { "Tom", { "neon.tom" }, {}, -3.0f, {}, 0.3f },
+            { "Bass", { "neon.bass" }, {}, -2.0f },
+            { "Hat", { "neon.hat" }, {}, -2.0f, {}, -0.1f },
+            { "Arp", { "neon.pluck" }, {}, -5.0f, { { "fm_pitch", 0.0f } }, 0.25f } } },
+        { { "xy_x", 0.45f }, { "xy_y", 0.25f }, { "comp_amount", 0.25f }, { "exc_amount", 0.2f }, { "eq_high", 1.5f } },
+        [] (MovementData& m, auto& g) { modulate (m, g, 0, ShapePreset::Sine, k4Bars, false, vp::FltCutoff, 0.3f, 7); },
+        {},
+        [] { return (Pattern) P (16)
+                 .row (K, "X...X...X...X...")
+                 .row (R, "x..x..x.....x...")
+                 .row (S, "....X.......X...")
+                 .row (C, "x.........x.....")
+                 .row (T, "..........x.x.x.")
+                 .row (B, "x.x.x.x.x.x.x.x.")
+                 .row (H, "..x...x...x...x.")
+                 .row (O, "xoxxoxxoxxoxxoxo")
+                 .pitch (R, { 7, 0, 0, 12, 0, 0, 5, 0, 0, 0, 0, 0, 3 })
+                 .pitch (C, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -4 })
+                 .pitch (T, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 3, 0, 0 })
+                 .pitch (B, { 0, 0, 12, 0, 0, 0, 12, 0, -4, 0, 8, 0, -4, 0, 8, 0 })
+                 .pitch (O, { 0, 7, 12, 15, 12, 7, 0, 7, 12, 19, 12, 7, 3, 7, 12, 15 }); },
+        "Glow", 118.0f, 0.5f });
+
+    k.push_back ({ "Hush", "tender", { "tender", "warm" },
+        { { { "Kick", { "tender.kick" }, {} },
+            { "Knock", { "tender.rim" }, {}, -3.0f, {}, 0.25f },
+            { "Snare", { "tender.snare" }, {} },
+            { "Pad", { "tender.pad" }, {}, -4.0f, { { "play_mode", 0 } } }, // one-shot: a swell and a slow release
+            { "Mallet", { "tender.marimba" }, {}, -3.0f, {}, -0.25f },
+            { "Bass", { "tender.bass" }, {}, -2.0f },
+            { "Hat", { "tender.hat" }, {}, -2.0f, {}, -0.15f },
+            { "Kalimba", { "tender.kalimba" }, {}, -5.0f, {}, 0.3f } } },
+        { { "xy_x", 0.15f }, { "xy_y", 0.15f }, { "comp_amount", 0.2f }, { "eq_lp", 9000.0f }, { "eq_high", -2.0f } },
+        [] (MovementData& m, auto& g) { modulate (m, g, 0, ShapePreset::Sine, k8Bars, false, vp::FltCutoff, 0.2f, 3); },
+        {},
+        [] { return (Pattern) P (16)
+                 .row (K, "X.......x.x.....")
+                 .row (R, "..o.......o....o")
+                 .row (S, "....x.......x...")
+                 .row (C, "x...............")
+                 .row (T, "x..x..x...x..x..")
+                 .row (B, "X.......x.x.....")
+                 .row (H, "o.g.o.g.o.g.o.g.")
+                 .row (O, ".......x.......x")
+                 .pitch (T, { 0, 0, 0, 3, 0, 0, 7, 0, 0, 0, 5, 0, 0, 3 })
+                 .pitch (B, { 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, -4 })
+                 .pitch (O, { 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 10 }); },
+        "Hush", 86.0f, 0.58f });
+
     return k;
 }
 } // namespace
@@ -1150,6 +1258,55 @@ const std::vector<ExtraPattern>& extraPatterns()
               .pitch (T, { 0, 0, 0, 3, 0, 0, 7, 0, 0, 0, 5, 0, 3, 0, 0, 0, 0, 0, 0, 3, 0, 0, 10, 0, 0, 0, 7, 0, 5, 0, 3, 0 })
               .pitch (B, { 0, 0, 0, 0, 0, 0, -2, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 3 })
               .note (B, 1.0f); } },
+        { "Balance B", "neutral", [] { return (Pattern) P (32)
+              .row (K, "X.....x...X.....X.....x.x.X.....")
+              .row (R, "..o.....o.....o...o.....o...o.o.")
+              .row (S, "....X.......X.......X.......X...")
+              .row (C, "......o.....o.o.............o.oo")
+              .row (T, "...o.......o...............o....")
+              .row (B, "X.....x...X..x..X.....x.....x...")
+              .row (H, "x.x.x.x.x.x.x.x.x.x.x.x.x.x.xxxx")
+              .row (O, "..............o...........o.....")
+              .pitch (C, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 5, 3 })
+              .pitch (B, { 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, -2, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, -2 }); } },
+        { "Surge B", "synth-aggressive", [] { return (Pattern) P (32)
+              .row (K, "X...X..xX...X.x.X...X..xX.x.XXXX")
+              .row (R, "..o...?...o...3...o...?...3.3.4.")
+              .row (S, "....X.......X.......X.......X.2.")
+              .row (C, "x.....x...x.....x.....x...x.x...")
+              .row (B, "x.xx.x.xx.x.x.xxx.xx.x.xx.x.x.xx")
+              .row (H, "xoxoxoxoxoxoxoxoxxxxxxxxxxxxxxxx")
+              .pitch (R, { 0, 0, 7, 0, 0, 0, 12, 0, 0, 0, 5, 0, 0, 0, 10, 0, 0, 0, 7, 0, 0, 0, 12, 0, 0, 0, 15, 0, 17, 0, 19 })
+              .pitch (C, { 0, 0, 0, 0, 0, 0, -2, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 3, 0, 7 })
+              .pitch (B, { 0, 0, 12, 0, 0, 3, 0, 0, 12, 0, -2, 0, 0, 0, 5, 7, 0, 0, 12, 0, 0, 3, 0, 0, 12, 0, 5, 0, 7, 0, 10, 12 })
+              .note (B, 0.6f)
+              .xy (24, 0.8f, 0.6f).xy (28, 0.9f, 0.8f).xy (30, 1.0f, 0.95f); } },
+        { "Glow B", "neon", [] { return (Pattern) P (32)
+              .row (K, "................X...X...X...X...")
+              .row (R, "x..x..x.....x...x..x..x.....x..x")
+              .row (S, "............................X.2.")
+              .row (C, "x.........x.....x.........x.....")
+              .row (B, "................x.x.x.x.x.x.x.x.")
+              .row (H, "..x...x...x...x...x...x...x...x.")
+              .row (O, "xoxxoxxoxxoxxoxoxoxxoxxoxxoxxoxo")
+              .pitch (R, { 7, 0, 0, 12, 0, 0, 5, 0, 0, 0, 0, 0, 3, 0, 0, 0, 7, 0, 0, 12, 0, 0, 15, 0, 0, 0, 0, 0, 12, 0, 0, 10 })
+              .pitch (C, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -4, 0, 0, 0, 0, 0, -7, 0, 0, 0, 0, 0, 0, 0, 0, 0, -2 })
+              .pitch (B, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -7, 0, 5, 0, -7, 0, 5, 0, -2, 0, 10, 0, -2, 0, 10, 0 })
+              .pitch (O, { 0, 7, 12, 15, 12, 7, 0, 7, 12, 19, 12, 7, 3, 7, 12, 15, -5, 2, 7, 10, 7, 2, -5, 2, -2, 5, 10, 14, 10, 5, -2, 5 })
+              .xy (0, 0.45f, 0.1f).xy (16, 0.5f, 0.35f); } },
+        { "Hush B", "tender", [] { return (Pattern) P (32)
+              .row (K, "X.......x.x.....X.........x.....")
+              .row (R, "..o.......o....o..o.......o...o.")
+              .row (S, "....x.......x.......x.......x...")
+              .row (C, "x...............x...............")
+              .row (T, "x..x..x...x..x..x..x..x...x..x.x")
+              .row (B, "X.......x.x.....X.......x.......")
+              .row (H, "o.g.o.g.o.g.o.g.o.g.o.g.o.g.o.g.")
+              .row (O, ".......x.......x.......x....x..x")
+              .pitch (T, { 0, 0, 0, 3, 0, 0, 7, 0, 0, 0, 5, 0, 0, 3, 0, 0, -2, 0, 0, 2, 0, 0, 5, 0, 0, 0, 3, 0, 0, 2, 0, 0 })
+              .pitch (B, { 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, -4, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, 0, -2 })
+              .pitch (C, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -5 })
+              .pitch (O, { 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 5, 0, 0, 3 }); } },
     };
     return list;
 }
@@ -1172,6 +1329,10 @@ const std::vector<SetSpec>& setSpecs()
         { "Rush", "Rush", { "Rush", "Rush B", "Shuffle", "Weight" }, 134.0f, 0.6f, { "garage", "harsh" } },
         { "Brick", "Brick", { "Brick", "Brick B", "Sepia", "Faded" }, 92.0f, 0.58f, { "hip hop", "harsh" } },
         { "Riot", "Riot", { "Riot", "Riot B", "Smoke", "Smoke B" }, 145.0f, 0.5f, { "trap", "harsh" } },
+        { "Balance", "Balance", { "Balance", "Balance B" }, 112.0f, 0.52f, { "neutral" } },
+        { "Surge", "Surge", { "Surge", "Surge B" }, 128.0f, 0.5f, { "synth-aggressive" } },
+        { "Glow", "Glow", { "Glow", "Glow B" }, 118.0f, 0.5f, { "neon" } },
+        { "Hush", "Hush", { "Hush", "Hush B" }, 86.0f, 0.58f, { "tender" } },
     };
     return sets;
 }

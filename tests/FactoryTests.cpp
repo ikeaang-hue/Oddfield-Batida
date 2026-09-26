@@ -58,9 +58,9 @@ public:
         const auto patterns = lib.filtered (PresetType::Pattern, all);
         const auto sets = lib.filtered (PresetType::Set, all);
         expect (sounds.size() >= 150, juce::String ((int) sounds.size()) + " sounds");
-        expectEquals ((int) kits.size(), 36, "kits");
-        expectEquals ((int) patterns.size(), 50, "patterns");
-        expectEquals ((int) sets.size(), 15, "sets");
+        expectEquals ((int) kits.size(), 40, "kits");
+        expectEquals ((int) patterns.size(), 58, "patterns");
+        expectEquals ((int) sets.size(), 19, "sets");
         expect (Library::archiveVersion() >= 2, "a version-2 factory or newer");
         expect (FactoryData::Factory_zipSize < 12 * 1024 * 1024, "the archive stays small");
         for (const auto* name : { "Kits/Neutral.batida-kit", "Sounds/Kick/Kick.batida-sound", "Patterns/Breakbeat.batida-pattern",
@@ -75,6 +75,16 @@ public:
             f.search = style;
             expect ((int) lib.filtered (PresetType::Kit, f).size() >= least, style);
             expect ((int) lib.filtered (PresetType::Pattern, f).size() >= least, style);
+        }
+
+        beginTest ("Each mood has its sounds, a kit and a set");
+        for (const auto* mood : { "neutral", "synth-aggressive", "neon", "tender" })
+        {
+            LibraryFilter f;
+            f.search = mood;
+            expect ((int) lib.filtered (PresetType::Sound, f).size() >= 12, mood);
+            expect ((int) lib.filtered (PresetType::Kit, f).size() >= 1, mood);
+            expect ((int) lib.filtered (PresetType::Set, f).size() >= 1, mood);
         }
 
         beginTest ("Every sound loads and plays cleanly, and sounds as it was kept");

@@ -79,6 +79,7 @@ struct Archetype
     SampleMaker sample;   // set for Sample and Layer sounds
     bool loop = false;    // the sample is a loop (for Slice or looping)
     float hotDb = 0.0f;   // louder than the category (the aggressive recipes)
+    float maxFlatness = 1.0f; // below 1: a tonal recipe, and a noisier result is a dud
 };
 
 const std::vector<Archetype>& archetypes();
@@ -86,6 +87,9 @@ const Archetype* findArchetype (const std::string& id);
 
 // Per-category loudness targets (dB, the loudest 50 ms, dry) and dud rules.
 float loudnessTarget (const std::string& archetypeId);
+
+// Moods: tags beyond the character tags, one per mood recipe and its kit and set.
+const juce::StringArray& moodTags(); // neutral, synth-aggressive, neon, tender
 bool fitsCategory (const Archetype& a, const Features& f, juce::String* why = nullptr);
 juce::StringArray guessTags (const Archetype& a, const VoiceParams& p, const Features& f);
 

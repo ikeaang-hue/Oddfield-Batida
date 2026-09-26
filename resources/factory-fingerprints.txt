@@ -6,9 +6,13 @@ Sounds/Bass/Bright Bass.batida-sound	-8.00	561.3	342.4	570.0
 Sounds/Bass/Bright Pluck.batida-sound	-8.00	344.3	267.0	117.5
 Sounds/Bass/Bright Reese.batida-sound	-5.00	137.1	345.5	132.5
 Sounds/Bass/Burnt Reese.batida-sound	-5.00	92.1	347.0	117.5
+Sounds/Bass/Chroma Bass.batida-sound	-8.00	191.0	315.0	65.0
 Sounds/Bass/Dark 808.batida-sound	-8.00	67.8	888.8	65.0
 Sounds/Bass/Dark Growl.batida-sound	-8.00	86.6	340.2	65.0
 Sounds/Bass/Dark Sub.batida-sound	-8.00	79.5	305.1	65.0
+Sounds/Bass/Dry Bass.batida-sound	-6.00	136.7	330.8	125.0
+Sounds/Bass/Even Bass.batida-sound	-8.00	65.6	357.0	65.0
+Sounds/Bass/Feather Bass.batida-sound	-8.00	65.5	380.6	65.0
 Sounds/Bass/Full 808.batida-sound	-5.00	84.1	1049.1	65.0
 Sounds/Bass/Glass Acid.batida-sound	-8.00	245.4	295.5	130.0
 Sounds/Bass/Hard 808.batida-sound	-8.00	108.2	1001.9	87.5
@@ -17,18 +21,27 @@ Sounds/Bass/Long 808.batida-sound	-8.00	71.9	1116.3	65.0
 Sounds/Bass/Long Reese.batida-sound	-5.00	105.3	345.3	132.5
 Sounds/Bass/Long Sub.batida-sound	-8.00	65.4	342.4	65.0
 Sounds/Bass/Low 808.batida-sound	-8.00	70.3	570.8	65.0
+Sounds/Bass/Neon Arp.batida-sound	-8.00	241.1	203.0	143.3
+Sounds/Bass/Prism Bass.batida-sound	-8.00	217.6	314.7	65.0
+Sounds/Bass/Prism Pluck.batida-sound	-8.00	393.1	239.1	203.8
+Sounds/Bass/Pulse Stab.batida-sound	-6.00	233.9	185.7	266.4
 Sounds/Bass/Raw 808.batida-sound	-8.00	120.7	1133.5	105.0
 Sounds/Bass/Raw Bass.batida-sound	-8.00	154.5	339.2	130.0
 Sounds/Bass/Rough 808.batida-sound	-8.00	80.1	759.5	65.0
+Sounds/Bass/Round Bass.batida-sound	-6.00	73.2	330.5	65.0
 Sounds/Bass/Round Pluck.batida-sound	-8.00	121.3	314.4	97.5
+Sounds/Bass/Saw Bass.batida-sound	-6.00	254.2	332.8	190.0
 Sounds/Bass/Short Acid.batida-sound	-8.00	164.8	303.8	130.0
+Sounds/Bass/Short Bass.batida-sound	-8.00	68.9	303.1	65.0
 Sounds/Bass/Short Growl.batida-sound	-5.00	328.3	339.5	380.0
 Sounds/Bass/Short Organ.batida-sound	-11.00	230.6	145.7	186.6
 Sounds/Bass/Short Stab.batida-sound	-11.00	182.3	163.4	169.3
 Sounds/Bass/Short Sub.batida-sound	-8.00	69.7	320.2	65.0
 Sounds/Bass/Smoky 808.batida-sound	-5.00	84.0	545.9	65.0
+Sounds/Bass/Square Stab.batida-sound	-6.00	258.7	292.4	367.5
 Sounds/Bass/Tape Pluck.batida-sound	-8.00	86.1	300.2	67.5
 Sounds/Bass/Tape Sub.batida-sound	-8.00	83.5	388.1	65.0
+Sounds/Bass/Tender Bass.batida-sound	-8.00	65.4	434.5	65.0
 Sounds/Bass/Wide 808.batida-sound	-8.00	65.7	561.1	67.5
 Sounds/FX/Bit Stutter.batida-sound	-12.00	336.0	588.4	255.0
 Sounds/FX/Bit Sweep.batida-sound	-12.00	1637.5	379.7	807.5
@@ -58,16 +71,21 @@ Sounds/Hat/Bright Tick.batida-sound	-21.06	16487.9	19.4	0.0
 Sounds/Hat/Burnt Open Hat.batida-sound	-15.00	8799.6	477.3	9125.0
 Sounds/Hat/Chrome Open Hat.batida-sound	-15.00	9866.4	474.4	10340.0
 Sounds/Hat/Chrome Ride.batida-sound	-16.00	7484.1	509.8	3852.5
+Sounds/Hat/Clean Hat.batida-sound	-18.00	11281.4	50.2	0.0
 Sounds/Hat/Closed Hat.batida-sound	-19.81	9750.5	52.9	0.0
 Sounds/Hat/Crisp Crash.batida-sound	-15.00	15133.3	1041.9	14152.5
 Sounds/Hat/Dark Ride.batida-sound	-16.00	4236.5	484.9	1947.5
 Sounds/Hat/Deep Hat.batida-sound	-18.00	11883.8	99.1	9145.3
 Sounds/Hat/Deep Shaker.batida-sound	-17.00	15192.3	90.8	14383.8
+Sounds/Hat/Dry Open Hat.batida-sound	-18.00	11105.3	243.5	14005.4
 Sounds/Hat/Dull Hat.batida-sound	-18.33	8204.0	43.0	0.0
 Sounds/Hat/Dusk Hat.batida-sound	-22.48	4940.2	31.9	0.0
+Sounds/Hat/Even Hat.batida-sound	-18.00	11978.4	69.5	0.0
+Sounds/Hat/Flash Hat.batida-sound	-18.34	15509.9	42.7	0.0
 Sounds/Hat/Glass Hat.batida-sound	-18.00	10673.0	68.5	0.0
 Sounds/Hat/Grain Hat.batida-sound	-18.00	5684.8	120.8	4796.7
 Sounds/Hat/Heavy Hat.batida-sound	-15.00	15075.2	136.2	13804.3
+Sounds/Hat/Hollow Hat.batida-sound	-19.38	18942.0	26.5	0.0
 Sounds/Hat/Iron Hat.batida-sound	-18.88	9005.9	33.4	0.0
 Sounds/Hat/Iron Ride.batida-sound	-16.00	9074.0	510.3	6467.5
 Sounds/Hat/Jagged Hat.batida-sound	-15.49	10637.4	39.9	0.0
@@ -75,16 +93,24 @@ Sounds/Hat/Long Hat.batida-sound	-18.00	13871.0	99.0	13921.0
 Sounds/Hat/Long Open Hat.batida-sound	-15.00	10595.3	238.6	11119.6
 Sounds/Hat/Low Open Hat.batida-sound	-15.00	9431.3	369.1	9940.0
 Sounds/Hat/Open Hat.batida-sound	-13.37	10101.5	331.2	10590.0
+Sounds/Hat/Plain Open Hat.batida-sound	-16.00	14001.4	312.6	11140.0
+Sounds/Hat/Pulse Hat.batida-sound	-16.00	17553.4	56.2	0.0
+Sounds/Hat/Pulse Open Hat.batida-sound	-16.00	15171.5	378.1	12710.0
 Sounds/Hat/Raw Bright Hat.batida-sound	-15.00	15345.8	62.9	0.0
 Sounds/Hat/Raw Hat.batida-sound	-15.00	9511.0	68.4	0.0
 Sounds/Hat/Rough Hat.batida-sound	-15.00	10313.5	105.5	11082.0
 Sounds/Hat/Rough Open Hat.batida-sound	-15.00	9632.2	327.8	9945.0
+Sounds/Hat/Short Dark Hat.batida-sound	-18.74	7839.1	35.5	0.0
 Sounds/Hat/Short Shaker.batida-sound	-17.00	14739.7	55.6	0.0
+Sounds/Hat/Square Hat.batida-sound	-16.00	13694.2	80.0	0.0
 Sounds/Hat/Steel Crash.batida-sound	-15.00	14168.6	1030.7	13015.0
 Sounds/Hat/Steel Hat.batida-sound	-18.00	8743.8	70.7	0.0
+Sounds/Hat/Tender Hat.batida-sound	-18.85	5695.5	33.9	0.0
 Sounds/Hat/Tight Hat.batida-sound	-18.17	9467.7	46.2	0.0
 Sounds/Hat/Tight Shaker.batida-sound	-17.00	14294.4	66.5	0.0
 Sounds/Hat/Wide Open Hat.batida-sound	-15.00	8805.0	270.4	9395.0
+Sounds/Hat/Wood Hat.batida-sound	-19.26	11836.3	32.4	0.0
+Sounds/Hat/Wood Open Hat.batida-sound	-18.00	11966.5	316.5	15662.5
 Sounds/Kick/Big Kick.batida-sound	-1.50	83.4	563.4	67.5
 Sounds/Kick/Bit Click.batida-sound	-5.62	53.8	223.7	51.9
 Sounds/Kick/Bright Click.batida-sound	-4.77	64.1	125.6	61.0
@@ -92,6 +118,8 @@ Sounds/Kick/Bright Knock.batida-sound	-5.78	70.1	125.1	69.1
 Sounds/Kick/Bright Punch.batida-sound	-1.50	63.0	211.0	56.3
 Sounds/Kick/Bright Slam.batida-sound	-1.50	70.4	325.1	57.5
 Sounds/Kick/Burnt Kick.batida-sound	-4.50	71.0	414.1	55.0
+Sounds/Kick/Chroma Kick.batida-sound	-5.02	57.4	197.2	54.6
+Sounds/Kick/Clean Kick.batida-sound	-5.35	51.5	292.5	50.0
 Sounds/Kick/Clipped Kick.batida-sound	-5.82	58.1	304.0	52.5
 Sounds/Kick/Dark Boom.batida-sound	-4.50	46.1	754.2	42.5
 Sounds/Kick/Dark Kick.batida-sound	-4.50	49.3	485.2	45.0
@@ -104,6 +132,7 @@ Sounds/Kick/Deep Hammer.batida-sound	-4.50	64.6	511.3	47.5
 Sounds/Kick/Deep Slam.batida-sound	-1.50	61.0	357.1	50.0
 Sounds/Kick/Deep Sub Kick.batida-sound	-5.65	44.4	482.4	45.0
 Sounds/Kick/Dull Thump.batida-sound	-4.50	50.5	454.5	50.0
+Sounds/Kick/Even Kick.batida-sound	-5.69	59.6	315.9	55.0
 Sounds/Kick/Grain Click.batida-sound	-5.92	62.8	221.2	62.0
 Sounds/Kick/Grain Kick.batida-sound	-5.71	61.0	177.0	59.8
 Sounds/Kick/Hard Hammer.batida-sound	-4.50	84.0	397.0	50.0
@@ -111,18 +140,26 @@ Sounds/Kick/Hard Punch.batida-sound	-1.50	66.7	319.3	60.0
 Sounds/Kick/Kick.batida-sound	-4.18	63.9	391.7	50.0
 Sounds/Kick/Long Boom.batida-sound	-4.50	54.3	675.6	50.0
 Sounds/Kick/Pixel Kick.batida-sound	-2.01	55.5	243.0	46.4
+Sounds/Kick/Prism Kick.batida-sound	-5.53	59.4	269.8	60.0
+Sounds/Kick/Pulse Kick.batida-sound	-2.50	60.6	387.3	50.0
 Sounds/Kick/Raw Slam.batida-sound	-1.50	72.0	230.9	61.4
 Sounds/Kick/Rough Kick.batida-sound	-1.50	99.5	697.4	77.5
 Sounds/Kick/Round Kick.batida-sound	-5.97	48.3	347.2	42.5
+Sounds/Kick/Saw Kick.batida-sound	-2.50	66.2	361.9	55.0
 Sounds/Kick/Short Hammer.batida-sound	-4.50	79.2	281.0	57.5
 Sounds/Kick/Short Kick.batida-sound	-5.38	71.4	232.2	55.2
+Sounds/Kick/Silk Kick.batida-sound	-6.54	52.0	352.3	52.5
+Sounds/Kick/Simple Kick.batida-sound	-5.82	51.8	355.2	50.0
 Sounds/Kick/Skin Kick.batida-sound	-5.95	65.2	305.4	62.5
 Sounds/Kick/Small Kick.batida-sound	-1.50	71.7	299.6	52.5
+Sounds/Kick/Smoky Kick.batida-sound	-5.77	48.9	311.1	45.0
+Sounds/Kick/Square Kick.batida-sound	-2.50	70.6	246.7	58.9
 Sounds/Kick/Tape Kick.batida-sound	-4.50	56.6	393.0	52.5
 Sounds/Kick/Tape Knock.batida-sound	-5.60	59.1	99.3	50.9
 Sounds/Kick/Tape Sub Kick.batida-sound	-5.81	37.5	462.5	37.5
 Sounds/Kick/Thin Hammer.batida-sound	-1.50	72.0	453.0	60.0
 Sounds/Kick/Tight Slam.batida-sound	-1.50	63.5	255.5	53.7
+Sounds/Kick/Velour Kick.batida-sound	-6.74	54.1	274.5	55.0
 Sounds/Kick/Warm Knock.batida-sound	-5.77	62.2	121.9	64.6
 Sounds/Kick/Warm Sub Kick.batida-sound	-5.90	42.9	626.2	42.5
 Sounds/Kick/Warm Thump.batida-sound	-4.50	52.2	254.6	48.8
@@ -133,6 +170,7 @@ Sounds/Perc/Bit Perc.batida-sound	-10.00	297.5	147.6	279.6
 Sounds/Perc/Bright Bell.batida-sound	-11.23	1146.9	238.9	1011.9
 Sounds/Perc/Bright Clang.batida-sound	-7.00	1342.8	118.8	442.2
 Sounds/Perc/Bright Tamb.batida-sound	-10.00	15748.4	123.6	14988.2
+Sounds/Perc/Bright Tine.batida-sound	-10.00	819.0	440.0	815.0
 Sounds/Perc/Bright Zap.batida-sound	-7.00	794.3	171.8	536.8
 Sounds/Perc/Chrome Bell.batida-sound	-10.95	968.9	201.7	853.7
 Sounds/Perc/Crisp Blip.batida-sound	-10.37	926.4	42.1	0.0
@@ -141,35 +179,52 @@ Sounds/Perc/Dark Conga.batida-sound	-10.79	290.2	110.4	288.0
 Sounds/Perc/Dark Tom.batida-sound	-10.00	115.5	420.9	102.5
 Sounds/Perc/Deep Zap.batida-sound	-10.00	418.1	175.9	405.5
 Sounds/Perc/Dry Conga.batida-sound	-10.86	405.8	129.2	404.5
+Sounds/Perc/Fuzz Tom.batida-sound	-8.00	314.5	314.3	182.5
 Sounds/Perc/Glass Block.batida-sound	-10.00	1092.8	54.6	0.0
 Sounds/Perc/Glass Clang.batida-sound	-7.00	2064.9	103.1	1335.3
 Sounds/Perc/Glass Tamb.batida-sound	-10.00	15822.9	192.0	15211.1
 Sounds/Perc/Hard Tom.batida-sound	-7.00	117.5	389.0	95.0
 Sounds/Perc/Harsh Tom.batida-sound	-7.00	293.1	258.1	207.0
+Sounds/Perc/Level Tom.batida-sound	-10.00	146.1	238.2	134.6
 Sounds/Perc/Long Bongo.batida-sound	-10.00	200.4	170.4	199.2
 Sounds/Perc/Long Hit.batida-sound	-10.00	112.7	250.7	104.9
 Sounds/Perc/Long Tom.batida-sound	-10.00	87.2	234.9	77.2
 Sounds/Perc/Low Zap.batida-sound	-10.00	245.3	87.8	234.1
+Sounds/Perc/Neon Tom.batida-sound	-10.00	229.8	267.7	202.5
+Sounds/Perc/Plain Bell.batida-sound	-10.00	1432.4	589.9	722.5
 Sounds/Perc/Plain Tom.batida-sound	-10.00	145.0	348.0	127.5
+Sounds/Perc/Prism Bell.batida-sound	-10.00	2530.8	600.0	1020.0
+Sounds/Perc/Prism Tom.batida-sound	-10.00	242.0	240.2	147.1
 Sounds/Perc/Raw Clang.batida-sound	-7.00	581.7	173.8	272.4
+Sounds/Perc/Raw Laser.batida-sound	-8.00	687.3	197.8	377.5
 Sounds/Perc/Rim.batida-sound	-19.63	874.6	24.6	0.0
 Sounds/Perc/Rough Zap.batida-sound	-7.00	693.2	104.6	347.5
+Sounds/Perc/Saw Zap.batida-sound	-8.00	858.0	154.7	559.5
 Sounds/Perc/Skin Tom.batida-sound	-10.00	253.5	219.1	207.5
 Sounds/Perc/Small Blip.batida-sound	-11.37	1472.8	26.6	0.0
 Sounds/Perc/Small Block.batida-sound	-11.67	758.4	39.0	0.0
+Sounds/Perc/Synth Tom.batida-sound	-8.00	202.3	249.3	121.5
+Sounds/Perc/Tape Tom.batida-sound	-10.00	102.3	288.9	92.5
+Sounds/Perc/Tender Mallet.batida-sound	-10.00	377.5	305.3	375.0
+Sounds/Perc/Tender Marimba.batida-sound	-10.00	501.9	456.0	502.5
 Sounds/Perc/Thin Blip.batida-sound	-11.83	2593.8	21.6	0.0
 Sounds/Perc/Tight Zap.batida-sound	-10.00	447.5	78.2	0.0
 Sounds/Perc/Tom.batida-sound	-9.15	127.5	379.6	112.5
+Sounds/Perc/Warm Kalimba.batida-sound	-10.00	550.3	353.3	542.5
 Sounds/Perc/Wide Bell.batida-sound	-11.14	777.9	176.3	761.2
+Sounds/Snare/Airy Snare.batida-sound	-9.81	2274.5	83.3	7449.0
+Sounds/Snare/Balanced Snare.batida-sound	-10.47	492.6	66.1	0.0
 Sounds/Snare/Bit Snare.batida-sound	-6.00	9247.2	101.5	11734.9
 Sounds/Snare/Burnt Clap.batida-sound	-6.00	5033.9	198.2	4478.1
 Sounds/Snare/Chrome Snare.batida-sound	-9.71	405.8	87.2	294.0
 Sounds/Snare/Clap.batida-sound	-19.25	2756.1	180.2	3331.1
+Sounds/Snare/Clean Rim.batida-sound	-10.83	548.9	54.1	0.0
 Sounds/Snare/Clipped Rim.batida-sound	-15.44	864.4	25.7	0.0
 Sounds/Snare/Clipped Snare.batida-sound	-9.00	4538.7	112.6	7058.3
 Sounds/Snare/Crisp Hands.batida-sound	-12.00	4140.0	178.6	4903.7
 Sounds/Snare/Crisp Slam.batida-sound	-6.00	7212.4	118.6	10920.7
 Sounds/Snare/Crisp Snare.batida-sound	-9.00	2763.7	124.3	6126.3
+Sounds/Snare/Dark Neon Snare.batida-sound	-9.84	632.2	99.6	669.1
 Sounds/Snare/Dark Snare.batida-sound	-9.00	1497.3	115.0	4552.8
 Sounds/Snare/Dark Warm Snare.batida-sound	-9.00	407.9	136.4	1512.3
 Sounds/Snare/Dry Clap.batida-sound	-13.20	2299.0	146.9	3004.3
@@ -179,23 +234,34 @@ Sounds/Snare/Glass Slam.batida-sound	-6.00	7489.7	104.0	10584.6
 Sounds/Snare/Glass Snap.batida-sound	-13.50	12940.0	47.7	0.0
 Sounds/Snare/Hard Clap.batida-sound	-6.00	4348.5	291.2	4255.0
 Sounds/Snare/Heavy Snare.batida-sound	-9.00	595.0	126.7	1559.0
+Sounds/Snare/Level Snare.batida-sound	-9.92	352.5	64.9	0.0
 Sounds/Snare/Long Hands.batida-sound	-12.00	2100.0	209.8	2632.9
 Sounds/Snare/Long Snare.batida-sound	-9.00	1685.4	131.4	5278.9
 Sounds/Snare/Low Rim.batida-sound	-10.21	1380.7	36.0	0.0
 Sounds/Snare/Low Snare.batida-sound	-9.90	517.0	91.3	399.2
+Sounds/Snare/Lumen Snare.batida-sound	-10.23	1267.2	82.5	4014.8
 Sounds/Snare/Muted Rim.batida-sound	-10.14	860.4	33.2	0.0
 Sounds/Snare/Paper Snare.batida-sound	-11.41	619.1	174.4	424.1
 Sounds/Snare/Plain Snare.batida-sound	-10.37	410.9	160.2	618.5
 Sounds/Snare/Plush Snare.batida-sound	-9.00	830.9	133.8	3082.1
+Sounds/Snare/Pulse Snare.batida-sound	-7.00	643.8	79.3	0.0
 Sounds/Snare/Raw Slam.batida-sound	-6.00	10507.1	119.2	12050.7
 Sounds/Snare/Raw Snare.batida-sound	-9.00	11378.0	80.6	11673.1
+Sounds/Snare/Razor Snare.batida-sound	-7.00	1189.2	80.3	763.9
 Sounds/Snare/Rough Clap.batida-sound	-6.00	4199.2	195.1	3686.6
+Sounds/Snare/Saw Snare.batida-sound	-7.00	964.0	77.5	0.0
 Sounds/Snare/Sharp Snare.batida-sound	-6.00	6231.3	85.5	8672.1
+Sounds/Snare/Short Knock.batida-sound	-11.28	472.3	32.8	0.0
 Sounds/Snare/Short Slam.batida-sound	-6.00	8568.9	101.5	11542.2
 Sounds/Snare/Short Snap.batida-sound	-12.00	12411.1	68.4	0.0
+Sounds/Snare/Silk Snare.batida-sound	-10.17	509.7	89.9	1087.9
+Sounds/Snare/Simple Snare.batida-sound	-9.67	717.1	74.9	0.0
 Sounds/Snare/Skin Rim.batida-sound	-15.32	1331.7	27.2	0.0
 Sounds/Snare/Snare.batida-sound	-8.77	2484.9	118.6	5959.5
 Sounds/Snare/Soft Snare.batida-sound	-10.47	529.5	182.9	162.8
+Sounds/Snare/Tape Rim.batida-sound	-11.95	568.6	31.7	0.0
+Sounds/Snare/Tender Knock.batida-sound	-11.10	419.8	45.2	0.0
+Sounds/Snare/Tender Snare.batida-sound	-10.47	384.4	81.0	500.5
 Sounds/Snare/Thin Clap.batida-sound	-13.28	2806.9	195.8	3694.3
 Sounds/Snare/Tight Snap.batida-sound	-12.33	13414.3	72.3	0.0
 Sounds/Snare/Tin Snare.batida-sound	-10.03	646.6	96.2	731.9
@@ -216,5 +282,9 @@ Sounds/Texture/Glass Hiss.batida-sound	-20.00	1465.1	681.1	2022.5
 Sounds/Texture/Glass Loop.batida-sound	-8.00	68.7	125.0	53.9
 Sounds/Texture/Long Dust.batida-sound	-22.00	2582.8	2000.0	2227.5
 Sounds/Texture/Low Chord.batida-sound	-12.00	230.7	247.4	229.4
+Sounds/Texture/Prism Chord.batida-sound	-14.00	347.2	450.3	337.5
 Sounds/Texture/Short Chord.batida-sound	-12.00	201.9	220.6	217.9
+Sounds/Texture/Soft Chord.batida-sound	-14.00	395.8	375.0	422.5
+Sounds/Texture/Tender Pad.batida-sound	-14.00	149.0	882.4	130.0
 Sounds/Texture/Tight Chord.batida-sound	-12.00	175.0	261.2	177.5
+Sounds/Texture/Warm Pad.batida-sound	-14.00	148.9	751.7	130.0
