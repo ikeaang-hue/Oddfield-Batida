@@ -223,7 +223,20 @@ void SampleSlot::clear()
     publish (nullptr);
 }
 
-void SampleSlot::publish (std::unique_ptr<SampleData> data)
+void SampleSlot::setShared (std::shared_ptr<const SampleData> data)
+{
+    if (data == nullptr)
+        return;
+    {
+        const juce::ScopedLock sl (lock);
+        status = Status::Loaded;
+        path = data->path;
+        error = {};
+    }
+    publish (std::move (data));
+}
+
+void SampleSlot::publish (std::shared_ptr<const SampleData> data)
 {
     const juce::ScopedLock sl (lock);
     const auto now = juce::Time::getMillisecondCounterHiRes();

@@ -1,6 +1,6 @@
 # Negative Space Batida: Design Spec
 
-*Version 1.10, agreed 2026-09-24 (1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
+*Version 1.11, agreed 2026-09-27 (1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
 
 ## 1. Identity
 
@@ -81,8 +81,20 @@ projects keep loading (§12).
 - **Envelopes:** amp and pitch. FM operators have their own envelopes as well.
 - **Monophonic:** one note at a time per sound; a new note retriggers.
 - **Glide:** one control per sound, for bass lines and slides.
+- **Choke group:** Off or 1–4. A hit cuts the other sounding sounds in its group with the same
+  ~1.5 ms fade a sound switch uses (no click). The default kit's hats (slots 7 and 8) are in
+  group 1, and the preset factory puts hat pairs in group 1.
 - **Range:** sounds are chromatic and can sustain. They lean percussive, but basses,
   stabs and textures are in scope.
+
+### Resampling
+- **Resample here** (a slot's menu) renders into that slot, through the whole chain:
+  - the pattern on screen: one pass that loops seamlessly (the second of two passes, so the
+    first pass's tails are heard at its start), at the current tempo;
+  - or any slot's sound: one hit, until it has rung out (at most 6 s).
+- The render is a stereo 24-bit WAV in `User/Samples/Resampled`, so the sound can be saved and
+  found again. The slot becomes a plain one-shot sample sound with Chain 0% (the chain is
+  already in it); Pan, Mute and Solo stay. One undo step.
 
 ### Body / resonator (deferred)
 - The architecture keeps a slot between source and chain.
@@ -153,6 +165,20 @@ The main way the chain is operated: one gesture moves the whole chain.
   +6%"). Hold one to hear it.
 - **Automatic dud filtering:** silent, clipping and near-duplicate results never reach the user.
 - **History:** full undo/redo, and one click saves a result to the library.
+- **Kit Vary:** the same panel switched from SOUND to KIT varies every sound at once, in one
+  direction, with the same section locks, plus a lock per slot. Each of the 4 suggestions is a
+  whole kit (each sound level-matched); its tile shows the eight sounds side by side. Holding a
+  tile plays the pattern on screen with the suggestion in place (or the selected sound, if the
+  pattern is empty). KEEP is one undo step; SAVE KIT… saves it.
+- **Pattern Vary** (VARY on the SEQ page): 4 suggestions for the pattern on screen.
+  - Directions: any, denser, sparser, broken (hits moved off the grid), ghosts (quiet hits
+    around the snares and percussion), rolls (ratchets, and a fill on the last beat).
+  - Amount, and a lock per track. Tracks with no hits stay empty; the XY lane is kept.
+  - Guided by the kit layout: the kick on one stays, hats get busier, the bass is left alone
+    except by sparser and broken.
+  - Tiles draw the grid, with changed steps in lime and removed ones as outlines. Holding a
+    tile plays the suggestion, even with the sequencer stopped (as if its pattern key were
+    held). The real pattern changes only on KEEP (one undo step).
 - *Breeding* (combining two sounds) is postponed to a later version.
 
 ## 8. Sequencer
@@ -172,6 +198,31 @@ The main way the chain is operated: one gesture moves the whole chain.
   dynamics. One-shot hits on C1–G1 still play on top of a running pattern.
 - **Default patterns:** during development pattern 1 holds a breakbeat demo. **The release
   build ships with every pattern empty**; factory patterns come through the library (§10, §11).
+- **XY REC** (KIT page, off by default, not saved): while a pattern plays and the pad is held,
+  every step the playhead passes gets the pad's position in the XY lane, moving or not; steps
+  skipped between two screen frames get it too. One undo step per gesture.
+- **Drop a break, get a kit:** a drum loop dropped on the SEQ grid.
+  - The loop is taken to be 1, 2 or 4 bars of 4/4, whichever puts the tempo nearest 125 bpm
+    (within 70–190); the internal tempo is set to it.
+  - Its 31 strongest onsets become Transients slices (the most a slot holds); each hit is
+    heard as a kick, snare, closed or open hat, or percussion (low, bright and high energy, how
+    long it rings, and how tonal it is).
+  - The loop goes into slots 1 (kick), 2 (percussion), 3 (snare), 7 (closed hat) and 8 (open
+    hat), whichever are used, in Transients mode, one-shot, each slice playing to its end with a
+    4 ms fade; the hats choke each other. One decoded copy is shared by all of them.
+  - The pattern on screen gets every hit on its 16th, playing its own slice, so the break
+    replays at any tempo without stretching. One undo step.
+- **MIDI out (any DAW):** the pattern as a standard MIDI file.
+  - Drag **MIDI ↗** onto a track in any DAW (a plain file drag), or click it to save the file to
+    `User/MIDI` and show it in Finder (for hosts that block dragging out of a plugin window).
+  - Slots 1–8 are notes 36–43 on channel 10 (the drum map, which answers in both MIDI modes).
+  - Timing is in beats (960 ticks) with no tempo, so the region lands on the grid at the song's
+    tempo; swing is written in; one pass of the pattern, as the sequencer plays it (polymeter
+    included).
+  - Ratchets are written out as notes. Probability is rolled once (the same repeatable roll
+    Batida's own playback makes).
+  - The XY lane becomes CC 16 (X) and CC 17 (Y); where a lock ends, they return to the pad.
+  - Not in the file: the pitch and slice lanes.
 - **Excluded:** song mode and arrangement (the DAW does these).
 
 ## 9. MIDI
@@ -183,7 +234,11 @@ the other channels stay fully chromatic for the Keys Sound.
 - **Drum map, any channel** (default): GM notes 36–43 trigger sounds 1–8 on every channel.
 - **Chromatic:** every channel except 10 plays one chosen sound, the **Keys Sound**, like a mono
   synth. Channel 10 still uses the drum map. Keys Sound is an automatable parameter that also
-  follows the sound selected in the editor.
+  follows the sound selected in the editor. Changing it releases only the old Keys Sound's
+  notes, and only in Chromatic mode.
+- **XY CCs:** CC 16 moves X and CC 17 moves Y, on any channel, so exported patterns (§8) play
+  their XY lane back from any DAW. The CCs hold the pad until the pad (or its automation) moves;
+  a step's XY lock still wins while it lasts.
 
 ## 10. Library and presets
 
@@ -282,7 +337,7 @@ the reference for layout and look.
 - **SEQ:**
   - the pattern ◀ name ▶ strip, a map of all 16 pattern slots, tempo, Sync and Play;
   - length, Run, Start on, Latch and Swing;
-  - the lane selector, step-page map and Copy/Paste/Clear;
+  - the lane selector, step-page map, VARY, MIDI ↗ and Copy/Paste/Clear;
   - the grid: velocity bars, probability and ratchet notes in lime, a lime playhead, and the XY
     lock lane.
 - **MOD:** the two modulators side by side. Each has a large shape editor (square points, round
@@ -296,8 +351,9 @@ the reference for layout and look.
     curve.
   - Below: the operators, the amp envelope, and pitch envelope and play, with drawn curves.
   - Graphs replace the old help text.
-- **Vary:** opens over the SOUND page. It has amount, direction and locks, then the original
-  plus 4 suggestion tiles (§7), and Keep, Back and Save to library.
+- **Vary:** opens over the SOUND page. It has a SOUND | KIT switch, amount, direction and locks
+  (per slot for KIT), then the original plus 4 suggestion tiles (§7), and Keep, Back and Save
+  to library. Pattern Vary opens the same way over the SEQ page.
 - **LIB:** tabs (sounds, kits, patterns, sets, samples), filters, the list and a details panel
   (§10).
 
@@ -316,6 +372,10 @@ UI code stays separate from the engine.
   - **VST3 (macOS):** added once everything else is done.
   - No standalone app.
 - **Test host:** Logic Pro.
+- **Any DAW:** Batida must not fit only one host. Features use what every host supports
+  (parameters, MIDI notes and CCs, standard MIDI files, file drags), and where one host needs
+  something special (Logic runs plugins out of process) there is a fallback that works
+  everywhere. Docs give note numbers as well as names, since hosts name octaves differently.
 
 ## 14. Build order
 
@@ -337,8 +397,11 @@ Each phase ends with something loadable and audible as an AU.
 6. **Visual design** (§12): the C "Signal" look, custom controls, drawn graphs, the page
    layouts, zoom, and the "sound" wording, including the LIB view built in phase 5.
 7. **Preset factory:** factory content and the user's listening pass.
-8. **VST3 build** and cross-host checks on macOS.
-9. **Later:**
+8. **Sampling and variation** (from the idea board, 2026-09-27): choke groups, Kit Vary,
+   Pattern Vary, resampling, breaks into kits, MIDI out with the XY CCs, and XY REC on every
+   step.
+9. **VST3 build** and cross-host checks on macOS (Live, Reaper, Bitwig as well as Logic).
+10. **Later:**
    - resonator body (if CPU allows);
    - breeding.
 

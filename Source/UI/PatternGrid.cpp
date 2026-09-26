@@ -1,5 +1,7 @@
 #include "PatternGrid.h"
 
+#include "Frame.h"
+
 #include "Look/Theme.h"
 
 using namespace batida;
@@ -216,6 +218,7 @@ void PatternGrid::trackMenu (int track, juce::Component& target)
     m.addSectionHeader (juce::String (track + 1) + " " + proc.getVoiceName (track));
     m.addItem (7, "Rename...");
     m.addSubMenu ("Swap with", swapMenu);
+    m.addSubMenu ("Resample here", resampleMenu (proc, track));
     m.addSeparator();
     m.addItem (1, "Copy track");
     m.addItem (2, "Paste track", trackClipboard.has_value());
@@ -225,20 +228,28 @@ void PatternGrid::trackMenu (int track, juce::Component& target)
     m.addItem (5, "Fill every 2nd step");
     m.addItem (6, "Fill every 4th step");
 
-    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (target), [this, track, pi] (int choice)
+    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (target),
+                     [safe = juce::Component::SafePointer<PatternGrid> (this), track, pi] (int choice)
     {
-        if (choice == 0)
+        if (safe == nullptr || choice == 0)
             return;
+        auto& self = *safe;
+        auto& proc = self.proc;
+        if (runResample (proc, choice, track))
+        {
+            self.repaint();
+            return;
+        }
         if (choice == 7)
         {
-            if (onRename)
-                onRename (track);
+            if (self.onRename)
+                self.onRename (track);
             return;
         }
         if (choice >= 100)
         {
             proc.swapVoices (track, choice - 100);
-            repaint();
+            self.repaint();
             return;
         }
         proc.beginUndoStep();
@@ -260,7 +271,7 @@ void PatternGrid::trackMenu (int track, juce::Component& target)
                 default: break;
             }
         });
-        repaint();
+        self.repaint();
     });
 }
 

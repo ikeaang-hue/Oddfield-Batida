@@ -65,7 +65,7 @@ public:
 
     void bindVoice (int voice);
     BrowseStrip soundStrip { BrowseStrip::Style::Large };
-    std::function<void()> onSaveSound; // Vary's Save to library
+    std::function<void()> onSaveSound, onSaveKit; // Vary's Save to library
     void openVary();
     void closeOverlays();
     bool isOverlayOpen() const { return vary.isVisible() || operators.isVisible(); }
@@ -117,7 +117,7 @@ private:
     AmpEnvelopeGraph ampGraph;
     ParamControl *attack, *decay, *sustain, *release;
     PitchEnvelopeGraph pitchGraph;
-    ParamControl *pitchAmount, *pitchDecay, *playMode, *glide;
+    ParamControl *pitchAmount, *pitchDecay, *playMode, *glide, *choke;
 
     VaryOverlay vary;
     OperatorEditor operators;

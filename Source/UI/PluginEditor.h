@@ -60,6 +60,7 @@ private:
     void updateStrips();
     void libraryChanged();
     int voiceAt (juce::Point<int> contentPoint) const;
+    bool isOverGrid (juce::Point<int> contentPoint);
     void setDropTarget (int voice);
     std::vector<SoundCell*> allCells();
 

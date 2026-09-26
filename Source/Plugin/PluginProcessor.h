@@ -2,6 +2,7 @@
 
 #include "Engine/Kit.h"
 #include "Engine/Movement/Vary.h"
+#include "Engine/Sequencer/PatternVary.h"
 #include "History.h"
 #include "Library/Library.h"
 
@@ -165,6 +166,50 @@ public:
     int previewedCandidate() const { return previewIndex; }
     void keepCandidate();
     static batida::VoiceParams withLiveMix (const batida::VaryCandidate& c, const batida::VoiceParams& live);
+    // Kit Vary: one direction across every sound that isn't locked. Each
+    // suggestion is a whole kit; each sound in it is level-matched.
+    struct KitCandidate
+    {
+        std::array<batida::VoiceParams, batida::kNumVoices> params;
+        uint32_t changed = 0; // which sounds differ
+        std::string note;
+    };
+    void startKitVary (float amount, batida::VaryDirection direction, bool lockSource, bool lockFx, bool lockEnvelopes,
+                       std::array<bool, batida::kNumVoices> lockedSlots);
+    const std::vector<KitCandidate>& kitCandidates() const { return kitCands; }
+    const std::array<batida::VoiceParams, batida::kNumVoices>& kitVaryBase() const { return kitBase; }
+    bool hasKitVary() const { return kitVaried; }
+    void previewKitCandidate (int index); // -1 = back to the original
+    int previewedKitCandidate() const { return kitPreviewIndex; }
+    void keepKitCandidate();
+
+    // Pattern Vary: four suggestions for one pattern (no rendering, instant).
+    void startPatternVary (int pattern, float amount, batida::PatternDirection direction,
+                           std::array<bool, batida::kNumTracks> lockedTracks);
+    const std::vector<batida::PatternCandidate>& patternCandidates() const { return patternCands; }
+    int patternVaryPattern() const { return patternCandsFor; }
+    int getPatternVaryVersion() const { return patternVaryVersion; }
+    void previewPatternCandidate (int index); // -1 = the real pattern
+    int previewedPatternCandidate() const { return patternPreviewIndex; }
+    void keepPatternCandidate();
+
+    // Plays a pattern while held (a Vary suggestion's "hold to hear") when the
+    // sequencer isn't already running.
+    void auditionPattern (int pattern, bool on) { kit.auditionPattern (pattern, on); }
+
+    // Drop a break, get a kit: slices a drum loop into the kick, snare, hat and
+    // percussion slots and writes `pattern` to replay it (one undo step).
+    struct BreakResult { int hits = 0, bars = 0; double bpm = 0.0; };
+    std::optional<BreakResult> loadBreak (const juce::File& file, int pattern, juce::String* error = nullptr);
+
+    // Resampling into a slot (one undo step): a sound's hit, or one pass of a
+    // pattern through the whole chain. The WAV goes to User/Samples/Resampled.
+    bool resampleSound (int source, int target, juce::String* error = nullptr);
+    bool resamplePattern (int pattern, int target, juce::String* error = nullptr);
+
+    // A pattern as a MIDI file (SPEC §8), written to User/MIDI; returns it.
+    juce::File exportPatternMidi (int pattern, juce::String* error = nullptr);
+
     void setKeysVoice (int voice); // what Chromatic mode plays; follows the editor selection
     batida::VoiceParams readVoiceParams (int voice) const;
     std::array<float, batida::kNumGlobalParams> readGlobalParams() const;
@@ -230,14 +275,29 @@ private:
 
     // Vary: a background job, and a preview that overrides one voice's
     // settings on the audio thread without touching the host parameters.
-    struct Preview { bool active = false; int voice = 0; batida::VoiceParams params; };
+    struct Preview
+    {
+        bool active = false;
+        uint32_t mask = 0; // the voices it overrides
+        std::array<batida::VoiceParams, batida::kNumVoices> params {};
+    };
     batida::SnapshotStore<Preview> preview;
+    void publishPreview();
+    bool loadRendered (const juce::AudioBuffer<float>& audio, int target, const juce::String& name, bool loop, juce::String* error);
     std::vector<batida::VaryCandidate> candidates;
     batida::VoiceParams candidatesBase;
     int candidatesVoice = -1, previewIndex = -1;
     std::atomic<int> varyVersion { 0 };
     std::atomic<bool> varyBusy { false };
     juce::ThreadPool varyPool { 1 };
+
+    std::vector<KitCandidate> kitCands;
+    std::array<batida::VoiceParams, batida::kNumVoices> kitBase {};
+    bool kitVaried = false;
+    int kitPreviewIndex = -1;
+
+    std::vector<batida::PatternCandidate> patternCands;
+    int patternCandsFor = -1, patternPreviewIndex = -1, patternVaryVersion = 0;
 
     JUCE_DECLARE_WEAK_REFERENCEABLE (BatidaProcessor)
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BatidaProcessor)

@@ -13,6 +13,54 @@ juce::RangedAudioParameter& paramOf (BatidaProcessor& p, int g)
 }
 } // namespace
 
+// MidiHandle -----------------------------------------------------------------------
+
+MidiHandle::MidiHandle()
+{
+    setMouseCursor (juce::MouseCursor::DraggingHandCursor);
+    setTooltip (juce::String::fromUTF8 ("Drag to a track \xc2\xb7 click to save"));
+}
+
+void MidiHandle::paint (juce::Graphics& g)
+{
+    const auto over = isMouseOver() || dragging;
+    g.setColour (over ? ink : line);
+    g.drawRect (getLocalBounds(), 1);
+    g.setColour (over ? ink : muted);
+    g.setFont (mono (10.0f, Weight::Bold));
+    g.drawText (juce::String::fromUTF8 ("MIDI \xe2\x86\x97"), getLocalBounds(), juce::Justification::centred, false);
+}
+
+void MidiHandle::mouseDrag (const juce::MouseEvent& e)
+{
+    if (dragging || e.getDistanceFromDragStart() < 5 || ! onExport)
+        return;
+    dragging = true;
+    repaint();
+    const auto file = onExport();
+    if (file.existsAsFile())
+        juce::DragAndDropContainer::performExternalDragDropOfFiles ({ file.getFullPathName() }, false, this,
+                                                                    [safe = juce::Component::SafePointer<MidiHandle> (this)]
+                                                                    {
+                                                                        if (safe != nullptr)
+                                                                        {
+                                                                            safe->dragging = false;
+                                                                            safe->repaint();
+                                                                        }
+                                                                    });
+    else
+        dragging = false;
+}
+
+void MidiHandle::mouseUp (const juce::MouseEvent&)
+{
+    if (dragging)
+        return;
+    if (onExport)
+        if (const auto file = onExport(); file.existsAsFile())
+            file.revealToUser();
+}
+
 // PatternSlots ---------------------------------------------------------------------
 
 PatternSlots::PatternSlots (BatidaProcessor& p) : proc (p)
@@ -69,7 +117,7 @@ void PatternSlots::mouseDown (const juce::MouseEvent& e)
 // SeqPage --------------------------------------------------------------------------
 
 SeqPage::SeqPage (BatidaProcessor& p)
-    : proc (p), grid (p), pageMap (p, grid), slots (p),
+    : proc (p), grid (p), pageMap (p, grid), slots (p), vary (p),
       tempo (paramOf (p, gp::SeqTempo), 2, "bpm"),
       sync (p.getState(), "Sync"), play (p.getState(), juce::String::fromUTF8 ("\xe2\x96\xb6 Play")), run (p.getState(), "Run"),
       quantise (p.getState(), "Start on"), latch (p.getState(), "Latch"), swing (p.getState(), "Swing")
@@ -112,6 +160,17 @@ SeqPage::SeqPage (BatidaProcessor& p)
         proc.patterns().edit ([&] (PatternBank& b) { b.patterns[(size_t) proc.displayPattern()].clear(); });
     };
 
+    varyButton.onClick = [this] { vary.openFor (proc.displayPattern()); };
+    vary.onSave = [this] { if (onSavePattern) onSavePattern(); };
+    midi.onExport = [this]
+    {
+        juce::String error;
+        const auto file = proc.exportPatternMidi (proc.displayPattern(), &error);
+        if (! file.existsAsFile())
+            juce::AlertWindow::showAsync (juce::MessageBoxOptions().withTitle ("Couldn't export").withMessage (error).withButton ("OK"), nullptr);
+        return file;
+    };
+
     lanes.onChange = [this] (int i) { grid.setLane ((PatternGrid::Lane) i); };
     grid.onPageChanged = [this] { pageMap.repaint(); repaint (rulerBounds); };
     grid.setComponentID ("grid");
@@ -123,8 +182,10 @@ SeqPage::SeqPage (BatidaProcessor& p)
                                 (juce::Component*) &sync, (juce::Component*) &play, (juce::Component*) &run, (juce::Component*) &quantise,
                                 (juce::Component*) &latch, (juce::Component*) &swing, (juce::Component*) &shorter, (juce::Component*) &longer,
                                 (juce::Component*) &copyButton, (juce::Component*) &pasteButton, (juce::Component*) &clearButton,
+                                (juce::Component*) &varyButton, (juce::Component*) &midi,
                                 (juce::Component*) &lanes, (juce::Component*) &pageMap, (juce::Component*) &grid })
         addAndMakeVisible (c);
+    addChildComponent (vary);
 
     timerCallback();
     startTimerHz (15);
@@ -141,6 +202,34 @@ std::array<SoundCell*, kNumTracks> SeqPage::getTrackCells()
     for (int t = 0; t < kNumTracks; ++t)
         a[(size_t) t] = tracks[t];
     return a;
+}
+
+void SeqPage::setBreakDrop (bool on)
+{
+    if (breakDrop != on)
+    {
+        breakDrop = on;
+        repaint();
+    }
+}
+
+void SeqPage::paintOverChildren (juce::Graphics& g)
+{
+    if (! breakDrop)
+        return;
+    const auto r = grid.getBounds();
+    g.setColour (bg.withAlpha (0.6f));
+    g.fillRect (r);
+    g.setColour (lime);
+    g.drawRect (r, 2);
+    const auto label = juce::String::fromUTF8 ("BREAK \xe2\x86\x92 KIT \xc2\xb7 P") + juce::String (proc.displayPattern() + 1).paddedLeft ('0', 2);
+    g.setFont (head (12.0f, true));
+    const auto w = (int) juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), label) + 28;
+    const auto box = r.withSizeKeepingCentre (w, 32);
+    g.setColour (lime);
+    g.fillRect (box);
+    g.setColour (bg);
+    g.drawText (label, box, juce::Justification::centred, false);
 }
 
 void SeqPage::setLength (int len)
@@ -262,16 +351,20 @@ void SeqPage::resized()
     auto row3 = r.removeFromTop (22);
     row3.removeFromLeft (34);
     lanes.setBounds (row3.removeFromLeft (lanes.getIdealWidth()));
-    auto buttons = row3.removeFromRight (3 * 58 + 8);
+    auto buttons = row3.removeFromRight (5 * 58 + 16 + 10);
+    varyButton.setBounds (buttons.removeFromLeft (58));
+    buttons.removeFromLeft (4);
+    midi.setBounds (buttons.removeFromLeft (58));
+    buttons.removeFromLeft (14);
     copyButton.setBounds (buttons.removeFromLeft (58));
     buttons.removeFromLeft (4);
     pasteButton.setBounds (buttons.removeFromLeft (58));
     buttons.removeFromLeft (4);
     clearButton.setBounds (buttons);
-    row3.removeFromLeft (60);
+    row3.removeFromLeft (40);
     pageMap.setBounds (row3.removeFromLeft (176).withSizeKeepingCentre (176, 16));
     row3.removeFromLeft (10);
-    pageText = row3.removeFromLeft (120);
+    pageText = row3.removeFromLeft (100);
     r.removeFromTop (8);
 
     rulerBounds = r.removeFromTop (12);
@@ -284,4 +377,5 @@ void SeqPage::resized()
     for (int t = 0; t < kNumTracks; ++t)
         tracks[t]->setBounds (headers.getX() + 1, grid.getY() + t * rh + 1, headers.getWidth() - 2, rh - 5);
     xyHeaderBounds = { headers.getX(), grid.getY() + kNumTracks * rh, headers.getWidth(), rh - 3 };
+    vary.setBounds (getLocalBounds());
 }

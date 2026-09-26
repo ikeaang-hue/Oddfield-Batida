@@ -380,18 +380,11 @@ KitPage::KitPage (BatidaProcessor& p) : proc (p), pad (p)
     addAndMakeVisible (xyRec);
     pad.onGestureStart = [this]
     {
+        recPattern = recStep = -1;
         if (xyRec.getToggleState())
             proc.beginUndoStep();
     };
-    pad.onMove = [this] (float x, float y)
-    {
-        const auto& seq = proc.sequencer();
-        if (! xyRec.getToggleState() || ! seq.isRunning() || seq.getPatternStep() < 0)
-            return;
-        const auto pi = seq.getActivePattern();
-        const auto step = seq.getPatternStep();
-        proc.patterns().edit ([&] (PatternBank& b) { b.patterns[(size_t) pi].xy[(size_t) step] = { true, x, y }; });
-    };
+    pad.onMove = [this] (float x, float y) { recordXy (x, y); };
 
     store.setTooltip ("Store the chain into a scene: STORE, then a letter");
     store.onClick = [this]
@@ -429,8 +422,46 @@ KitPage::~KitPage()
     stopTimer();
 }
 
+// XY REC: while the pad is held and a pattern plays, every step it passes
+// gets the pad's position, whether the pad moves or not; steps skipped
+// between two frames get it too.
+void KitPage::recordXy (float x, float y)
+{
+    const auto& seq = proc.sequencer();
+    if (! xyRec.getToggleState() || ! seq.isRunning() || seq.getPatternStep() < 0)
+        return;
+    const auto pi = seq.getActivePattern();
+    const auto step = seq.getPatternStep();
+    if (pi == recPattern && step == recStep)
+    {
+        const auto& lock = proc.patterns().get().patterns[(size_t) pi].xy[(size_t) step];
+        if (lock.active && juce::exactlyEqual (lock.x, x) && juce::exactlyEqual (lock.y, y))
+            return; // nothing new
+    }
+    proc.patterns().edit ([&] (PatternBank& b)
+    {
+        auto& pat = b.patterns[(size_t) pi];
+        const auto len = std::max (1, pat.length);
+        auto s = (pi == recPattern && recStep >= 0) ? recStep : step;
+        for (int guard = 0; guard < len; ++guard)
+        {
+            pat.xy[(size_t) s] = { true, x, y };
+            if (s == step)
+                break;
+            s = (s + 1) % len;
+        }
+    });
+    recPattern = pi;
+    recStep = step;
+}
+
 void KitPage::timerCallback()
 {
+    if (pad.isGrabbing())
+    {
+        const auto p = pad.getPosition();
+        recordXy (p.x, p.y);
+    }
     if (! isVisibleInTree (*this))
         return; // hidden pages do nothing
     if (proc.movement().getVersion() != shownMovement)

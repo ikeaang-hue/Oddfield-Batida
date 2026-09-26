@@ -19,6 +19,7 @@ public:
     std::function<void()> onGestureStart;
     juce::Point<float> getEffective() const { return shownEffective.x < 0.0f ? targetEffective() : shownEffective; }
     juce::Point<float> getPosition() const;
+    bool isGrabbing() const { return grabbing; }
 
     void paint (juce::Graphics&) override;
     void mouseDown (const juce::MouseEvent&) override;
@@ -85,6 +86,7 @@ public:
 private:
     void timerCallback() override;
     ParamControl& add (int param, const juce::String& label);
+    void recordXy (float x, float y);
 
     BatidaProcessor& proc;
     XyPad pad;
@@ -100,4 +102,5 @@ private:
     float grDb = 0.0f;
     int shownMovement = -1, shownZone = -1;
     juce::Point<float> shownSet { -1.0f, -1.0f };
+    int recPattern = -1, recStep = -1; // the last step XY REC wrote in this gesture
 };

@@ -362,8 +362,12 @@ SoundPage::SoundPage (BatidaProcessor& p) : proc (p), sampleView (p), vary (p), 
     glide = &add (vp::Glide, "Glide");
     for (auto* c : { pitchAmount, pitchDecay, glide })
         c->withLabelWidth (40).withValueWidth (64);
+    choke = &add (vp::Choke, "Choke");
+    choke->asSegmented().withLabelWidth (40);
+    choke->setTooltip ("Cuts the other sounds in its group");
 
     vary.onSave = [this] { if (onSaveSound) onSaveSound(); };
+    vary.onSaveKit = [this] { if (onSaveKit) onSaveKit(); };
     addChildComponent (vary);
     addChildComponent (operators);
 
@@ -395,8 +399,7 @@ void SoundPage::openVary()
 {
     vary.setVoice (voice);
     vary.open();
-    if (proc.varyVoice() != voice || proc.varyCandidates().empty())
-        vary.startVary();
+    vary.startIfNeeded();
 }
 
 void SoundPage::closeOverlays()
@@ -727,13 +730,14 @@ void SoundPage::resized()
     // 07 Pitch · play
     {
         auto c = panelContent (pitchBounds);
-        auto rows = c.removeFromBottom (4 * 22);
+        auto rows = c.removeFromBottom (5 * 22);
         pitchGraph.setBounds (c.withTrimmedBottom (8));
         RowLayout layout { rows };
         pitchAmount->setBounds (layout.next());
         pitchDecay->setBounds (layout.next());
         playMode->setBounds (layout.next().withWidth (playMode->getIdealWidth()));
         glide->setBounds (layout.next());
+        choke->setBounds (layout.next().withWidth (std::min (c.getWidth(), choke->getIdealWidth())));
     }
 
     vary.setBounds (getLocalBounds());

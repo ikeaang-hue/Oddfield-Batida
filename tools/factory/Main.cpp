@@ -495,6 +495,9 @@ int runBuild (const juce::File& library, const juce::File& out)
                 p[vp::Level] = std::clamp (p[vp::Level] + slot.trimDb, -60.0f, 6.0f);
                 p[vp::Pan] = slot.pan;
 
+                // The two hat slots choke each other, as on a drum machine.
+                p[vp::Choke] = (v == 6 || v == 7) && s->preset.info.category == "hat" ? 1.0f : 0.0f;
+
                 // A melodic slot (a keyed recipe, or one the patterns play at
                 // other pitches) is rooted on a C, so it's in key with the rest.
                 const auto* archetype = findArchetype (s->archetype);

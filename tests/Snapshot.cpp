@@ -223,6 +223,26 @@ int main (int argc, char* argv[])
     editor->showPage (BatidaEditor::Seq);
     save ("02-Seq");
 
+    // Pattern Vary and the break drop, on the breakbeat (pattern 1 put back after).
+    if (auto* seqPage = dynamic_cast<SeqPage*> (find ("seqPage")))
+    {
+        const auto kept = proc.patterns().get().patterns[0];
+        proc.patterns().edit ([] (batida::PatternBank& b) { b.patterns[0] = batida::breakbeatPattern(); });
+        proc.setPatternParameter (0);
+        if (auto* b = findButton (*seqPage, "VARY"))
+        {
+            b->onClick();
+            settle (200);
+            save ("02-Seq-Vary");
+            seqPage->closeOverlays();
+            settle (50);
+        }
+        seqPage->setBreakDrop (true);
+        save ("02-Seq-Break");
+        seqPage->setBreakDrop (false);
+        proc.patterns().edit ([&] (batida::PatternBank& b) { b.patterns[0] = kept; });
+    }
+
     // A target on Mod 2 so the MOD page shows a list and a bar shows modulation.
     proc.toggleModTarget (1, "v1_flt_cutoff");
     editor->showPage (BatidaEditor::Mod);
@@ -264,6 +284,16 @@ int main (int argc, char* argv[])
             settle (20);
         settle (200);
         save ("07-Vary");
+        for (auto* c : soundPage->getChildren())
+            if (auto* vary = dynamic_cast<VaryOverlay*> (c))
+            {
+                vary->setKitScope (true);
+                for (int i = 0; i < 1500 && proc.isVarying(); ++i)
+                    settle (20);
+                settle (200);
+                save ("07-Vary-Kit");
+                vary->setKitScope (false);
+            }
         soundPage->closeOverlays();
         settle (50);
         if (auto* b = findButton (*soundPage, juce::String::fromUTF8 ("OPERATORS \xe2\x86\x97")))

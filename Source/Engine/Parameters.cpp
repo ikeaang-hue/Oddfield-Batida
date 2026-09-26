@@ -99,6 +99,7 @@ std::vector<ParamSpec> buildVoiceSpecs()
     s[vp::ChainAmt] = flt ("chain_amt", "Chain", 0.0f, 1.0f, 1.0f, "%");
     s[vp::Mute]     = toggle ("mute", "Mute");
     s[vp::Solo]     = toggle ("solo", "Solo");
+    s[vp::Choke]    = choice ("choke", "Choke", { "Off", "1", "2", "3", "4" });
 
     for (int o = 0; o < kNumOps; ++o)
     {

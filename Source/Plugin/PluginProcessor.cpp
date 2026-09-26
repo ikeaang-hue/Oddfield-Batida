@@ -1,6 +1,9 @@
 #include "PluginProcessor.h"
 
+#include "Engine/BreakKit.h"
 #include "Engine/ParamRange.h"
+#include "Engine/Render.h"
+#include "Engine/Sequencer/PatternMidi.h"
 #include "Library/SampleLocator.h"
 
 #include <FactoryData.h>
@@ -224,7 +227,9 @@ void BatidaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
 
     // Auditioning a Vary suggestion: that voice plays the suggestion.
     if (const auto* p = preview.acquire(); p != nullptr && p->active)
-        params.voices[(size_t) p->voice] = p->params;
+        for (int v = 0; v < kNumVoices; ++v)
+            if ((p->mask >> v) & 1u)
+                params.voices[(size_t) v] = p->params[(size_t) v];
 
     kit.setParameters (params);
 
@@ -655,18 +660,181 @@ VoiceParams BatidaProcessor::withLiveMix (const VaryCandidate& c, const VoicePar
     return p;
 }
 
-void BatidaProcessor::previewCandidate (int index)
+void BatidaProcessor::publishPreview()
 {
-    previewIndex = index >= 0 && index < (int) candidates.size() ? index : -1;
     Preview p;
     if (previewIndex >= 0)
     {
         p.active = true;
-        p.voice = candidatesVoice;
-        p.params = withLiveMix (candidates[(size_t) previewIndex], readVoiceParams (candidatesVoice));
+        p.mask = 1u << candidatesVoice;
+        p.params[(size_t) candidatesVoice] = withLiveMix (candidates[(size_t) previewIndex], readVoiceParams (candidatesVoice));
+    }
+    else if (kitPreviewIndex >= 0)
+    {
+        p.active = true;
+        const auto& c = kitCands[(size_t) kitPreviewIndex];
+        p.mask = c.changed;
+        for (int v = 0; v < kNumVoices; ++v)
+            if ((c.changed >> v) & 1u)
+            {
+                const auto live = readVoiceParams (v);
+                auto& q = p.params[(size_t) v];
+                q = c.params[(size_t) v];
+                // The suggestion's level match on top of the slot's mix as it is now.
+                const auto& level = voiceParamSpecs()[(size_t) vp::Level];
+                q[vp::Level] = std::clamp (live[vp::Level] + (q[vp::Level] - kitBase[(size_t) v][vp::Level]), level.min, level.max);
+                for (const auto k : { vp::Pan, vp::ChainAmt, vp::Mute, vp::Solo })
+                    q[k] = live[k];
+            }
     }
     preview.replace (p);
     ++varyVersion;
+}
+
+void BatidaProcessor::previewCandidate (int index)
+{
+    previewIndex = index >= 0 && index < (int) candidates.size() ? index : -1;
+    if (previewIndex >= 0)
+        kitPreviewIndex = -1;
+    publishPreview();
+}
+
+void BatidaProcessor::startKitVary (float amount, VaryDirection direction, bool lockSource, bool lockFx, bool lockEnvelopes,
+                                    std::array<bool, kNumVoices> lockedSlots)
+{
+    if (varyBusy.exchange (true))
+        return;
+    previewCandidate (-1);
+    previewKitCandidate (-1);
+
+    std::vector<std::pair<int, VaryRequest>> requests;
+    std::array<VoiceParams, kNumVoices> base;
+    const auto seed = (uint32_t) juce::Random::getSystemRandom().nextInt();
+    for (int v = 0; v < kNumVoices; ++v)
+    {
+        base[(size_t) v] = readVoiceParams (v);
+        if (lockedSlots[(size_t) v])
+            continue;
+        VaryRequest req;
+        req.base = base[(size_t) v];
+        req.keepAlive = kit.sampleSlot (v).share();
+        req.sample = req.keepAlive.get();
+        req.amount = amount;
+        req.direction = direction;
+        req.lockSource = lockSource;
+        req.lockFx = lockFx;
+        req.lockEnvelopes = lockEnvelopes;
+        req.seed = seed + (uint32_t) v * 7919u;
+        requests.push_back ({ v, req });
+    }
+
+    juce::WeakReference<BatidaProcessor> safe (this);
+    varyPool.addJob ([safe, requests, base]
+    {
+        std::array<std::vector<VaryCandidate>, kNumVoices> results;
+        for (const auto& [v, req] : requests)
+            results[(size_t) v] = vary (req);
+
+        std::vector<KitCandidate> kits;
+        for (int i = 0; i < 4; ++i)
+        {
+            KitCandidate k;
+            k.params = base;
+            for (int v = 0; v < kNumVoices; ++v)
+                if (i < (int) results[(size_t) v].size())
+                {
+                    k.params[(size_t) v] = results[(size_t) v][(size_t) i].params;
+                    k.changed |= 1u << v;
+                }
+            if (k.changed == 0)
+                continue;
+            const auto n = juce::countNumberOfBits (k.changed);
+            k.note = std::to_string (n) + (n == 1 ? " sound" : " sounds");
+            kits.push_back (std::move (k));
+        }
+        juce::MessageManager::callAsync ([safe, kits = std::move (kits), base]() mutable
+        {
+            if (auto* self = safe.get())
+            {
+                self->kitCands = std::move (kits);
+                self->kitBase = base;
+                self->kitVaried = true;
+                self->kitPreviewIndex = -1;
+                self->varyBusy = false;
+                ++self->varyVersion;
+            }
+        });
+    });
+}
+
+void BatidaProcessor::previewKitCandidate (int index)
+{
+    kitPreviewIndex = index >= 0 && index < (int) kitCands.size() ? index : -1;
+    if (kitPreviewIndex >= 0)
+        previewIndex = -1;
+    publishPreview();
+}
+
+void BatidaProcessor::keepKitCandidate()
+{
+    if (kitPreviewIndex < 0)
+        return;
+    const auto kept = preview.get(); // what's being heard
+    if (! kept.active)
+        return;
+
+    beginUndoStep (true);
+    ++actionCounter;
+    for (int v = 0; v < kNumVoices; ++v)
+        if ((kept.mask >> v) & 1u)
+            writeVoiceParameters (v, kept.params[(size_t) v]);
+    kitPreviewIndex = -1;
+    kitCands.clear();
+    kitVaried = false;
+    publishPreview();
+}
+
+// Pattern Vary --------------------------------------------------------------------
+
+void BatidaProcessor::startPatternVary (int pattern, float amount, PatternDirection direction, std::array<bool, kNumTracks> lockedTracks)
+{
+    previewPatternCandidate (-1);
+    PatternVaryRequest req;
+    req.base = kit.patternStore().get().patterns[(size_t) pattern];
+    req.amount = amount;
+    req.direction = direction;
+    req.locked = lockedTracks;
+    req.seed = (uint32_t) juce::Random::getSystemRandom().nextInt();
+    patternCands = varyPattern (req);
+    patternCandsFor = pattern;
+    ++patternVaryVersion;
+}
+
+void BatidaProcessor::previewPatternCandidate (int index)
+{
+    patternPreviewIndex = index >= 0 && index < (int) patternCands.size() ? index : -1;
+    PatternPreview pv;
+    if (patternPreviewIndex >= 0)
+    {
+        pv.active = true;
+        pv.bank = kit.patternStore().get();
+        pv.bank.patterns[(size_t) patternCandsFor] = patternCands[(size_t) patternPreviewIndex].pattern;
+    }
+    kit.patternPreview().replace (pv);
+    ++patternVaryVersion;
+}
+
+void BatidaProcessor::keepPatternCandidate()
+{
+    if (patternPreviewIndex < 0)
+        return;
+    const auto chosen = patternCands[(size_t) patternPreviewIndex].pattern;
+    const auto pattern = patternCandsFor;
+    beginUndoStep();
+    kit.patternStore().edit ([&] (PatternBank& b) { b.patterns[(size_t) pattern] = chosen; });
+    patternCands.clear();
+    patternCandsFor = -1;
+    previewPatternCandidate (-1);
 }
 
 void BatidaProcessor::writeVoiceParameters (int voice, const VoiceParams& values)
@@ -698,6 +866,163 @@ void BatidaProcessor::keepCandidate()
     candidates.clear();
     candidatesVoice = -1; // back to "press Vary", not "nothing found"
     ++varyVersion;
+}
+
+// Sampling -------------------------------------------------------------------------
+
+std::optional<BatidaProcessor::BreakResult> BatidaProcessor::loadBreak (const juce::File& file, int pattern, juce::String* error)
+{
+    juce::String note;
+    std::shared_ptr<const SampleData> loop = SampleSlot::decode (file, formats, note);
+    if (loop == nullptr)
+    {
+        if (error != nullptr)
+            *error = "Can't read " + file.getFileName();
+        return std::nullopt;
+    }
+    const auto plan = planBreak (*loop);
+    if (! plan)
+    {
+        if (error != nullptr)
+            *error = "No hits found in " + file.getFileName();
+        return std::nullopt;
+    }
+
+    beginLoadStep ("break", LoadMode::Step);
+    uint32_t mask = 0;
+    for (int v = 0; v < kNumVoices; ++v)
+        mask |= plan->used[(size_t) v] ? 1u << v : 0u;
+    kit.beginSwitch (mask);
+    for (int v = 0; v < kNumVoices; ++v)
+    {
+        if (! plan->used[(size_t) v])
+            continue;
+        kit.sampleSlot (v).setShared (loop); // one decoded loop behind every slot that plays it
+        sampleBytes[(size_t) v] = file.getSize();
+        auto values = plan->voices[(size_t) v];
+        const auto live = readVoiceParams (v);
+        for (const auto k : { vp::Pan, vp::Mute, vp::Solo })
+            values[k] = live[k];
+        writeVoiceParameters (v, values);
+        setNameQuietly (v, plan->names[(size_t) v]);
+        origins.soundFiles[(size_t) v] = juce::File();
+    }
+    kit.patternStore().edit ([&] (PatternBank& b) { b.patterns[(size_t) pattern] = plan->pattern; });
+    origins.patternNames[(size_t) pattern] = file.getFileNameWithoutExtension().substring (0, 24);
+    origins.patternFiles[(size_t) pattern] = juce::File();
+    writeGlobalParameter (gp::SeqTempo, (float) (std::round (plan->bpm * 100.0) / 100.0)); // the loop's own tempo
+    endLoadStep ("break", LoadMode::Step);
+    return BreakResult { (int) plan->hits.size(), plan->bars, plan->bpm };
+}
+
+bool BatidaProcessor::loadRendered (const juce::AudioBuffer<float>& audio, int target, const juce::String& name, bool loop, juce::String* error)
+{
+    // Written to the library, so the sound can be saved and found again.
+    const auto folder = library().folderFor (PresetType::Sound, false).getSiblingFile ("Samples").getChildFile ("Resampled");
+    folder.createDirectory();
+    const auto file = folder.getChildFile (safeFileName (name) + ".wav").getNonexistentSibling();
+    {
+        std::unique_ptr<juce::OutputStream> out (file.createOutputStream());
+        juce::WavAudioFormat wav;
+        const auto rate = getSampleRate() > 0.0 ? getSampleRate() : 48000.0;
+        auto writer = out != nullptr ? wav.createWriterFor (out, juce::AudioFormatWriterOptions {}.withSampleRate (rate).withNumChannels (2).withBitsPerSample (24))
+                                     : nullptr;
+        if (writer == nullptr || ! writer->writeFromAudioSampleBuffer (audio, 0, audio.getNumSamples()))
+        {
+            if (error != nullptr)
+                *error = "Couldn't write " + file.getFullPathName();
+            return false;
+        }
+    }
+
+    // A plain sample sound that plays the render as it is: to its end, dry
+    // (the chain is already in it). Pan, Mute and Solo stay as they were.
+    SoundPreset sound = initSoundPreset();
+    sound.info.name = name.substring (0, 24);
+    auto& p = sound.params;
+    p[vp::SrcMode] = (float) SourceMode::Sample;
+    p[vp::PlayMode] = (float) PlayMode::OneShot;
+    p[vp::AmpA] = 0.0f;
+    p[vp::AmpD] = 8000.0f;
+    p[vp::AmpS] = 1.0f;
+    p[vp::AmpR] = 8000.0f;
+    p[vp::SmpFadeOut] = loop ? 0.0f : 4.0f;
+    p[vp::ChainAmt] = 0.0f;
+    sound.sample = { file.getFullPathName(), file.getSize() };
+    applySound (target, sound, {});
+    return kit.sampleSlot (target).getStatus() == SampleSlot::Status::Loaded;
+}
+
+namespace
+{
+RenderRequest renderRequestFor (BatidaProcessor& proc, const Kit& kit)
+{
+    RenderRequest req;
+    for (int v = 0; v < kNumVoices; ++v)
+    {
+        req.params.voices[(size_t) v] = proc.readVoiceParams (v);
+        req.samples[(size_t) v] = proc.sampleSlot (v).share();
+    }
+    req.params.global = proc.readGlobalParams();
+    req.movement = kit.movementStore().get();
+    req.bank = proc.patterns().get();
+    req.sampleRate = proc.getSampleRate() > 0.0 ? proc.getSampleRate() : 48000.0;
+    req.bpm = kit.isFollowingHost() ? kit.getHostBpm() : (double) req.params.global[gp::SeqTempo];
+    return req;
+}
+} // namespace
+
+bool BatidaProcessor::resampleSound (int source, int target, juce::String* error)
+{
+    auto req = renderRequestFor (*this, kit);
+    req.mode = RenderRequest::Mode::Sound;
+    req.voice = source;
+    for (int v = 0; v < kNumVoices; ++v) // the sound alone, even if others are soloed
+    {
+        req.params.voices[(size_t) v][vp::Mute] = v == source ? 0.0f : 1.0f;
+        req.params.voices[(size_t) v][vp::Solo] = 0.0f;
+    }
+    const auto audio = renderKit (req);
+    return loadRendered (audio, target, getVoiceName (source) + " RS", false, error);
+}
+
+bool BatidaProcessor::resamplePattern (int pattern, int target, juce::String* error)
+{
+    auto req = renderRequestFor (*this, kit);
+    req.mode = RenderRequest::Mode::Pattern;
+    req.pattern = pattern;
+    if (req.bank.patterns[(size_t) pattern].isEmpty())
+    {
+        if (error != nullptr)
+            *error = getPatternName (pattern) + " is empty";
+        return false;
+    }
+    const auto audio = renderKit (req);
+    return loadRendered (audio, target, getPatternName (pattern) + " Loop", true, error);
+}
+
+juce::File BatidaProcessor::exportPatternMidi (int pattern, juce::String* error)
+{
+    MidiExportOptions options;
+    const auto g = readGlobalParams();
+    options.swing = g[gp::SeqSwing];
+    options.padX = g[gp::XyX];
+    options.padY = g[gp::XyY];
+    const auto midi = patternToMidi (kit.patternStore().get(), pattern, options);
+
+    const auto folder = library().folderFor (PresetType::Sound, false).getSiblingFile ("MIDI");
+    folder.createDirectory();
+    const auto name = "P" + juce::String (pattern + 1).paddedLeft ('0', 2) + " " + getPatternName (pattern);
+    const auto file = folder.getChildFile (safeFileName (name) + ".mid");
+    file.deleteFile(); // the same pattern exported again replaces its file
+    std::unique_ptr<juce::FileOutputStream> out (file.createOutputStream());
+    if (out == nullptr || ! midi.writeTo (*out))
+    {
+        if (error != nullptr)
+            *error = "Couldn't write " + file.getFullPathName();
+        return {};
+    }
+    return file;
 }
 
 // Library --------------------------------------------------------------------------
@@ -1271,6 +1596,7 @@ void BatidaProcessor::timerCallback()
         kit.sampleSlot (v).collectGarbage();
     kit.patternStore().collectGarbage();
     kit.movementStore().collectGarbage();
+    kit.patternPreview().collectGarbage();
     preview.collectGarbage();
 }
 
@@ -1345,7 +1671,13 @@ void BatidaProcessor::setStateInformation (const void* data, int sizeInBytes)
             m = defaultMovement();
         kit.movementStore().replace (m);
     }
+    // Projects from before 0.8.0 have no choke groups: they load with none, so
+    // they sound as they did (the default kit's hats would otherwise choke).
+    const auto hasChoke = tree.getChildWithProperty ("id", juce::String (voiceParamID (0, vp::Choke))).isValid();
     state.replaceState (tree);
+    if (! hasChoke)
+        for (int v = 0; v < kNumVoices; ++v)
+            state.getParameter (voiceParamID (v, vp::Choke))->setValueNotifyingHost (0.0f);
 
     for (auto& n : voiceNames)
         n = {};

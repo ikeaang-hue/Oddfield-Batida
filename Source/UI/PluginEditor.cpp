@@ -87,6 +87,8 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
     wire (seqPage.patternStrip, PresetType::Pattern);
     library.onChanged = [this] { libraryChanged(); };
     soundPage.onSaveSound = [this] { library.saveAs (PresetType::Sound); };
+    soundPage.onSaveKit = [this] { library.saveAs (PresetType::Kit); };
+    seqPage.onSavePattern = [this] { library.saveAs (PresetType::Pattern); };
 
     // Sound cells: the row, and the SEQ track headers (same gestures).
     for (auto* c : row.getCells())
@@ -177,6 +179,8 @@ void BatidaEditor::showPage (int p)
     row.setVisible (p != Seq); // the SEQ track headers are the sound row there
     if (p != Sound)
         soundPage.closeOverlays();
+    if (p != Seq)
+        seqPage.closeOverlays();
     top.setPage (p);
     resized();
 }
@@ -273,6 +277,12 @@ void BatidaEditor::voiceMenu (int voice, juce::Component& target)
     rename.shortcutKeyDescription = "double-click";
     m.addItem (rename);
     m.addSubMenu ("Swap with", swapMenu);
+    juce::PopupMenu chokeMenu;
+    const auto group = proc.readVoiceParams (voice).choice (vp::Choke);
+    for (int g = 0; g <= 4; ++g)
+        chokeMenu.addItem (kChokeItem + g, g == 0 ? juce::String ("Off") : juce::String (g), true, g == group);
+    m.addSubMenu ("Choke group", chokeMenu);
+    m.addSubMenu ("Resample here", resampleMenu (proc, voice));
     m.addSeparator();
     m.addItem (2, "Init sound");
     m.addItem (3, "Load sound...");
@@ -282,7 +292,19 @@ void BatidaEditor::voiceMenu (int voice, juce::Component& target)
                      {
                          if (choice == 1 && safe != nullptr)
                              renameVoice (voice, *safe);
-                         else if (choice >= 100)
+                         else if (choice >= kChokeItem && choice <= kChokeItem + 4)
+                         {
+                             auto* p = proc.getState().getParameter (voiceParamID (voice, vp::Choke));
+                             p->beginChangeGesture();
+                             p->setValueNotifyingHost (p->convertTo0to1 ((float) (choice - kChokeItem)));
+                             p->endChangeGesture();
+                         }
+                         else if (runResample (proc, choice, voice))
+                         {
+                             selectVoice (voice);
+                             libraryChanged();
+                         }
+                         else if (choice >= 100 && choice < 100 + kNumVoices)
                              swapVoices (voice, choice - 100);
                          else if (choice >= 2 && choice <= 4)
                          {
@@ -351,22 +373,51 @@ void BatidaEditor::fileDragEnter (const juce::StringArray& files, int x, int y)
     fileDragMove (files, x, y);
 }
 
-void BatidaEditor::fileDragMove (const juce::StringArray&, int x, int y)
+bool BatidaEditor::isOverGrid (juce::Point<int> contentPoint)
 {
-    const auto target = voiceAt (content.getLocalPoint (this, juce::Point<int> (x, y)));
-    setDropTarget (target >= 0 ? target : selected);
+    auto& grid = seqPage.getGrid();
+    return page == Seq && grid.isShowing() && content.getLocalArea (&grid, grid.getLocalBounds()).contains (contentPoint);
+}
+
+void BatidaEditor::fileDragMove (const juce::StringArray& files, int x, int y)
+{
+    const auto point = content.getLocalPoint (this, juce::Point<int> (x, y));
+    const auto audio = std::any_of (files.begin(), files.end(), [] (const juce::String& f) { return isAudioFile (f); });
+    const auto breakDrop = audio && isOverGrid (point);
+    seqPage.setBreakDrop (breakDrop);
+    const auto target = voiceAt (point);
+    setDropTarget (breakDrop ? -1 : (target >= 0 ? target : selected));
 }
 
 void BatidaEditor::fileDragExit (const juce::StringArray&)
 {
     setDropTarget (-1);
+    seqPage.setBreakDrop (false);
 }
 
 void BatidaEditor::filesDropped (const juce::StringArray& files, int x, int y)
 {
-    const auto target = voiceAt (content.getLocalPoint (this, juce::Point<int> (x, y)));
+    const auto point = content.getLocalPoint (this, juce::Point<int> (x, y));
+    const auto target = voiceAt (point);
     const auto voice = target >= 0 ? target : selected;
     setDropTarget (-1);
+    seqPage.setBreakDrop (false);
+
+    // A drum loop on the SEQ grid: a kit and this pattern from its hits.
+    if (isOverGrid (point))
+        for (const auto& f : files)
+            if (isAudioFile (f))
+            {
+                juce::String error;
+                juce::MouseCursor::showWaitCursor();
+                const auto result = proc.loadBreak (juce::File (f), proc.displayPattern(), &error);
+                juce::MouseCursor::hideWaitCursor();
+                if (result)
+                    libraryChanged();
+                else
+                    juce::AlertWindow::showAsync (juce::MessageBoxOptions().withTitle ("Couldn't make a kit").withMessage (error).withButton ("OK"), nullptr);
+                return;
+            }
 
     for (const auto& f : files)
     {
