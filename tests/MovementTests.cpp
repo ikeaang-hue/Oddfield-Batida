@@ -175,11 +175,71 @@ public:
                     if (p != vp::Level && (varyGroupOf (p) == VaryGroup::Envelopes || varyGroupOf (p) == VaryGroup::None))
                         expectEquals (c.params[p], base[p], "locked or excluded: " + juce::String (voiceParamSpecs()[(size_t) p].key));
                 expect (c.features.peakDb > -45.0f && c.features.peakDb <= 6.0f, "no silent or slamming results");
-                const auto differs = std::abs (c.features.loudnessDb - baseF.loudnessDb) > 0.5f
-                                  || std::abs (c.features.brightnessHz - baseF.brightnessHz) > 50.0f
-                                  || std::abs (c.features.lengthMs - baseF.lengthMs) > 10.0f;
-                expect (differs, "not a near-duplicate of the original");
+                expectGreaterOrEqual (soundDistance (c.features, baseF), 0.2f, "not a near-duplicate of the original");
             }
+        }
+
+        beginTest ("Vary: settings a sound can't hear are left alone");
+        {
+            auto base = defaultKitParams().voices[2];
+            base[vp::SrcMode] = 1.0f; // Sample
+            auto sample = std::make_unique<SampleData>();
+            sample->sampleRate = 48000.0;
+            sample->audio.setSize (1, 24000);
+            juce::Random r (9);
+            for (int i = 0; i < 24000; ++i)
+                sample->audio.setSample (0, i, (r.nextFloat() * 2.0f - 1.0f) * std::exp (-(float) i / 3000.0f));
+            VaryRequest req;
+            req.base = base;
+            req.sample = sample.get();
+            req.amount = 0.6f;
+            req.direction = VaryDirection::Noisy;
+            req.seed = 3;
+            const auto result = vary (req);
+            logMessage ("  noisy on a sample: " + juce::String ((int) result.size()) + " suggestions");
+            expectGreaterOrEqual ((int) result.size(), 1, "a sample can be made noisier");
+            for (const auto& c : result)
+                for (int p = vp::FmPitch; p < kNumVoiceParams; ++p)
+                    if ((p >= vp::FmPitch && p < vp::SmpTune) || p >= vp::OpBase)
+                        expectEquals (c.params[p], base[p], "FM setting on a sample: " + juce::String (voiceParamSpecs()[(size_t) p].key));
+        }
+
+        beginTest ("Vary: long sounds can get longer (measured up to 4 s)");
+        {
+            auto base = defaultKitParams().voices[5]; // bass
+            base[vp::PlayMode] = 0.0f; // one-shot: rings for its whole decay
+            base[vp::AmpD] = 1500.0f; // to -60 dB in 1.5 s: past the old 1-second measurement
+            base[vp::AmpS] = 0.0f;
+            base[vp::AmpR] = 600.0f;
+            for (int o = 0; o < kNumOps; ++o) // operators that hold, so the amp envelope sets the length
+            {
+                base[opParam (o, OpD)] = 6000.0f;
+                base[opParam (o, OpS)] = 1.0f;
+                base[opParam (o, OpR)] = 6000.0f; // one-shot operators go on to their release
+            }
+            const auto baseF = measureVoice (base, nullptr);
+            VaryRequest req;
+            req.base = base;
+            req.amount = 0.4f;
+            req.direction = VaryDirection::Longer;
+            req.seed = 5;
+            const auto result = vary (req);
+            logMessage ("  base " + juce::String (baseF.lengthMs, 0) + " ms; " + juce::String ((int) result.size()) + " longer suggestions");
+            expectGreaterThan (baseF.lengthMs, 1000.0f, "measured past one second");
+            expectGreaterOrEqual ((int) result.size(), 1);
+            for (const auto& c : result)
+                expectGreaterThan (c.features.lengthMs, baseF.lengthMs);
+        }
+
+        beginTest ("Vary: timbre counts, not only brightness and length");
+        {
+            auto a = defaultKitParams().voices[4];
+            auto b = a;
+            b[opParam (1, Ratio)] = a[opParam (1, Ratio)] * 1.5f + 0.5f; // a new overtone
+            b[opParam (1, OpLevel)] = std::max (0.4f, a[opParam (1, OpLevel)]);
+            const auto fa = measureVoice (a, nullptr), fb = measureVoice (b, nullptr);
+            logMessage ("  ratio change: distance " + juce::String (soundDistance (fa, fb), 2));
+            expectGreaterThan (soundDistance (fa, fb), 0.35f);
         }
 
         beginTest ("Vary: directions move the measured sound the right way");

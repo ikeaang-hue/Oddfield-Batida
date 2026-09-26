@@ -3,6 +3,7 @@
 #include "Engine/Parameters.h"
 #include "Engine/SampleData.h"
 
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -33,15 +34,28 @@ struct VaryRequest
     int count = 4;
 };
 
-// What a sound measures as, rendered alone (dry) from one hit.
+// What a sound measures as, rendered alone (dry) from one hit, for up to 4 s
+// (it stops once the sound has died away).
+constexpr int kSpectrumBands = 12;
 struct SoundFeatures
 {
-    float peakDb = -120.0f, rmsDb = -120.0f, lengthMs = 0.0f, brightnessHz = 0.0f;
+    float peakDb = -120.0f, rmsDb = -120.0f, lengthMs = 0.0f;
+    float brightnessHz = 0.0f;  // spectral centroid of the hit
     float loudnessDb = -120.0f; // the loudest 50 ms: how loud a hit sounds, whatever its length
+    std::array<float, kSpectrumBands> bandsDb {}; // each band's share of the energy (40 Hz–16 kHz, log-spaced), dB
     bool finite = true;
 };
 
 SoundFeatures measureVoice (const VoiceParams& params, const SampleData* sample, double sampleRate = 48000.0);
+
+// How different two sounds are, in rough "just noticeable" units: loudness,
+// length, brightness and the shape of the spectrum.
+float soundDistance (const SoundFeatures& a, const SoundFeatures& b);
+
+// Whether a setting can be heard on this sound: sample settings on an FM
+// sound (and the other way round), Balance outside Layer, and the settings of
+// a silent operator can't. Vary never spends a try on those.
+bool isAudibleSetting (const VoiceParams& base, int param);
 
 // One hit rendered dry and reduced to `bins` peak levels over `seconds`, for
 // drawing a sound's waveform (the Vary tiles).

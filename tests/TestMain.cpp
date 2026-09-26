@@ -7,6 +7,7 @@
 // BatidaTests --render <dir>  render the default kit to WAV files
 // BatidaTests --pad <dir>     loudness of a beat across the XY pad, plus WAVs
 // BatidaTests --beat <dir>    the breakbeat (pattern 1) at three pad positions
+// BatidaTests --vary-report   how often Vary finds nothing, over real sounds
 int main (int argc, char* argv[])
 {
     const juce::StringArray args (argv + 1, argc - 1);
@@ -31,7 +32,7 @@ int main (int argc, char* argv[])
     juce::ScopedJuceInitialiser_GUI gui;
     juce::UnitTestRunner runner;
     runner.setAssertOnFailure (false);
-    runner.runTestsInCategory ("Batida");
+    runner.runTestsInCategory (args.contains ("--vary-report") ? "Report" : "Batida");
 
     int failures = 0;
     for (int i = 0; i < runner.getNumResults(); ++i)
