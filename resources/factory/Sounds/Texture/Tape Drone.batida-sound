@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Tape Drone" author="Negative Space" category="texture"
+  <INFO name="Tape Drone" author="Oddfield" category="texture"
         tags="warm"/>
   <VOICE src_mode="FM" balance="0.5" level="-1.96558571" pan="0" vel_sens="0.699999988"
          play_mode="Gate" glide="0" amp_attack="459.224457" amp_decay="400"

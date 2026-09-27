@@ -25,7 +25,7 @@ using namespace batida::factory;
 
 namespace
 {
-const juce::String kAuthor = "Negative Space";
+const juce::String kAuthor = "Oddfield";
 
 juce::File sourceRoot()
 {

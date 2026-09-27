@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Glass Bell" author="Negative Space" category="perc" tags="metallic"/>
+  <INFO name="Glass Bell" author="Oddfield" category="perc" tags="metallic"/>
   <VOICE src_mode="FM" balance="0.5" level="6" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="18"
          amp_sustain="0.425802231" amp_release="252.673264" pitch_amt="0"

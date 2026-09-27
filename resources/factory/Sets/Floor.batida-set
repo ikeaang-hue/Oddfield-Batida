@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="set" format="1" madeWith="0.7.2">
-  <INFO name="Floor" author="Negative Space" category="" tags="house"/>
+  <INFO name="Floor" author="Oddfield" category="" tags="house"/>
   <KIT midi_mode="Drum map" master="-8" keys_voice="1" xy_x="0.349999994"
        xy_y="0.300000012" comp_amount="0.300000012" comp_attack="10"
        comp_release="120" comp_mix="0.699999988" comp_detector="Internal"

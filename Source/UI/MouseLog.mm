@@ -9,7 +9,7 @@ namespace
 juce::File logFile()
 {
     return juce::File::getSpecialLocation (juce::File::userHomeDirectory)
-        .getChildFile ("Library/Logs/Negative Space/Batida mouse.log");
+        .getChildFile ("Library/Logs/Oddfield/Batida mouse.log");
 }
 
 void write (const juce::String& line)

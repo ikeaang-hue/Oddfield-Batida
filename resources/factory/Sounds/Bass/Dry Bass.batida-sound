@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Dry Bass" author="Negative Space" category="bass" tags="synth-aggressive,organic"/>
+  <INFO name="Dry Bass" author="Oddfield" category="bass" tags="synth-aggressive,organic"/>
   <VOICE src_mode="FM" balance="0.5" level="-1.34153032" pan="0" vel_sens="0.699999988"
          play_mode="Gate" glide="25.0426254" amp_attack="0" amp_decay="300"
          amp_sustain="0.850000024" amp_release="80" pitch_amt="0" pitch_decay="60"

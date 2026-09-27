@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="kit" format="1" madeWith="0.7.2">
-  <INFO name="Foundry" author="Negative Space" category="" tags="harsh,metallic,techno"/>
+  <INFO name="Foundry" author="Oddfield" category="" tags="harsh,metallic,techno"/>
   <KIT xy_x="0.699999988" xy_y="0.550000012" comp_amount="0.349999994"
        comp_attack="5" comp_release="120" comp_mix="1" comp_detector="Internal"
        comp_follow="1" dist_drive="0.300000012" dist_type="0.100000024"

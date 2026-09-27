@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Skin Rim" author="Negative Space" category="snare" tags="organic"/>
+  <INFO name="Skin Rim" author="Oddfield" category="snare" tags="organic"/>
   <VOICE src_mode="FM" balance="0.5" level="1.56908226" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="80.8975906"
          amp_sustain="0" amp_release="30" pitch_amt="0" pitch_decay="60"

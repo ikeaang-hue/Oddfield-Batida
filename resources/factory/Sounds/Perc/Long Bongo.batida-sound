@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Long Bongo" author="Negative Space" category="perc" tags="organic"/>
+  <INFO name="Long Bongo" author="Oddfield" category="perc" tags="organic"/>
   <VOICE src_mode="FM" balance="0.5" level="-3.50711632" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="267.972046"
          amp_sustain="0" amp_release="40" pitch_amt="5.21756172" pitch_decay="25.8518944"

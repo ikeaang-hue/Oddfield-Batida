@@ -6,7 +6,7 @@ if(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "Minimum macOS version" FORCE)
 endif()
 
-project(Batida VERSION 0.8.3)
+project(Batida VERSION 0.8.4)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -107,9 +107,9 @@ set(BATIDA_DEFINITIONS
 # Plugin (AU only for now; VST3 comes in phase 9, SPEC §14)
 # ---------------------------------------------------------------------------
 juce_add_plugin(Batida
-    COMPANY_NAME "Negative Space"
-    BUNDLE_ID com.negativespace.batida
-    PLUGIN_MANUFACTURER_CODE Ngsp
+    COMPANY_NAME "Oddfield"
+    BUNDLE_ID com.oddfield.batida
+    PLUGIN_MANUFACTURER_CODE Odfd
     PLUGIN_CODE Btda
     FORMATS AU
     PRODUCT_NAME "Batida"

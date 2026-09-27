@@ -54,22 +54,60 @@ Library::~Library()
     pool.removeAllJobs (true, 5000);
 }
 
+namespace
+{
+// Until 0.8.4 the publisher was called Negative Space. The first time the
+// renamed Batida looks for its folders, it moves the old ones (the library
+// and the settings) to the new name, unless the new ones already exist.
+void moveFromOldPublisherName()
+{
+    static const bool moved = []
+    {
+        const auto home = juce::File::getSpecialLocation (juce::File::userHomeDirectory);
+        for (const auto& [from, to] : { std::pair { "Music/Negative Space/Batida", "Music/Oddfield/Batida" },
+                                        std::pair { "Library/Application Support/Negative Space/Batida",
+                                                    "Library/Application Support/Oddfield/Batida" } })
+        {
+            const auto oldDir = home.getChildFile (from), newDir = home.getChildFile (to);
+            if (oldDir.isDirectory() && ! newDir.exists())
+            {
+                newDir.getParentDirectory().createDirectory();
+                if (oldDir.moveFileTo (newDir))
+                {
+                    const auto oldParent = oldDir.getParentDirectory();
+                    if (oldParent.getNumberOfChildFiles (juce::File::findFilesAndDirectories | juce::File::ignoreHiddenFiles) == 0)
+                        oldParent.deleteRecursively(); // only the empty "Negative Space" folder (maybe a .DS_Store)
+                }
+            }
+        }
+        return true;
+    }();
+    juce::ignoreUnused (moved);
+}
+} // namespace
+
 juce::File Library::defaultSettingsFile()
 {
     if (const auto env = juce::SystemStats::getEnvironmentVariable ("BATIDA_LIBRARY", {}); env.isNotEmpty())
         return juce::File (env).getChildFile (".settings.xml");
+    moveFromOldPublisherName();
     return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
-        .getChildFile ("Application Support/Negative Space/Batida/Settings.xml");
+        .getChildFile ("Application Support/Oddfield/Batida/Settings.xml");
 }
 
 juce::File Library::defaultRoot()
 {
     if (const auto env = juce::SystemStats::getEnvironmentVariable ("BATIDA_LIBRARY", {}); env.isNotEmpty())
         return juce::File (env);
+    const auto standard = juce::File::getSpecialLocation (juce::File::userMusicDirectory).getChildFile ("Oddfield/Batida");
     if (const auto xml = juce::XmlDocument::parse (defaultSettingsFile()))
         if (const auto path = xml->getStringAttribute ("library"); juce::File::isAbsolutePath (path))
-            return juce::File (path);
-    return juce::File::getSpecialLocation (juce::File::userMusicDirectory).getChildFile ("Negative Space/Batida");
+        {
+            // A setting that still names the old standard folder follows the move.
+            const auto old = juce::File::getSpecialLocation (juce::File::userMusicDirectory).getChildFile ("Negative Space/Batida");
+            return juce::File (path) == old && ! old.exists() ? standard : juce::File (path);
+        }
+    return standard;
 }
 
 juce::File Library::folderFor (PresetType type, bool factory) const

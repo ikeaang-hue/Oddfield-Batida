@@ -52,7 +52,7 @@ juce::MemoryBlock smallArchive (const juce::File& temp, int version, bool withBr
     for (int v = 0; v < kNumVoices; ++v)
     {
         SoundPreset s;
-        s.info = { kit.names[(size_t) v], "Negative Space", categories[v], { v == 1 ? "digital" : "warm" }, {} };
+        s.info = { kit.names[(size_t) v], "Oddfield", categories[v], { v == 1 ? "digital" : "warm" }, {} };
         s.params = kit.voices[(size_t) v];
         const auto f = dir.getChildFile ("Sounds/" + Library::categoryFolder (categories[v]) + "/" + s.info.name + ".batida-sound");
         f.getParentDirectory().createDirectory();
@@ -63,13 +63,13 @@ juce::MemoryBlock smallArchive (const juce::File& temp, int version, bool withBr
     if (withBreakbeat)
     {
         PatternPreset beat;
-        beat.info = { "Breakbeat", "Negative Space", {}, { "organic" }, {} };
+        beat.info = { "Breakbeat", "Oddfield", {}, { "organic" }, {} };
         beat.pattern = breakbeatPattern();
         dir.getChildFile ("Patterns").createDirectory();
         writePattern (dir.getChildFile ("Patterns/Breakbeat.batida-pattern"), beat);
     }
     SetPreset set;
-    set.info = { "Neutral Breakbeat", "Negative Space", {}, { "warm" }, {} };
+    set.info = { "Neutral Breakbeat", "Oddfield", {}, { "warm" }, {} };
     set.kit = kit;
     set.patterns.patterns[0] = breakbeatPattern();
     dir.getChildFile ("Sets").createDirectory();
@@ -330,7 +330,7 @@ public:
             f = {};
             f.search = "open hat";
             expect (names (lib.filtered (PresetType::Sound, f)) == juce::StringArray ({ "Open Hat" }), "every word must match");
-            f.search = "negative";
+            f.search = "oddfield";
             expectEquals ((int) lib.filtered (PresetType::Sound, f).size(), 8, "search covers the author");
             expectEquals ((int) lib.filtered (PresetType::Kit, all).size(), 1);
             expectEquals ((int) lib.filtered (PresetType::Pattern, all).size(), 1);
@@ -391,7 +391,7 @@ public:
         {
             const auto root = temp.getChildFile ("Lib");
             SoundPreset s;
-            s.info = { "Candidate", "Negative Space", "kick", { "warm" }, {} };
+            s.info = { "Candidate", "Oddfield", "kick", { "warm" }, {} };
             s.params = oddParams (5);
             const auto file = root.getChildFile ("Review/Sounds/Kick/Candidate.batida-sound");
             file.getParentDirectory().createDirectory();

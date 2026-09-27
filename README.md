@@ -1,6 +1,6 @@
 # Batida
 
-**A drum instrument for sound design**, by Negative Space. macOS · Audio Unit · version 0.8.3
+**A drum instrument for sound design**, from Oddfield. macOS · Audio Unit · version 0.8.4
 (pre-release).
 
 Eight sounds play into one shared effects chain. An **XY pad** pushes the whole chain at once:
@@ -18,15 +18,15 @@ sound, and a library. It works for any style but is made for techno, breakbeat a
 You need macOS 12 or later, Xcode and CMake (`brew install cmake`).
 
 ```bash
-git clone --recurse-submodules https://github.com/ikeaang-hue/NegativeSpace-Batida.git
-cd NegativeSpace-Batida
+git clone --recurse-submodules https://github.com/ikeaang-hue/Oddfield-Batida.git
+cd Oddfield-Batida
 cmake -B build -G Xcode
 cmake --build build --config Release
 killall -9 AudioComponentRegistrar
 ```
 
 Then quit and reopen your host and add Batida as an instrument: in Logic or GarageBand,
-**AU Instruments → Negative Space → Batida** on a software-instrument track; in Live, turn on
+**AU Instruments → Oddfield → Batida** on a software-instrument track; in Live, turn on
 Audio Units in Settings → Plug-Ins and rescan; in Reaper, it's under AUi in the FX browser.
 Note names in this README follow Logic (note 60 = C3); the note numbers are the same everywhere.
 
@@ -119,7 +119,7 @@ master level. Click **BATIDA/** for the version.
   own engine (no outside samples). Techno, breakbeat and glitch at the core, plus house, garage,
   hip hop and trap: search a style's name to find its kits, patterns and sets. Four moods, *neutral*,
   *synth-aggressive*, *neon* and *tender*, each have tonal sounds, a kit and a set; search the mood.
-- Files live in `~/Music/Negative Space/Batida/`, with *Factory* and *User* folders you can open
+- Files live in `~/Music/Oddfield/Batida/`, with *Factory* and *User* folders you can open
   in Finder.
 
 **The sound row** (top of every page; on SEQ, down the left side)
@@ -161,7 +161,7 @@ DAWs, send audio to the plugin's sidechain input.
 build/BatidaTests_artefacts/Release/BatidaTests                        # unit tests
 build/BatidaTests_artefacts/Release/BatidaTests --bench                # CPU, worst case
 build/BatidaSnapshot_artefacts/Release/BatidaSnapshot build/snapshots  # screenshots + gesture checks
-auval -v aumu Btda Ngsp                                                # Apple's AU validation
+auval -v aumu Btda Odfd                                                # Apple's AU validation
 swiftc -O -o build/au_check tests/au_check.swift && build/au_check     # the installed AU, host-style
 ```
 
@@ -197,4 +197,4 @@ swiftc -O -o build/au_check tests/au_check.swift && build/au_check     # the ins
 Free and open source under the **GNU AGPL v3** ([LICENSE.md](LICENSE.md)). Built with [JUCE](https://juce.com). The fonts, JetBrains Mono and Martian Mono, are
 under the SIL Open Font License; you'll find them in `resources/fonts/`.
 
-© 2026 Negative Space
+© 2026 Oddfield

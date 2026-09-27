@@ -1,6 +1,6 @@
 # Testing Batida (trusted testers)
 
-Thanks for trying Batida before anyone else. This is a **pre-release build (0.8.3)** for a small
+Thanks for trying Batida before anyone else. This is a **pre-release build (0.8.4)** for a small
 group of developers: you build it yourself from this repository. Please don't share the plugin
 or the repository yet.
 
@@ -14,8 +14,8 @@ or the repository yet.
 ## Build and install
 
 ```bash
-git clone --recurse-submodules https://github.com/ikeaang-hue/NegativeSpace-Batida.git
-cd NegativeSpace-Batida
+git clone --recurse-submodules https://github.com/ikeaang-hue/Oddfield-Batida.git
+cd Oddfield-Batida
 cmake -B build -G Xcode
 cmake --build build --config Release
 killall -9 AudioComponentRegistrar
@@ -26,7 +26,7 @@ a few minutes. Then quit and reopen your host, and add Batida as an instrument:
 
 | Host | Where |
 |---|---|
-| Logic Pro, GarageBand | a software-instrument track → AU Instruments → Negative Space → Batida |
+| Logic Pro, GarageBand | a software-instrument track → AU Instruments → Oddfield → Batida |
 | Ableton Live | Settings → Plug-Ins: Audio Units on, then Rescan; Batida is under Plug-Ins → Audio Units |
 | Reaper | Preferences → Plug-ins → AU (re-scan if needed); Batida is in the FX browser under AUi |
 
@@ -38,7 +38,7 @@ Optional checks after building (each ends in PASS, and exits non-zero if not):
 ```bash
 build/BatidaTests_artefacts/Release/BatidaTests
 build/BatidaSnapshot_artefacts/Release/BatidaSnapshot build/snapshots
-auval -v aumu Btda Ngsp
+auval -v aumu Btda Odfd
 ```
 
 ## What to try
@@ -48,7 +48,7 @@ as well as name, because hosts name octaves differently (note 60 is C3 in Logic 
 Reaper).
 
 1. **First run:** open Batida in a new project. It starts with the neutral kit, empty patterns
-   and modulators, and the library in `~/Music/Negative Space/Batida/`.
+   and modulators, and the library in `~/Music/Oddfield/Batida/`.
 2. **KIT:** play notes 36–43 (C1–G1 in Logic) and move the XY pad. Does the chain do what the
    pad says?
 3. **SOUND:** edit a sound. Try FM, Sample (drop a WAV on a slot) and Layer, the operators, and
@@ -77,6 +77,10 @@ New in 0.8:
     Finder. The XY lane comes along as CC 16 and CC 17.
 14. **XY REC:** KIT → XY REC, then hold the pad still while a pattern plays: each step it passes
     takes the pad's position.
+
+New in 0.8.4: the publisher is now called **Oddfield**. Batida is listed under Oddfield in your
+host, so projects saved with an earlier build need Batida added again. Your library and settings
+move to the Oddfield folders by themselves the first time you open Batida.
 
 New in 0.8.3:
 
@@ -116,9 +120,9 @@ rm -rf ~/Library/Audio/Plug-Ins/Components/Batida.component
 killall -9 AudioComponentRegistrar
 ```
 
-The library (`~/Music/Negative Space/Batida/`) holds your saved sounds, kits, resampled samples
+The library (`~/Music/Oddfield/Batida/`) holds your saved sounds, kits, resampled samples
 and exported MIDI; delete it only if you don't need them. Settings are in
-`~/Library/Application Support/Negative Space/Batida/`.
+`~/Library/Application Support/Oddfield/Batida/`.
 
 ## Licence
 
