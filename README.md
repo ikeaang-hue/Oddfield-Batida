@@ -18,8 +18,8 @@ sound, and a library. It works for any style but is made for techno, breakbeat a
 You need macOS 12 or later, Xcode and CMake (`brew install cmake`).
 
 ```bash
-git clone --recurse-submodules https://github.com/ikeaang-hue/NegativeSpace-Batida.git
-cd NegativeSpace-Batida
+git clone --recurse-submodules https://github.com/ikeaang-hue/Oddfield-Batida.git
+cd Oddfield-Batida
 cmake -B build -G Xcode
 cmake --build build --config Release
 killall -9 AudioComponentRegistrar

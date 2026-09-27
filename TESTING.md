@@ -14,8 +14,8 @@ or the repository yet.
 ## Build and install
 
 ```bash
-git clone --recurse-submodules https://github.com/ikeaang-hue/NegativeSpace-Batida.git
-cd NegativeSpace-Batida
+git clone --recurse-submodules https://github.com/ikeaang-hue/Oddfield-Batida.git
+cd Oddfield-Batida
 cmake -B build -G Xcode
 cmake --build build --config Release
 killall -9 AudioComponentRegistrar
