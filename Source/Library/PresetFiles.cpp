@@ -399,7 +399,7 @@ KitPreset defaultKitPreset()
 {
     KitPreset k;
     k.info.name = "Neutral";
-    k.info.author = "Negative Space";
+    k.info.author = "Oddfield";
     const auto params = defaultKitParams();
     k.voices = params.voices;
     k.globals = params.global;

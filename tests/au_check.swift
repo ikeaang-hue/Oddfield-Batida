@@ -23,7 +23,7 @@ func fourCC(_ s: String) -> OSType { s.utf8.reduce(0) { ($0 << 8) | OSType($1) }
 
 let description = AudioComponentDescription(componentType: kAudioUnitType_MusicDevice,
                                             componentSubType: fourCC("Btda"),
-                                            componentManufacturer: fourCC("Ngsp"),
+                                            componentManufacturer: fourCC("Odfd"),
                                             componentFlags: 0, componentFlagsMask: 0)
 
 func instantiate() -> AVAudioUnit {

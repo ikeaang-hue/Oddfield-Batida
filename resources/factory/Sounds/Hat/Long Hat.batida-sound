@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Long Hat" author="Negative Space" category="hat" tags="metallic"/>
+  <INFO name="Long Hat" author="Oddfield" category="hat" tags="metallic"/>
   <VOICE src_mode="FM" balance="0.5" level="-1.3920784" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="105.56205"
          amp_sustain="0" amp_release="30" pitch_amt="0" pitch_decay="60"

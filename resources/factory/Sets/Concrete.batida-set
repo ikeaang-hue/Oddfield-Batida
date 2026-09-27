@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="set" format="1" madeWith="0.7.2">
-  <INFO name="Concrete" author="Negative Space" category="" tags="techno"/>
+  <INFO name="Concrete" author="Oddfield" category="" tags="techno"/>
   <KIT midi_mode="Drum map" master="-8" keys_voice="1" xy_x="0.349999994"
        xy_y="0.349999994" comp_amount="0.300000012" comp_attack="8"
        comp_release="150" comp_mix="1" comp_detector="Internal" comp_follow="1"

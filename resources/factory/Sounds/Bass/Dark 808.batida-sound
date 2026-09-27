@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Dark 808" author="Negative Space" category="bass" tags="warm"/>
+  <INFO name="Dark 808" author="Oddfield" category="bass" tags="warm"/>
   <VOICE src_mode="FM" balance="0.5" level="-3.91605711" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="77.4479523" amp_attack="0" amp_decay="1696.50562"
          amp_sustain="0" amp_release="200" pitch_amt="2.85961771" pitch_decay="112.434219"

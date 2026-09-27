@@ -1,10 +1,12 @@
-# Negative Space Batida: Design Spec
+# Oddfield Batida: Design Spec
 
-*Version 1.13, agreed 2026-09-27 (1.13: Stack, 1–4 copies of a sound's source; 1.12: Vary searches only audible settings, measures longer and by spectrum, and relaxes step by step; 1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
+*Version 1.14, agreed 2026-09-27 (1.14: the publisher is renamed Oddfield; 1.13: Stack, 1–4 copies of a sound's source; 1.12: Vary searches only audible settings, measures longer and by spectrum, and relaxes step by step; 1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
 
 ## 1. Identity
 
-- **Publisher:** Negative Space (manufacturer code `Ngsp`)
+- **Publisher:** Oddfield (manufacturer code `Odfd`, bundle ID `com.oddfield.batida`). It was
+  called Negative Space until 0.8.4; the library and settings move from the old folders by
+  themselves.
 - **Plugin:** Batida (plugin code `Btda`). Portuguese for "beat" and "hit".
 - **What it is:** a sound-design drum instrument. It works for general use, but is strongest on
   synthetic and heavy genres such as techno, breakbeat and glitch.
@@ -292,7 +294,7 @@ the other channels stay fully chromatic for the Keys Sound.
 - Missing samples trigger a **search/relink** prompt.
 
 **Library folder**
-- On disk (`~/Music/Negative Space/Batida/`), with *Factory* and *User* areas.
+- On disk (`~/Music/Oddfield/Batida/`), with *Factory* and *User* areas.
 - Files are readable XML (`.batida-sound`, `-kit`, `-pattern`, `-set`), so the user can manage
   them in Finder.
 

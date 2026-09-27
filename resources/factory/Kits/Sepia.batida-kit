@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="kit" format="1" madeWith="0.7.2">
-  <INFO name="Sepia" author="Negative Space" category="" tags="warm,organic,hip hop"/>
+  <INFO name="Sepia" author="Oddfield" category="" tags="warm,organic,hip hop"/>
   <KIT xy_x="0.150000006" xy_y="0.400000006" comp_amount="0.449999988"
        comp_attack="10" comp_release="120" comp_mix="0.800000012" comp_detector="Internal"
        comp_follow="1" dist_drive="0" dist_type="0.5" dist_low_keep="90"

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Dark Sub" author="Negative Space" category="bass" tags="warm"/>
+  <INFO name="Dark Sub" author="Oddfield" category="bass" tags="warm"/>
   <VOICE src_mode="FM" balance="0.5" level="-4.5574708" pan="0" vel_sens="0.699999988"
          play_mode="Gate" glide="39.1438103" amp_attack="5.46448708" amp_decay="400"
          amp_sustain="0.642180324" amp_release="64.2712555" pitch_amt="0"

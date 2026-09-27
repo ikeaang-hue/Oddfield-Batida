@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Prism Kick" author="Negative Space" category="kick" tags="neon,warm"/>
+  <INFO name="Prism Kick" author="Oddfield" category="kick" tags="neon,warm"/>
   <VOICE src_mode="FM" balance="0.5" level="1.56854486" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="386.935791"
          amp_sustain="0" amp_release="40" pitch_amt="21.2010593" pitch_decay="30.0414391"

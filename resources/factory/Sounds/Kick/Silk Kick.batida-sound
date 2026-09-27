@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Silk Kick" author="Negative Space" category="kick" tags="tender,warm"/>
+  <INFO name="Silk Kick" author="Oddfield" category="kick" tags="tender,warm"/>
   <VOICE src_mode="FM" balance="0.5" level="5.17927885" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="2.66199493" amp_decay="463.528839"
          amp_sustain="0" amp_release="60" pitch_amt="6.58130074" pitch_decay="56.3727379"

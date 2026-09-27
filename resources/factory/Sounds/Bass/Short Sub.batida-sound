@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Short Sub" author="Negative Space" category="bass" tags="warm"/>
+  <INFO name="Short Sub" author="Oddfield" category="bass" tags="warm"/>
   <VOICE src_mode="FM" balance="0.5" level="-3.53948641" pan="0" vel_sens="0.699999988"
          play_mode="Gate" glide="21.7074852" amp_attack="3.59996414" amp_decay="400"
          amp_sustain="0.793350637" amp_release="79.4855881" pitch_amt="0"

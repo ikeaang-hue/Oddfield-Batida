@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Short Shaker" author="Negative Space" category="hat" tags="organic"/>
+  <INFO name="Short Shaker" author="Oddfield" category="hat" tags="organic"/>
   <VOICE src_mode="FM" balance="0.5" level="-0.594062805" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="7.45175362" amp_decay="52.2445602"
          amp_sustain="0" amp_release="30" pitch_amt="0" pitch_decay="60"

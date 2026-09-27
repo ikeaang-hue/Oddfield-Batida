@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Dark Kick" author="Negative Space" category="kick" tags="warm"/>
+  <INFO name="Dark Kick" author="Oddfield" category="kick" tags="warm"/>
   <VOICE src_mode="FM" balance="0.5" level="0.0658960342" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="666.232483"
          amp_sustain="0" amp_release="50" pitch_amt="30.256237" pitch_decay="81.4594498"

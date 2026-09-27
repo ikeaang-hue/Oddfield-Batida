@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Warm Pad" author="Negative Space" category="texture" tags="tender,warm"/>
+  <INFO name="Warm Pad" author="Oddfield" category="texture" tags="tender,warm"/>
   <VOICE src_mode="FM" balance="0.5" level="-0.607252121" pan="0" vel_sens="0.699999988"
          play_mode="Gate" glide="0" amp_attack="404.112854" amp_decay="400"
          amp_sustain="0.899999976" amp_release="875.614075" pitch_amt="0"

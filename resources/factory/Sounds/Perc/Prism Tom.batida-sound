@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Prism Tom" author="Negative Space" category="perc" tags="neon,warm"/>
+  <INFO name="Prism Tom" author="Oddfield" category="perc" tags="neon,warm"/>
   <VOICE src_mode="FM" balance="0.5" level="2.19509697" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="285.492828"
          amp_sustain="0" amp_release="60" pitch_amt="23.6087151" pitch_decay="101.279762"

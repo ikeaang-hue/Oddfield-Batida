@@ -569,7 +569,7 @@ void AboutCard::paint (juce::Graphics& g)
     g.drawText ("BATIDA/", r.removeFromTop (28), juce::Justification::centredLeft, false);
     g.setColour (muted);
     g.setFont (mono (10.5f));
-    g.drawText ("by Negative Space", r.removeFromTop (16), juce::Justification::centredLeft, false);
+    g.drawText ("Oddfield", r.removeFromTop (16), juce::Justification::centredLeft, false);
     r.removeFromTop (14);
     g.setColour (line);
     g.fillRect (r.removeFromTop (1));
@@ -601,5 +601,5 @@ void AboutCard::paint (juce::Graphics& g)
     r.removeFromTop (10);
     g.setColour (muted);
     g.setFont (mono (9.5f));
-    g.drawText (juce::String::fromUTF8 ("\xc2\xa9 2026 Negative Space"), r.removeFromTop (14), juce::Justification::centredLeft, false);
+    g.drawText (juce::String::fromUTF8 ("\xc2\xa9 2026 Oddfield"), r.removeFromTop (14), juce::Justification::centredLeft, false);
 }

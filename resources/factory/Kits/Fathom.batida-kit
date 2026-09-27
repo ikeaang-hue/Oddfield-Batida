@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="kit" format="1" madeWith="0.7.2">
-  <INFO name="Fathom" author="Negative Space" category="" tags="warm,techno"/>
+  <INFO name="Fathom" author="Oddfield" category="" tags="warm,techno"/>
   <KIT xy_x="0.300000012" xy_y="0.25" comp_amount="0.25" comp_attack="10"
        comp_release="250" comp_mix="1" comp_detector="Internal" comp_follow="1"
        dist_drive="0" dist_type="0.5" dist_low_keep="90" exc_amount="0"

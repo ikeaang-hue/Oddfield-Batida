@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="kit" format="1" madeWith="0.7.2">
-  <INFO name="Solvent" author="Negative Space" category="" tags="harsh,techno"/>
+  <INFO name="Solvent" author="Oddfield" category="" tags="harsh,techno"/>
   <KIT xy_x="0.550000012" xy_y="0.449999988" comp_amount="0.400000006"
        comp_attack="10" comp_release="120" comp_mix="1" comp_detector="Internal"
        comp_follow="1" dist_drive="0.150000006" dist_type="0.449999988"

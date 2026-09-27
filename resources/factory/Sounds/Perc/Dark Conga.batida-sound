@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Dark Conga" author="Negative Space" category="perc" tags="organic"/>
+  <INFO name="Dark Conga" author="Oddfield" category="perc" tags="organic"/>
   <VOICE src_mode="FM" balance="0.5" level="-3.45987964" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="162.514832"
          amp_sustain="0" amp_release="40" pitch_amt="6.54017782" pitch_decay="29.1630135"

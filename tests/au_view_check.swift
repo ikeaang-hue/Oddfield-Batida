@@ -24,7 +24,7 @@ app.setActivationPolicy(.regular)
 
 // The AU, as a v2 instance -------------------------------------------------------------
 var desc = AudioComponentDescription(componentType: kAudioUnitType_MusicDevice, componentSubType: fourCC("Btda"),
-                                     componentManufacturer: fourCC("Ngsp"), componentFlags: 0, componentFlagsMask: 0)
+                                     componentManufacturer: fourCC("Odfd"), componentFlags: 0, componentFlagsMask: 0)
 var unit: AudioUnit?
 let started = Date()
 AudioComponentInstanceNew(AudioComponentFindNext(nil, &desc)!, &unit)

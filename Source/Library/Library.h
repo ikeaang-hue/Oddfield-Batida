@@ -6,7 +6,7 @@
 
 // The library folder on disk:
 //
-//   ~/Music/Negative Space/Batida/
+//   ~/Music/Oddfield/Batida/
 //     Factory/  Sounds/<Category>/, Kits/, Patterns/, Sets/, Samples/   (written by Batida)
 //     User/     the same layout, for the user's own files
 //     Review/   candidates from the preset factory, for listening (review builds only)
@@ -55,7 +55,7 @@ public:
     Library (const juce::File& root, const juce::File& settingsFile);
     ~Library() override;
 
-    // $BATIDA_LIBRARY (tests and tools), the location in the settings, or ~/Music/Negative Space/Batida.
+    // $BATIDA_LIBRARY (tests and tools), the location in the settings, or ~/Music/Oddfield/Batida.
     static juce::File defaultRoot();
     static juce::File defaultSettingsFile();
 
