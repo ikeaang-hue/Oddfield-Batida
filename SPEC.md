@@ -1,6 +1,6 @@
 # Negative Space Batida: Design Spec
 
-*Version 1.12, agreed 2026-09-27 (1.12: Vary searches only audible settings, measures longer and by spectrum, and relaxes step by step; 1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
+*Version 1.13, agreed 2026-09-27 (1.13: Stack, 1–4 copies of a sound's source; 1.12: Vary searches only audible settings, measures longer and by spectrum, and relaxes step by step; 1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
 
 ## 1. Identity
 
@@ -68,6 +68,35 @@ projects keep loading (§12).
 
 **Layer**
 - Sample and FM together, with a balance control (e.g. a sampled transient over an FM body).
+
+### Stack (every source)
+- **What it is:** the source runs as 1–4 copies (default 1).
+  - A copy is the whole FM source (all four operators and their envelopes) and/or the sample
+    player.
+  - The copies share everything after the source: amp and pitch envelopes, glide, punch, drive,
+    filter, level, pan and chain. So the sound stays monophonic, and glide, choke and Vary work
+    as before.
+- **It does two jobs:**
+  - **Thickness:** detuned copies, a reese from one slot, with all four operators still free for
+    FM.
+  - **Chords:** copies at an interval, with every operator still free for timbre.
+- **Controls:**
+  - **Stack:** 1 / 2 / 3 / 4.
+  - **Interval:** Unison, Octave, Fifth, Minor, Minor 7 or Major. The copies take the shape's
+    notes in order: 0 · 3 · 7 · 10 for Minor 7, 0 · 12 · 0 · 12 for Octave. Two copies of Minor
+    are a minor third; four are the triad and its octave.
+  - **Detune** (0–100 cents): the copies spread evenly across ±Detune.
+  - **Spread** (0–100%): the copies spread evenly across the stereo field. The root sits nearest
+    the centre, so a chord stays anchored and in tune.
+- **Level:** the copies start at different phases and add up in power, so a stacked sound stays
+  about as loud as one copy (within 2 dB).
+- **Mono and cost:** with one copy the sound is exactly as before (mono, the same code). Each
+  copy adds the cost of its source: with two sounds at 4 copies, the kit's worst case goes from
+  6.8% to 8.4% of one core.
+- **Automation and Vary:** Detune and Spread can be automated and modulated. Vary leaves Stack
+  alone.
+- **Width:** Spread is width inside a sound, not a stereo effect; stereo effects are still left
+  to the DAW (§4).
 
 ### FX (per sound)
 - **Punch:** one transient/compression control.
@@ -355,7 +384,7 @@ the reference for layout and look.
   - Header: the sound's ◀ name ▶ strip, the source (Sample / FM / Layer), and Level, Pan,
     Velocity and Chain.
   - Signal path: 01 Source (for FM: the algorithm diagram, pitch, feedback and macros; the
-    operators open a larger editor) → 02 Punch → 03 Drive, with its curve → 04 Filter, with its
+    operators open a larger editor; Stack along its bottom for every source) → 02 Punch → 03 Drive, with its curve → 04 Filter, with its
     curve.
   - Below: the operators, the amp envelope, and pitch envelope and play, with drawn curves.
   - Graphs replace the old help text.

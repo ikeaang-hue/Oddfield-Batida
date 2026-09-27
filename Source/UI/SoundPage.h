@@ -53,7 +53,8 @@ private:
 // SOUND: the selected sound as its own signal path.
 //   Header: ‹ name ›, source (FM / Sample / Layer), Level, Pan, Velocity,
 //           Chain, VARY.
-//   Row 1:  01 Source → 02 Punch → 03 Drive → 04 Filter.
+//   Row 1:  01 Source (with Stack along its bottom) → 02 Punch → 03 Drive
+//           → 04 Filter.
 //   Row 2:  05 Operators (or Slices · loop for a sample), 06 Amp env,
 //           07 Pitch · play.
 // Vary and the operator editor open over the page.
@@ -105,6 +106,10 @@ private:
     PeaksView layerPeaks;
     AlgorithmView layerAlgorithm;
     ParamControl *layerTune, *layerGain, *layerPitch, *layerBright;
+
+    // Stack (every source): one row at the bottom of 01
+    ParamControl *stackCount, *stackInterval, *stackDetune, *stackSpread;
+    juce::Rectangle<int> stackBounds;
 
     // FX
     ParamControl *punch, *drive, *driveType, *filterType, *cutoff, *resonance;

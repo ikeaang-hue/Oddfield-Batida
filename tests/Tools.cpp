@@ -255,61 +255,70 @@ int runBeat (const juce::File& outDir)
 int runBenchmark()
 {
     // Worst case for phase 1: all 8 voices held at once, every operator active,
-    // folding drive and a resonant filter. 48 kHz, 128-sample blocks.
+    // folding drive and a resonant filter. 48 kHz, 128-sample blocks. Then the
+    // same with Stack: two sounds at 4 copies (a reese and a stab), and all 8.
     constexpr double sampleRate = 48000.0;
     constexpr int block = 128;
     constexpr double seconds = 20.0;
 
-    auto params = defaultKitParams();
-    for (auto& v : params.voices)
+    auto run = [&] (std::array<int, kNumVoices> copies)
     {
-        v[vp::PlayMode] = 1.0f; // gate: sustain for the whole run
-        v[vp::AmpS] = 1.0f;
-        v[vp::FmAlgo] = 0.0f;
-        v[vp::FmFeedback] = 0.5f;
-        for (int o = 0; o < kNumOps; ++o)
+        auto params = defaultKitParams();
+        for (size_t i = 0; i < params.voices.size(); ++i)
         {
-            v[opParam (o, OpLevel)] = 0.6f;
-            v[opParam (o, OpS)] = 1.0f;
-            v[opParam (o, Wave)] = 0.4f;
-            v[opParam (o, Fold)] = 0.2f;
+            auto& v = params.voices[i];
+            v[vp::PlayMode] = 1.0f; // gate: sustain for the whole run
+            v[vp::AmpS] = 1.0f;
+            v[vp::FmAlgo] = 0.0f;
+            v[vp::FmFeedback] = 0.5f;
+            for (int o = 0; o < kNumOps; ++o)
+            {
+                v[opParam (o, OpLevel)] = 0.6f;
+                v[opParam (o, OpS)] = 1.0f;
+                v[opParam (o, Wave)] = 0.4f;
+                v[opParam (o, Fold)] = 0.2f;
+            }
+            v[vp::Punch] = 0.5f;
+            v[vp::Drive] = 0.5f;
+            v[vp::DriveType] = 2.0f;
+            v[vp::FltCutoff] = 3000.0f;
+            v[vp::FltRes] = 0.5f;
+            v[vp::Glide] = 50.0f;
+            v[vp::StackCount] = (float) (copies[i] - 1);
         }
-        v[vp::Punch] = 0.5f;
-        v[vp::Drive] = 0.5f;
-        v[vp::DriveType] = 2.0f;
-        v[vp::FltCutoff] = 3000.0f;
-        v[vp::FltRes] = 0.5f;
-        v[vp::Glide] = 50.0f;
-    }
 
-    Kit kit;
-    kit.prepare (sampleRate, block);
-    juce::AudioBuffer<float> buf (2, block);
-    juce::MidiBuffer midi;
+        Kit kit;
+        kit.prepare (sampleRate, block);
+        juce::AudioBuffer<float> buf (2, block);
+        juce::MidiBuffer midi;
 
-    const auto blocks = (int) (seconds * sampleRate / block);
-    kit.setParameters (params);
-    for (int v = 0; v < kNumVoices; ++v)
-        kit.noteOn (v, 48 + v, 1.0f);
-
-    const auto t0 = juce::Time::getMillisecondCounterHiRes();
-    for (int b = 0; b < blocks; ++b)
-    {
-        params.voices[0][vp::FltCutoff] = 500.0f + 3000.0f * (float) ((b % 200) / 200.0); // moving filter
+        const auto blocks = (int) (seconds * sampleRate / block);
         kit.setParameters (params);
-        kit.process (buf, midi);
+        for (int v = 0; v < kNumVoices; ++v)
+            kit.noteOn (v, 48 + v, 1.0f);
 
-        // A new note every quarter second on each voice, to include glides.
-        if (b % 94 == 0)
-            for (int v = 0; v < kNumVoices; ++v)
-                kit.noteOn (v, 48 + v + (b / 94) % 12, 1.0f);
-    }
-    const auto elapsedMs = juce::Time::getMillisecondCounterHiRes() - t0;
-    const auto percent = 100.0 * elapsedMs / (seconds * 1000.0);
+        const auto t0 = juce::Time::getMillisecondCounterHiRes();
+        for (int b = 0; b < blocks; ++b)
+        {
+            params.voices[0][vp::FltCutoff] = 500.0f + 3000.0f * (float) ((b % 200) / 200.0); // moving filter
+            kit.setParameters (params);
+            kit.process (buf, midi);
 
+            // A new note every quarter second on each voice, to include glides.
+            if (b % 94 == 0)
+                for (int v = 0; v < kNumVoices; ++v)
+                    kit.noteOn (v, 48 + v + (b / 94) % 12, 1.0f);
+        }
+        const auto elapsedMs = juce::Time::getMillisecondCounterHiRes() - t0;
+        return 100.0 * elapsedMs / (seconds * 1000.0);
+    };
+
+    const auto percent = run ({ 1, 1, 1, 1, 1, 1, 1, 1 });
     std::printf ("CPU: 8 voices, 4 ops each, fold drive, resonant filter @ 48 kHz / 128\n");
-    std::printf ("  %.1f s of audio in %.0f ms = %.2f%% of one core (real time)\n", seconds, elapsedMs, percent);
+    std::printf ("  %.1f s of audio = %.2f%% of one core (real time)\n", seconds, percent);
     std::printf ("  per voice: %.2f%%\n", percent / kNumVoices);
+    std::printf ("  with Stack 4 on two sounds: %.2f%%\n", run ({ 1, 1, 1, 1, 1, 4, 4, 1 }));
+    std::printf ("  with Stack 4 on all eight:  %.2f%%\n", run ({ 4, 4, 4, 4, 4, 4, 4, 4 }));
     return 0;
 }
 

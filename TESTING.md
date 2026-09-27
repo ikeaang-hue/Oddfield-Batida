@@ -1,6 +1,6 @@
 # Testing Batida (trusted testers)
 
-Thanks for trying Batida before anyone else. This is a **pre-release build (0.8.2)** for a small
+Thanks for trying Batida before anyone else. This is a **pre-release build (0.8.3)** for a small
 group of developers: you build it yourself from this repository. Please don't share the plugin
 or the repository yet.
 
@@ -77,6 +77,12 @@ New in 0.8:
     Finder. The XY lane comes along as CC 16 and CC 17.
 14. **XY REC:** KIT → XY REC, then hold the pad still while a pattern plays: each step it passes
     takes the pad's position.
+
+New in 0.8.3:
+
+15. **Stack:** SOUND → Stack 2–4 on the bass. Raise Detune and Spread and listen for a wide
+    reese; then set Interval to Minor 7 on a short sound and play a few notes in Chromatic mode.
+    Check it still sounds right in mono.
 
 Everything you notice is useful: sound, workflow, UI, wording, crashes, CPU, and how it behaves
 in your host.

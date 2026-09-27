@@ -101,6 +101,11 @@ std::vector<ParamSpec> buildVoiceSpecs()
     s[vp::Solo]     = toggle ("solo", "Solo");
     s[vp::Choke]    = choice ("choke", "Choke", { "Off", "1", "2", "3", "4" });
 
+    s[vp::StackCount]    = choice ("stack", "Stack", { "1", "2", "3", "4" });
+    s[vp::StackDetune]   = flt ("stack_detune", "Stack Detune", 0.0f, 100.0f, 12.0f, "ct");
+    s[vp::StackSpread]   = flt ("stack_spread", "Stack Spread", 0.0f, 1.0f, 0.6f, "%");
+    s[vp::StackInterval] = choice ("stack_interval", "Stack Interval", { "Unison", "Octave", "Fifth", "Minor", "Minor 7", "Major" });
+
     for (int o = 0; o < kNumOps; ++o)
     {
         const auto k = "op" + std::to_string (o + 1) + "_";

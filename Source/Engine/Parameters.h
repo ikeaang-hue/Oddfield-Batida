@@ -27,7 +27,7 @@ struct ParamSpec
     float min = 0.0f, max = 1.0f, def = 0.0f;
     float centre = 0.0f; // value shown at mid-knob (skew); 0 = linear
     float step = 0.0f;   // 0 = continuous
-    std::string unit;    // "ms", "Hz", "st", "dB", "%" or ""
+    std::string unit;    // "ms", "Hz", "st", "ct" (cents), "dB", "%" or ""
     std::vector<std::string> choices;
 };
 
@@ -47,6 +47,8 @@ enum : int
     ChainAmt, // dry/wet into the kit chain
     Mute, Solo,
     Choke,    // choke group: a hit cuts the other sounds in its group (0 = none)
+    // Stack: 1-4 copies of the source, detuned, spread and at an interval
+    StackCount, StackDetune, StackSpread, StackInterval,
     OpBase
 };
 }
@@ -89,6 +91,8 @@ enum class FilterType { LowPass, HighPass, BandPass };
 enum class MidiMode { DrumMap, Chromatic };
 enum class Detector { Internal, Sidechain };
 enum class SliceMode { Off, Grid, Transients };
+enum class StackInterval { Unison, Octave, Fifth, Minor, Minor7, Major };
+constexpr int kMaxStack = 4;
 
 const std::vector<ParamSpec>& voiceParamSpecs();  // kNumVoiceParams entries, in index order
 const std::vector<ParamSpec>& globalParamSpecs(); // kNumGlobalParams entries

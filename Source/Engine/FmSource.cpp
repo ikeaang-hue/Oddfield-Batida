@@ -161,7 +161,7 @@ void FmSource::trigger (bool oneShot, bool resetPhase)
 {
     if (resetPhase)
     {
-        phase.fill (0.0f);
+        phase.fill (phaseOffset);
         feedbackSample = 0.0f;
         for (auto& e : env)
             e.reset();
@@ -179,7 +179,7 @@ void FmSource::release()
 
 void FmSource::reset()
 {
-    phase.fill (0.0f);
+    phase.fill (phaseOffset);
     feedbackSample = 0.0f;
     for (auto& e : env)
         e.reset();

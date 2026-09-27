@@ -55,6 +55,8 @@ juce::String formatValue (const ParamSpec& spec, float v)
         return juce::String (v, 3);
     if (u == "n")
         return juce::String (juce::roundToInt (v));
+    if (u == "ct")
+        return juce::String (juce::roundToInt (v)) + " ct";
     if (u == "bpm")
         return juce::String (v, 2) + " bpm";
     if (u == "dist")
