@@ -9,7 +9,7 @@ or the repository yet.
 - A Mac with macOS 12 or later (Apple Silicon or Intel: you build for your own Mac).
 - Xcode with its command line tools, and CMake (`brew install cmake`).
 - A host that loads Audio Units: Logic Pro, GarageBand, Ableton Live, Reaper, and others.
-  Hosts that load only VST3 or CLAP get Batida with the VST3 build (phase 9).
+  Hosts that load only VST3 or CLAP get Batida with the VST3 build (phase 10).
 
 ## Build and install
 

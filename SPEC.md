@@ -1,6 +1,6 @@
 # Oddfield Batida: Design Spec
 
-*Version 1.14, agreed 2026-09-27 (1.14: the publisher is renamed Oddfield; 1.13: Stack, 1–4 copies of a sound's source; 1.12: Vary searches only audible settings, measures longer and by spectrum, and relaxes step by step; 1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
+*Version 1.15, agreed 2026-09-28 (1.15: a fuller chain for sound design: filter envelope and comb/formant modes per sound, a Movement stage, Delay and Reverb sends, the SPACE page (phase 9); 1.14: the publisher is renamed Oddfield; 1.13: Stack, 1–4 copies of a sound's source; 1.12: Vary searches only audible settings, measures longer and by spectrum, and relaxes step by step; 1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
 
 ## 1. Identity
 
@@ -8,8 +8,9 @@
   called Negative Space until 0.8.4; the library and settings move from the old folders by
   themselves.
 - **Plugin:** Batida (plugin code `Btda`). Portuguese for "beat" and "hit".
-- **What it is:** a sound-design drum instrument. It works for general use, but is strongest on
-  synthetic and heavy genres such as techno, breakbeat and glitch.
+- **What it is:** a sound-design instrument, drums first, with basses, stabs and textures in
+  scope. It works for general use, but is strongest on synthetic and heavy genres such as
+  techno, breakbeat, drum & bass and glitch.
 - **Core idea:** sound design first; the sequencer serves the sound.
 - **The spirit is the chain:** the kit chain, and how it is operated, is what makes Batida
   Batida. It is played as a whole from the XY pad, with precise control underneath (§4, §5).
@@ -22,11 +23,13 @@
 ## 2. Signal flow
 
 ```
-sound → [Body: deferred] → punch → drive → filter → level/pan ─┬─ dry (1 − Chain amount) ───────┐
-                                                               └─ wet (Chain amount) ─┐          │
-                                                                                      ↓          │
-Kit chain (wet sum of all sounds):                                                               │
-   Dynamics → Distortion (+ exciter, clean low end) → Filter/EQ → Output ────────────── + ←──────┘ → master
+sound → [Body: deferred] → punch → drive → filter (+ env) → level/pan ─┬─ dry (1 − Chain amount) ──────────────────┐
+                                                                       ├─ wet (Chain amount) ──→ Kit chain ────────┤
+                                                                       ├─ Delay send ──→ Delay ──┬─────────────────┤
+                                                                       └─ Reverb send ─→ Reverb ←┘ Delay → Reverb ─┤
+                                                                                                                   + → master (safety clip)
+Kit chain (wet sum of all sounds):
+   Dynamics → Distortion (+ exciter, clean low end) → Filter/EQ → Movement → Output
       ↑ sidechain input (optional)       ↑
                              XY pad (X = character, Y = heat), per-step XY, 2 modulators
 ```
@@ -97,19 +100,34 @@ projects keep loading (§12).
   6.8% to 8.4% of one core.
 - **Automation and Vary:** Detune and Spread can be automated and modulated. Vary leaves Stack
   alone.
-- **Width:** Spread is width inside a sound, not a stereo effect; stereo effects are still left
-  to the DAW (§4).
+- **Width:** Spread is width inside a sound, not a stereo effect; the stereo effects are the
+  kit's Movement stage and the sends (§4).
 
 ### FX (per sound)
 - **Punch:** one transient/compression control.
 - **Drive:** amount, plus type (soft, hard, fold, crush).
-- **Filter:** low-pass, high-pass or band-pass, with cutoff and resonance.
+- **Filter:** cutoff and resonance, in one of six modes. The two controls mean what the mode
+  needs:
+  - **LP, HP, BP:** as before.
+  - **Notch:** cuts a band (resonance = how narrow).
+  - **Comb:** cutoff is the comb's pitch and resonance its feedback (positive or negative), from
+    flanged and metallic to a ringing pitched tone. With Key at 100% the comb is tuned to the
+    note, which covers much of what the deferred Body would do.
+  - **Formant:** cutoff moves through the vowels (A E I O U) and resonance sets how sharp they
+    are.
+- **Filter envelope:** Amount (± 4 octaves, 0 by default), attack, decay, sustain and release,
+  triggered with the amp envelope. **Key** (0–100%) makes the cutoff follow the note. On Comb and
+  Formant the envelope sweeps the pitch or the vowel.
 - **Chain amount** (replaces the Clean toggle): a per-sound dry/wet crossfade into the kit
   chain. 100% (default) = fully through the chain; 0% = dry, bypassing it; in between, both are
   heard. Taken after the sound's level and pan. Automatable, so a sound can move in and out.
+- **Delay send** and **Reverb send** (0–100%, 0 by default): how much of the sound goes to the
+  kit's two send effects (§4). Taken after level and pan, alongside Chain amount and independent
+  of it, so a snare can be dry in the chain and still get space, and a bass can stay dry.
+  Muting a sound mutes its sends; a choke cuts the sound but its tails ring on.
 
 ### Envelopes and play
-- **Envelopes:** amp and pitch. FM operators have their own envelopes as well.
+- **Envelopes:** amp, pitch and filter. FM operators have their own envelopes as well.
 - **Monophonic:** one note at a time per sound; a new note retriggers.
 - **Glide:** one control per sound, for bass lines and slides.
 - **Choke group:** Off or 1–4. A hit cuts the other sounding sounds in its group with the same
@@ -124,11 +142,12 @@ projects keep loading (§12).
     first pass's tails are heard at its start), at the current tempo;
   - or any slot's sound: one hit, until it has rung out (at most 6 s).
 - The render is a stereo 24-bit WAV in `User/Samples/Resampled`, so the sound can be saved and
-  found again. The slot becomes a plain one-shot sample sound with Chain 0% (the chain is
-  already in it); Pan, Mute and Solo stay. One undo step.
+  found again. The slot becomes a plain one-shot sample sound with Chain 0% and both sends at 0
+  (the chain and the sends are already in it); Pan, Mute and Solo stay. One undo step.
 
 ### Body / resonator (deferred)
 - The architecture keeps a slot between source and chain.
+- The filter's Comb mode, keyed to the note, covers tuned resonance until then.
 - It gets added once prototype CPU measurements show there's room.
 
 ## 4. Kit chain
@@ -150,14 +169,54 @@ added back after it. The order is fixed.
      and tone are unchanged).
    - **Exciter:** a high-band control inside this stage, sharing the distortion engine.
 3. **Filter/EQ:** high-pass and low-pass, plus broad low/mid/high bands.
-4. **Output level.**
+4. **Movement** (1.15): one stage for modulated time effects, in stereo.
+   - **Type:** one continuous control, chorus → flanger → phaser, blended like the distortion
+     types.
+   - **Rate:** synced to the tempo (8 bars to 1/16), or free in Hz with Sync off.
+   - **Depth**, **Feedback** (±, for the flanger and phaser) and **Mix** (0% by default, so kits
+     made before 1.15 sound the same).
+   - Below the distortion's clean-low-end frequency the signal passes untouched, so the sub stays
+     mono and solid.
+5. **Output level** (the chain's own level).
+
+The dry sounds, the chain and the send returns meet after this, then go through the master level
+and the **safety clip** (a soft ceiling just under 0 dBFS, on by default; the CLIP switch).
 
 **Precise control:** every stage has its own controls on the KIT page (compressor amount,
 attack, release, mix, sidechain source; distortion drive, type blend, exciter amount and tone,
-low-end crossover; HP, LP and low/mid/high EQ; output level). Each stage has a **Follow XY**
-toggle (on by default); off, the stage stays exactly where its controls are.
+low-end crossover; HP, LP and low/mid/high EQ; Movement type, rate, depth, feedback and mix;
+output level). Each stage has a **Follow XY** toggle; off, the stage stays exactly where its
+controls are. Dynamics, Distortion and EQ follow by default; Movement and the sends don't (§5).
 
-Reverb, delay and stereo/spatial effects are left to the DAW.
+### Sends (1.15)
+
+Two send effects at kit level, fed by every sound's Delay and Reverb sends (§3). Both are
+stereo. Their returns join the dry sounds and the chain before the master level. Their controls
+are on the SPACE page (§12).
+
+**Delay**
+- **Time:** synced to the tempo, 1/32 to 1 bar, straight, dotted or triplet. It follows the
+  host's tempo, or the internal one when the host is stopped.
+- **Feedback** (0–100%) and **Ping-pong** (0% = echoes in place, 100% = full left/right).
+- **In the loop:** Low cut, High cut and Drive, so repeats darken and roughen as they go. Low cut
+  starts at 100 Hz, so echoes don't muddy the sub.
+- **Freeze:** holds what's in the delay and loops it (input off, feedback full) until released.
+  An automatable switch, so it can be played from the DAW or a modulator.
+- **→ Reverb:** how much of the delay's output also goes into the Reverb.
+- **Return** level.
+
+**Reverb**
+- **Type:** one continuous control, room → plate → hall.
+- **Decay**, **Pre-delay** and **Damping**.
+- **Low cut**, starting at 200 Hz, so the sub stays dry.
+- **Gate:** Off, or 30–600 ms: the tail closes that long after its input falls quiet (gated
+  snares).
+- **Duck:** the tail ducks under its own input, so hits stay clear and the tail blooms between
+  them. This listens only to the reverb's input; ducking one sound under another is still done in
+  the DAW (Dynamics, above).
+- **Return** level.
+
+Stereo imaging beyond this (wideners, imagers, panners) is left to the DAW.
 
 ## 5. XY pad
 
@@ -175,8 +234,16 @@ The main way the chain is operated: one gesture moves the whole chain.
 - **Offsets, like the FM macros:** the stage controls set a base; the XY pushes the stages around
   it. It never overwrites them, and each affected control shows a lime marker at its
   effective value. X and Y are automatable host parameters.
+- **Movement and the sends** (1.15) have Follow XY too, **off by default**. On, X moves their
+  tone and Y their amount:
+  - Movement: X blends chorus → flanger → phaser (warm → aggressive → digital); Y raises depth
+    and feedback.
+  - Delay: X opens the loop's high cut; Y raises feedback and loop drive (capped at 95%, so only
+    Freeze holds forever).
+  - Reverb: X lightens the damping; Y lengthens the decay.
 - Positions can be stored per sequencer step (see §8) and moved by the modulators (§6).
-- **Chain scenes:** four stored chain states (A–D) and a morph between two of them.
+- **Chain scenes:** four stored chain states (A–D) and a morph between two of them. Scenes hold
+  Movement, Delay and Reverb as well (not Freeze).
 
 ## 6. Modulators (×2, kit level)
 
@@ -192,6 +259,9 @@ The main way the chain is operated: one gesture moves the whole chain.
   how far they stray.
 - **Directions:** brighter/darker, shorter/longer, tonal/noisy, cleaner/dirtier.
 - **Locks** by section: source, FX, envelopes.
+- The filter envelope's amount and times vary under *envelopes*. Vary leaves the filter mode, the
+  sends and Chain amount alone (like Stack), so a suggestion stays the same kind of sound in the
+  same place in the mix.
 - Each suggestion shows a waveform and a short note of what changed (e.g. "decay −41% · op2
   +6%"). Hold one to hear it.
 - **Automatic dud filtering:** silent, clipping and near-duplicate results never reach the user.
@@ -282,7 +352,7 @@ the other channels stay fully chromatic for the Keys Sound.
 
 **File levels**
 - **Sound:** one slot's sound.
-- **Kit:** 8 sounds, the kit chain, XY position, scenes and modulators (not the patterns, so kits
+- **Kit:** 8 sounds, the kit chain, the Delay and Reverb, XY position, scenes and modulators (not the patterns, so kits
   swap under a playing beat).
 - **Pattern:** one reusable sequence.
 - **Set:** everything (the kit, all 16 patterns, sequencer, MIDI and Master settings).
@@ -358,7 +428,7 @@ the reference for layout and look.
 
 **On every page**
 - **Top bar:**
-  - the wordmark and the page nav (KIT · SEQ · MOD · SOUND · LIB);
+  - the wordmark and the page nav (KIT · SPACE · SEQ · MOD · SOUND · LIB);
   - the kit's ◀ name ▶ strip, and the missing-samples notice when there is one;
   - Undo/Redo;
   - settings (MIDI mode, Keys Sound, zoom);
@@ -370,9 +440,20 @@ the reference for layout and look.
 **Pages**
 - **KIT:**
   - a large XY pad that shows a trail of recent positions;
-  - the chain drawn as a signal path (SC in → 01 Dynamics → 02 Distortion → 03 EQ → 04 Output →
-    + dry → master), with each stage's Follow XY toggle;
-  - scenes A–D as small pads, with the morph.
+  - the chain drawn as a signal path (SC in → 01 Dynamics → 02 Distortion → 03 EQ → 04 Movement →
+    05 Output → + dry + sends → master), with each stage's Follow XY toggle;
+  - the stages in a 2 × 2 grid (Dynamics, Distortion, EQ, Movement), with Output (chain level
+    and CLIP) as one row below them;
+  - scenes A–D as small pads in one row, with the morph.
+- **SPACE** (1.15): the sends.
+  - A signal path along the top (sends → 01 Delay → 02 Reverb → + → master).
+  - **Sends:** a Delay row and a Reverb row of value bars, one per slot, lined up under the sound
+    row, so the whole kit's space reads at a glance.
+  - **01 Delay:** a drawn graph of the echoes (taps fading and alternating left/right, darkening
+    with the loop's filter), the time as note chips (1/32 … 1 bar, with straight · dotted ·
+    triplet), then the bars, FREEZE, → Reverb and Return, and Follow XY.
+  - **02 Reverb:** a drawn graph of the tail (pre-delay gap, decay, the gate's cut), then the bars
+    and Return, and Follow XY.
 - **SEQ:**
   - the pattern ◀ name ▶ strip, a map of all 16 pattern slots, tempo, Sync and Play;
   - length, Run, Start on, Latch and Swing;
@@ -384,11 +465,13 @@ the reference for layout and look.
   are dimmed), output and a targets list.
 - **SOUND:** one page for the selected sound, laid out as its own signal flow.
   - Header: the sound's ◀ name ▶ strip, the source (Sample / FM / Layer), and Level, Pan,
-    Velocity and Chain.
+    Velocity, Chain, Delay and Reverb (three columns of two).
   - Signal path: 01 Source (for FM: the algorithm diagram, pitch, feedback and macros; the
     operators open a larger editor; Stack along its bottom for every source) → 02 Punch → 03 Drive, with its curve → 04 Filter, with its
-    curve.
-  - Below: the operators, the amp envelope, and pitch envelope and play, with drawn curves.
+    curve (LP · HP · BP · NOTCH · COMB · FORM chips; Cutoff, Reso, Env and Key; the curve shows
+    the comb's teeth and the vowel's peaks, and a lime ghost where the envelope takes it).
+  - Below: the operators, the envelopes (06 ENV, with AMP | FILTER tabs over one drawn editor),
+    and pitch envelope and play, with drawn curves.
   - Graphs replace the old help text.
 - **Vary:** opens over the SOUND page. It has a SOUND | KIT switch, amount, direction and locks
   (per slot for KIT), then the original plus 4 suggestion tiles (§7), and Keep, Back and Save
@@ -415,6 +498,9 @@ UI code stays separate from the engine.
   (parameters, MIDI notes and CCs, standard MIDI files, file drags), and where one host needs
   something special (Logic runs plugins out of process) there is a fallback that works
   everywhere. Docs give note numbers as well as names, since hosts name octaves differently.
+- **Old files sound the same:** every setting added in 1.15 starts neutral (sends 0, Movement
+  mix 0, filter envelope amount 0, the filter in its old mode), so projects and library files
+  from earlier versions load and play unchanged.
 
 ## 14. Build order
 
@@ -439,14 +525,18 @@ Each phase ends with something loadable and audible as an AU.
 8. **Sampling and variation** (from the idea board, 2026-09-27): choke groups, Kit Vary,
    Pattern Vary, resampling, breaks into kits, MIDI out with the XY CCs, and XY REC on every
    step.
-9. **VST3 build** and cross-host checks on macOS (Live, Reaper, Bitwig as well as Logic).
-10. **Later:**
+9. **Sound-design chain** (1.15): the filter envelope, Key and the Notch, Comb and Formant modes;
+   the Movement stage; the Delay and Reverb sends with per-sound send amounts; the SPACE page and
+   the KIT and SOUND page changes (§12). Mockups first. Still an option for later: a **Repeat**
+   stage (beat-repeat), alongside the stutter keys and Throw ideas.
+10. **VST3 build** and cross-host checks on macOS (Live, Reaper, Bitwig as well as Logic).
+11. **Later:**
    - resonator body (if CPU allows);
    - breeding.
 
 ## 15. Out of scope (v1)
 
-- Reverb, delay and spatial effects.
+- Stereo imaging beyond Movement and the sends (wideners, imagers, auto-pan).
 - Time-stretching.
 - Song and arrangement mode.
 - Wavetable synthesis.
