@@ -1,6 +1,6 @@
 # Oddfield Batida: Design Spec
 
-*Version 1.15, agreed 2026-09-28 (1.15: a fuller chain for sound design: filter envelope and comb/formant modes per sound, a Movement stage, Delay and Reverb sends, the SPACE page (phase 9); 1.14: the publisher is renamed Oddfield; 1.13: Stack, 1–4 copies of a sound's source; 1.12: Vary searches only audible settings, measures longer and by spectrum, and relaxes step by step; 1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
+*Version 1.16, agreed 2026-09-30 (1.16: files and scripting: the reference, the `batida` command-line tool, `validate`, the library picks up new and changed files (phase 9; the sound-design chain moves to phase 10, VST3 to 11); 1.15: a fuller chain for sound design: filter envelope and comb/formant modes per sound, a Movement stage, Delay and Reverb sends, the SPACE page; 1.14: the publisher is renamed Oddfield; 1.13: Stack, 1–4 copies of a sound's source; 1.12: Vary searches only audible settings, measures longer and by spectrum, and relaxes step by step; 1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
 
 ## 1. Identity
 
@@ -368,6 +368,20 @@ the other channels stay fully chromatic for the Keys Sound.
 - Files are readable XML (`.batida-sound`, `-kit`, `-pattern`, `-set`), so the user can manage
   them in Finder.
 
+**Files and scripting (1.16)**
+- Every file can be written or edited by hand or by a script. `docs/REFERENCE.md` lists every
+  element, attribute, range, unit, default and menu choice; it's generated from the parameter
+  specs, and a test keeps it current. Each saved file starts with a one-line comment pointing to
+  it.
+- Loading is forgiving: missing settings take their defaults, a file without `INFO` is named after
+  the file, menus take a name (any case) or an index, and short pattern lanes are filled in.
+  `batida validate` reports what loading lets slide (unknown keys with the nearest one, clamped
+  values, unknown menu names, missing samples).
+- While the editor is open, Batida checks the User folder every 2 s, so new, changed and removed
+  files show up in LIB and the ◀ name ▶ strips without a rescan. When the file behind the loaded
+  sound or kit changes on disk, its strip shows a lime ↻; clicking it reloads (one undo step).
+  Nothing reloads by itself.
+
 **Browser**
 - Categories: kick, snare, hat, perc, FX, bass, texture.
 - Character tags: warm, harsh, digital, metallic, organic.
@@ -498,6 +512,10 @@ UI code stays separate from the engine.
   (parameters, MIDI notes and CCs, standard MIDI files, file drags), and where one host needs
   something special (Logic runs plugins out of process) there is a fallback that works
   everywhere. Docs give note numbers as well as names, since hosts name octaves differently.
+- **Command-line tool:** `batida` (render, analyze, validate, describe, new, list, params) is a
+  console app built with the plugin and copied into the AU at `Contents/Helpers/batida`. Text
+  output by default, `--json` for programs; exit codes 0 (ok), 1 (a check failed), 2 (bad
+  arguments). It hosts nothing: it runs the engine directly, like the factory tool.
 - **Old files sound the same:** every setting added in 1.15 starts neutral (sends 0, Movement
   mix 0, filter envelope amount 0, the filter in its old mode), so projects and library files
   from earlier versions load and play unchanged.
@@ -525,12 +543,14 @@ Each phase ends with something loadable and audible as an AU.
 8. **Sampling and variation** (from the idea board, 2026-09-27): choke groups, Kit Vary,
    Pattern Vary, resampling, breaks into kits, MIDI out with the XY CCs, and XY REC on every
    step.
-9. **Sound-design chain** (1.15): the filter envelope, Key and the Notch, Comb and Formant modes;
+9. **Files and scripting** (1.16): `docs/REFERENCE.md`, the `batida` tool, `validate`, the
+   User-folder check and the ↻ reload.
+10. **Sound-design chain** (1.15): the filter envelope, Key and the Notch, Comb and Formant modes;
    the Movement stage; the Delay and Reverb sends with per-sound send amounts; the SPACE page and
    the KIT and SOUND page changes (§12). Mockups first. Still an option for later: a **Repeat**
    stage (beat-repeat), alongside the stutter keys and Throw ideas.
-10. **VST3 build** and cross-host checks on macOS (Live, Reaper, Bitwig as well as Logic).
-11. **Later:**
+11. **VST3 build** and cross-host checks on macOS (Live, Reaper, Bitwig as well as Logic).
+12. **Later:**
    - resonator body (if CPU allows);
    - breeding.
 

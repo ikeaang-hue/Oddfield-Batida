@@ -49,9 +49,73 @@ Library::Library (const juce::File& r, const juce::File& settings) : root (r), s
     loadDecisions();
 }
 
+// Checks the User folder every 2 s and refreshes the index when it changed.
+class Library::Watcher final : public juce::Thread
+{
+public:
+    Watcher (Library& l) : juce::Thread ("Batida library watcher"), library (l), folder (l.root.getChildFile ("User"))
+    {
+        last = folderSignature (folder);
+        startThread (juce::Thread::Priority::low);
+    }
+
+    ~Watcher() override { stopThread (3000); }
+
+    void run() override
+    {
+        while (! threadShouldExit())
+        {
+            wait (2000);
+            if (threadShouldExit())
+                return;
+            const auto now = folderSignature (folder);
+            if (now == last)
+                continue;
+            last = now;
+            juce::WeakReference<Library> safe (&library);
+            juce::MessageManager::callAsync ([safe]
+            {
+                if (auto* self = safe.get())
+                    self->refresh();
+            });
+        }
+    }
+
+private:
+    Library& library;
+    const juce::File folder;
+    juce::int64 last = 0;
+};
+
 Library::~Library()
 {
+    watcher.reset();
     pool.removeAllJobs (true, 5000);
+}
+
+void Library::startWatching()
+{
+    if (watchers++ == 0)
+        watcher = std::make_unique<Watcher> (*this);
+}
+
+void Library::stopWatching()
+{
+    if (watchers > 0 && --watchers == 0)
+        watcher.reset();
+}
+
+juce::int64 Library::folderSignature (const juce::File& folder)
+{
+    juce::uint64 h = 17;
+    if (folder.isDirectory())
+        for (const auto& entry : juce::RangedDirectoryIterator (folder, true, "*.batida-*", juce::File::findFiles))
+        {
+            h = h * 31 + (juce::uint64) entry.getFile().getFullPathName().hashCode64();
+            h = h * 31 + (juce::uint64) entry.getFileSize();
+            h = h * 31 + (juce::uint64) entry.getModificationTime().toMilliseconds();
+        }
+    return (juce::int64) h;
 }
 
 namespace
@@ -323,7 +387,7 @@ bool Library::updateInfo (const juce::File& file, const PresetInfo& info)
     i->setAttribute ("author", info.author);
     i->setAttribute ("category", info.category);
     i->setAttribute ("tags", info.tags.joinIntoString (","));
-    if (! xml->writeTo (file))
+    if (! xml->writeTo (file, presetTextFormat()))
         return false;
     for (auto& e : entries)
         if (e.file == file)

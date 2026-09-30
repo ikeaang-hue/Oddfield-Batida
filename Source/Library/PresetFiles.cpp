@@ -33,20 +33,32 @@ juce::String valueText (const ParamSpec& spec, float v)
     return number (v);
 }
 
-// Choices by name (a menu can gain entries later); numbers as a fallback.
-float valueFrom (const ParamSpec& spec, const juce::String& text)
+} // namespace
+
+// Choices by name in any case (a menu can gain entries later); numbers as a
+// fallback. Switches take 1/0, true/false, on/off or yes/no.
+float valueFrom (const ParamSpec& spec, const juce::String& raw)
 {
+    const auto text = raw.trim();
     if (spec.kind == Kind::Choice)
     {
         for (size_t i = 0; i < spec.choices.size(); ++i)
-            if (text == juce::String (spec.choices[i]))
+            if (text.equalsIgnoreCase (juce::String (spec.choices[i])))
                 return (float) i;
         return (float) juce::jlimit (0, (int) spec.choices.size() - 1, text.getIntValue());
     }
     if (spec.kind == Kind::Bool)
+    {
+        for (auto* word : { "true", "on", "yes" })
+            if (text.equalsIgnoreCase (word))
+                return 1.0f;
         return text.getIntValue() != 0 ? 1.0f : 0.0f;
+    }
     return juce::jlimit (spec.min, spec.max, text.getFloatValue());
 }
+
+namespace
+{
 
 void writeVoice (juce::XmlElement& e, const VoiceParams& p)
 {
@@ -144,7 +156,7 @@ bool save (const juce::File& file, const juce::XmlElement& xml, juce::String* er
     // Write next to the file, then move it into place, so a failed save never
     // leaves half a file behind.
     const juce::TemporaryFile temp (file);
-    if (! xml.writeTo (temp.getFile()) || ! temp.overwriteTargetFileWithTemporary())
+    if (! xml.writeTo (temp.getFile(), presetTextFormat()) || ! temp.overwriteTargetFileWithTemporary())
     {
         if (error != nullptr)
             *error = "Can't write " + file.getFullPathName();
@@ -227,6 +239,19 @@ void readKitXml (const juce::XmlElement* e, const juce::File& file, KitPreset& k
         kit.movement.fromXml (*m);
 }
 } // namespace
+
+juce::String fileComment()
+{
+    return juce::String ("<!-- Batida ") + BATIDA_VERSION + ". Every setting, its range and unit: " + kReferenceUrl
+           + " (or run: batida params). -->";
+}
+
+juce::XmlElement::TextFormat presetTextFormat()
+{
+    juce::XmlElement::TextFormat format;
+    format.customHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n" + fileComment();
+    return format;
+}
 
 const char* extensionFor (PresetType type)
 {

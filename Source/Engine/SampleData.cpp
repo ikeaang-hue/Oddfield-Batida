@@ -28,6 +28,8 @@ void computePeaks (SampleData& data)
         data.peaks[(size_t) bin] = { lo, hi };
     }
 }
+} // namespace
+
 // Onsets for transient slicing: rises in high-passed energy, found once when
 // the sample loads. Strength is relative to the strongest onset in the file,
 // so the sensitivity knob works the same on quiet and loud material.
@@ -104,7 +106,6 @@ void computeOnsets (SampleData& data)
         data.onsets.push_back ({ std::max (0, attack - 32), strongest > 0.0f ? strength / strongest : 0.0f });
     }
 }
-} // namespace
 
 std::unique_ptr<SampleData> SampleSlot::decode (const juce::File& file, juce::AudioFormatManager& formats, juce::String& note)
 {

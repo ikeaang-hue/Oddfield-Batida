@@ -74,7 +74,9 @@ void patternFromXml (const juce::XmlElement& pe, Pattern& pat)
         tr.length = juce::jlimit (1, kMaxSteps, te->getIntAttribute ("length", pat.length));
         tr.noteLength = (float) juce::jlimit (0.05, 1.0, te->getDoubleAttribute ("noteLength", 0.5));
 
-        const auto gate = te->getStringAttribute ("gate");
+        // "1000100010001000", or by hand "x...x...x...x..." (spaces and bars
+        // between groups are ignored).
+        const auto gate = te->getStringAttribute ("gate").removeCharacters (" |");
         auto list = [&] (const char* name)
         {
             juce::StringArray a;
@@ -87,7 +89,7 @@ void patternFromXml (const juce::XmlElement& pe, Pattern& pat)
         for (int s = 0; s < kMaxSteps; ++s)
         {
             auto& st = tr.steps[(size_t) s];
-            st.gate = s < gate.length() && gate[s] == '1';
+            st.gate = s < gate.length() && (gate[s] == '1' || gate[s] == 'x' || gate[s] == 'X');
             if (s < vel.size())     st.velocity = (uint8_t) juce::jlimit (1, 127, vel[s].getIntValue());
             if (s < pitch.size())   st.pitch = (int8_t) juce::jlimit (-24, 24, pitch[s].getIntValue());
             if (s < slice.size())   st.slice = (uint8_t) juce::jlimit (0, kMaxSlices - 1, slice[s].getIntValue());

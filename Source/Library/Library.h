@@ -90,6 +90,16 @@ public:
     int getVersion() const { return version; }
     const LibraryEntry* entryFor (const juce::File& file) const;
 
+    // While anyone watches (an open editor), the User folder is checked every
+    // 2 s in the background, and a new, changed or removed file refreshes the
+    // index (SPEC §10). Counted, so two editors can watch at once.
+    void startWatching();
+    void stopWatching();
+    bool isWatching() const { return watcher != nullptr; }
+    // A number that changes when any Batida file under `folder` is added,
+    // removed, resized or modified.
+    static juce::int64 folderSignature (const juce::File& folder);
+
     std::vector<LibraryEntry> filtered (PresetType type, const LibraryFilter& filter) const;
     LibraryFilter& filterFor (PresetType type) { return filters[(size_t) type]; }
     std::vector<LibraryEntry> shown (PresetType type) const { return filtered (type, filters[(size_t) type]); }
@@ -133,6 +143,9 @@ private:
     int version = 0, scanGeneration = 0;
     bool scanning = false, prepared = false;
     juce::ThreadPool pool { 1 };
+    class Watcher;
+    std::unique_ptr<Watcher> watcher;
+    int watchers = 0;
 
     JUCE_DECLARE_WEAK_REFERENCEABLE (Library)
     JUCE_DECLARE_NON_COPYABLE (Library)

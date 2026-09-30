@@ -40,6 +40,7 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
     setLookAndFeel (&look->look);
     juce::LookAndFeel::setDefaultLookAndFeel (&look->look);
     ++openEditors();
+    proc.library().startWatching(); // new and changed files show up while the window is open
     addAndMakeVisible (content);
 
     top.setComponentID ("topBar");
@@ -90,6 +91,7 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
         strip.onPrevious = [this, type] { library.step (type, -1); };
         strip.onNext = [this, type] { library.step (type, 1); };
         strip.onMenu = [this, &strip, type] { library.showMenu (type, strip); };
+        strip.onReload = [this, type] { library.reload (type); };
     };
     wire (top.kitStrip, PresetType::Kit);
     wire (soundPage.soundStrip, PresetType::Sound);
@@ -123,6 +125,7 @@ BatidaEditor::BatidaEditor (BatidaProcessor& p)
 BatidaEditor::~BatidaEditor()
 {
     stopTimer();
+    proc.library().stopWatching();
     proc.clearPreviews(); // a held tile or a previewed suggestion must not outlive the window
     // The look is shared by every open Batida window: only the last one to
     // close takes it down as the default.
@@ -220,6 +223,9 @@ void BatidaEditor::updateStrips()
     const auto pattern = proc.displayPattern();
     seqPage.patternStrip.setText ("P" + juce::String (pattern + 1).paddedLeft ('0', 2), "Pattern " + juce::String (pattern + 1));
     top.setMissing (proc.numMissingSamples());
+    top.kitStrip.setChanged (proc.originChanged (PresetType::Kit, selected, pattern));
+    soundPage.soundStrip.setChanged (proc.originChanged (PresetType::Sound, selected, pattern));
+    seqPage.patternStrip.setChanged (proc.originChanged (PresetType::Pattern, selected, pattern));
 }
 
 void BatidaEditor::libraryChanged()

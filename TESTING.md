@@ -1,6 +1,6 @@
 # Testing Batida (trusted testers)
 
-Thanks for trying Batida before anyone else. This is a **pre-release build (0.8.4)** for a small
+Thanks for trying Batida before anyone else. This is a **pre-release build (0.9.0)** for a small
 group of developers: you build it yourself from this repository. Please don't share the plugin
 or the repository yet.
 
@@ -9,7 +9,7 @@ or the repository yet.
 - A Mac with macOS 12 or later (Apple Silicon or Intel: you build for your own Mac).
 - Xcode with its command line tools, and CMake (`brew install cmake`).
 - A host that loads Audio Units: Logic Pro, GarageBand, Ableton Live, Reaper, and others.
-  Hosts that load only VST3 or CLAP get Batida with the VST3 build (phase 10).
+  Hosts that load only VST3 or CLAP get Batida with the VST3 build (phase 11).
 
 ## Build and install
 
@@ -87,6 +87,14 @@ New in 0.8.3:
 15. **Stack:** SOUND → Stack 2–4 on the bass. Raise Detune and Spread and listen for a wide
     reese; then set Interval to Minor 7 on a short sound and play a few notes in Chromatic mode.
     Check it still sounds right in mono.
+
+New in 0.9.0 (files and scripting, see the README):
+
+16. **Files:** save a kit, open it in a text editor, change a value (a `flt_cutoff`, say) and
+    save. The kit's name strip shows a lime ↻; click it to hear the change. A new file saved into
+    the User folder shows up in LIB within a few seconds.
+17. **The batida tool:** in Terminal, `batida render` a factory set to a WAV and `batida analyze`
+    it; `batida validate` a file after misspelling a setting in it.
 
 Everything you notice is useful: sound, workflow, UI, wording, crashes, CPU, and how it behaves
 in your host.

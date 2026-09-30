@@ -21,6 +21,15 @@ constexpr int kNumPresetTypes = 4;
 
 constexpr int kPresetFormat = 1; // bump when the file layout changes
 
+// Every file starts with a comment that points to the reference of its settings.
+constexpr const char* kReferenceUrl = "https://github.com/ikeaang-hue/Oddfield-Batida/blob/main/docs/REFERENCE.md";
+juce::String fileComment();
+juce::XmlElement::TextFormat presetTextFormat(); // the XML header, then the comment
+
+// A setting's value from its text in a file: menus by name (any case) or
+// index, switches as 1/0, true/false, on/off or yes/no; numbers are clamped.
+float valueFrom (const ParamSpec& spec, const juce::String& text);
+
 const char* extensionFor (PresetType type);  // ".batida-sound" ...
 const char* typeName (PresetType type);      // "sound", "kit", "pattern", "set"
 std::optional<PresetType> presetTypeOf (const juce::File& file);

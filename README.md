@@ -1,6 +1,6 @@
 # Batida
 
-**A drum instrument for sound design**, from Oddfield. macOS · Audio Unit · version 0.8.4
+**A drum instrument for sound design**, from Oddfield. macOS · Audio Unit · version 0.9.0
 (pre-release).
 
 Eight sounds play into one shared effects chain. An **XY pad** pushes the whole chain at once:
@@ -152,6 +152,29 @@ DAWs, send audio to the plugin's sidechain input.
 
 ---
 
+## Files and scripting
+
+Everything Batida saves is a plain text file: sounds, kits, patterns and sets. Every setting is
+listed with its range and unit in [docs/REFERENCE.md](docs/REFERENCE.md), so presets can be
+written or edited in a text editor or by a script. Files saved into the User folder show up in
+LIB straight away, and when the file behind a loaded sound, kit or pattern changes, its name
+strip shows a lime ↻ that loads the new version.
+
+The `batida` command-line tool works without a DAW. It's built next to the plugin
+(`build/BatidaCli_artefacts/Release/batida`) and also sits inside it, at
+`Batida.component/Contents/Helpers/batida`:
+
+```bash
+batida render my.batida-set --pattern 1 --bars 4 -o beat.wav
+batida analyze beat.wav
+batida validate my.batida-kit
+```
+
+`batida help` lists every command (`describe`, `new`, `list` and `params` as well). Add `--json`
+to any command for output another program can read.
+
+---
+
 ## For developers
 
 <details>
@@ -168,6 +191,9 @@ swiftc -O -o build/au_check tests/au_check.swift && build/au_check     # the ins
 - **CI:** `.github/workflows/tests.yml` runs the unit tests, the snapshot gesture checks and
   auval on macOS for every push to `main` and every pull request. Every check exits non-zero
   when it fails.
+- **The reference:** `docs/REFERENCE.md` is generated from the parameter tables
+  (`Source/Library/Reference.cpp`); the tests fail when it's out of date, and
+  `BATIDA_WRITE_GOLDEN=1` rewrites it. The `batida` tool is in `tools/cli`.
 - **Compatibility:** `tests/golden/parameter-ids.txt` lists every parameter ID a release has
   shipped; the tests fail if one changes or disappears (add new ones on purpose, with
   `BATIDA_WRITE_GOLDEN=1`). `tests/fixtures/` holds projects saved by old releases, which must
@@ -185,7 +211,8 @@ swiftc -O -o build/au_check tests/au_check.swift && build/au_check     # the ins
   - `Source/Plugin`: the AU;
   - `Source/UI`: the editor (`Look/Theme` holds colours, fonts and styles);
   - `tests/`: tests and tools;
-  - `tools/factory`: the preset factory (recipes, kits, patterns).
+  - `tools/factory`: the preset factory (recipes, kits, patterns);
+  - `tools/cli`: the `batida` command-line tool.
 - The design is in [SPEC.md](SPEC.md).
 
 </details>

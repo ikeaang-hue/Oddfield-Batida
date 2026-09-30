@@ -6,7 +6,7 @@ if(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "Minimum macOS version" FORCE)
 endif()
 
-project(Batida VERSION 0.8.4)
+project(Batida VERSION 0.9.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -69,7 +69,10 @@ target_sources(BatidaEngine
         Source/Engine/Movement/Vary.cpp
         Source/Library/PresetFiles.cpp
         Source/Library/SampleLocator.cpp
-        Source/Library/Library.cpp)
+        Source/Library/Library.cpp
+        Source/Library/Validate.cpp
+        Source/Library/Reference.cpp
+        Source/Analysis/Measure.cpp)
 
 target_include_directories(BatidaEngine INTERFACE Source)
 
@@ -104,7 +107,7 @@ set(BATIDA_DEFINITIONS
     BATIDA_VERSION="${PROJECT_VERSION}")
 
 # ---------------------------------------------------------------------------
-# Plugin (AU only for now; VST3 comes in phase 9, SPEC §14)
+# Plugin (AU only for now; VST3 comes in phase 11, SPEC §14)
 # ---------------------------------------------------------------------------
 juce_add_plugin(Batida
     COMPANY_NAME "Oddfield"
@@ -120,7 +123,7 @@ juce_add_plugin(Batida
     IS_MIDI_EFFECT FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     AU_MAIN_TYPE kAudioUnitType_MusicDevice
-    COPY_PLUGIN_AFTER_BUILD TRUE)
+    COPY_PLUGIN_AFTER_BUILD FALSE) # copied below, once the batida tool is inside it
 
 # The editor, shared by the plugin and the snapshot tool.
 set(BATIDA_UI_SOURCES
@@ -190,6 +193,37 @@ target_link_libraries(Batida
         juce::juce_recommended_warning_flags)
 
 # ---------------------------------------------------------------------------
+# The batida command-line tool (SPEC §13): renders, measures and checks
+# library files without a DAW. Built next to the plugin and copied into the AU
+# at Contents/Helpers/batida, so it's wherever the plugin is installed.
+# ---------------------------------------------------------------------------
+juce_add_console_app(BatidaCli PRODUCT_NAME "batida")
+
+target_sources(BatidaCli
+    PRIVATE
+        tools/cli/Main.cpp
+        tools/cli/Cli.cpp)
+
+target_compile_definitions(BatidaCli PRIVATE ${BATIDA_DEFINITIONS})
+set_target_properties(BatidaCli PROPERTIES OUTPUT_NAME batida)
+
+target_link_libraries(BatidaCli
+    PRIVATE
+        BatidaEngine
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_warning_flags)
+
+add_dependencies(Batida_AU BatidaCli)
+add_custom_command(TARGET Batida_AU POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_DIR:Batida_AU>/Contents/Helpers"
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:BatidaCli>" "$<TARGET_BUNDLE_DIR:Batida_AU>/Contents/Helpers/batida"
+    COMMAND codesign --force --sign - "$<TARGET_BUNDLE_DIR:Batida_AU>/Contents/Helpers/batida"
+    VERBATIM)
+# Then JUCE's step: re-sign the bundle (it changed) and copy it to Components.
+juce_enable_copy_plugin_step(Batida)
+
+# ---------------------------------------------------------------------------
 # Tests: unit tests, CPU benchmark, and offline renders straight from the engine
 # ---------------------------------------------------------------------------
 juce_add_console_app(BatidaTests PRODUCT_NAME "BatidaTests")
@@ -206,11 +240,13 @@ target_sources(BatidaTests
         tests/ProcessorTests.cpp
         tests/SamplingTests.cpp
         tests/VaryReportTests.cpp
+        tests/ScriptingTests.cpp
         tests/Tools.cpp
         tools/factory/Analysis.cpp
+        tools/cli/Cli.cpp
         ${BATIDA_UI_SOURCES})
 
-target_include_directories(BatidaTests PRIVATE tools/factory)
+target_include_directories(BatidaTests PRIVATE tools/factory tools/cli)
 target_compile_definitions(BatidaTests PRIVATE ${BATIDA_DEFINITIONS} BATIDA_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
                            JucePlugin_Name="Batida" JUCE_MODAL_LOOPS_PERMITTED=1)
 

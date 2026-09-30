@@ -120,6 +120,13 @@ public:
     int getOriginsVersion() const { return originsVersion; }
     juce::String getPatternName (int pattern) const; // its file's name, or "Pattern 3"
 
+    // Changed on disk (SPEC §10): the file behind the loaded sound, kit (or set)
+    // or pattern is newer than when Batida last read or wrote it. Nothing
+    // reloads by itself; reloadOrigin loads it again as one undo step.
+    juce::File originFile (batida::PresetType type, int voice, int pattern) const; // Kit: the kit, else the set
+    bool originChanged (batida::PresetType type, int voice, int pattern) const;
+    bool reloadOrigin (batida::PresetType type, int voice, int pattern, juce::String* error = nullptr);
+
     // Missing samples.
     int numMissingSamples() const;
     bool relinkSample (int voice, const juce::File& file);                 // one undo step
@@ -280,6 +287,8 @@ private:
     juce::SharedResourcePointer<batida::Library> sharedLibrary;
     Origins origins;
     int originsVersion = 0;
+    std::map<juce::String, juce::int64> originTimes; // path -> modification time when last read or written
+    void stampOrigin (const juce::File& file);
     std::array<juce::int64, batida::kNumVoices> sampleBytes {}; // sizes of the samples, for finding them again
     juce::String browseKey;
     juce::int64 browseStamp = 0;
