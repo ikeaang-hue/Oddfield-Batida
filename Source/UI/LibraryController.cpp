@@ -560,6 +560,21 @@ void LibraryController::tryFile (const juce::File& file)
         onChanged();
 }
 
+void LibraryController::reload (PresetType type)
+{
+    juce::String error;
+    if (! proc.reloadOrigin (type, voice(), pattern(), &error))
+    {
+        if (error.isNotEmpty())
+            showMessage ("Couldn't load", error);
+        return;
+    }
+    if (type == PresetType::Sound)
+        auditionOnce (voice());
+    if (onChanged)
+        onChanged();
+}
+
 void LibraryController::trySample (const juce::File& file)
 {
     if (! proc.browseSample (voice(), file))

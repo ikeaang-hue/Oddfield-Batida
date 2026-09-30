@@ -21,6 +21,9 @@ struct SampleData
     int numChannels() const { return audio.getNumChannels(); }
 };
 
+// Finds `data.onsets` from its audio (done by SampleSlot::decode).
+void computeOnsets (SampleData& data);
+
 // Holds one voice's sample and hands it to the audio thread without locks.
 //
 // The message thread loads files and keeps ownership of every buffer. The

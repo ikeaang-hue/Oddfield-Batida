@@ -92,6 +92,8 @@ public:
 
     // Try a library file (a browse load: one undo step for a run of them).
     void tryFile (const juce::File& file);
+    // Loads the file behind a strip again after it changed on disk (one undo step).
+    void reload (batida::PresetType type);
     void trySample (const juce::File& file);
 
     void init (batida::PresetType type);

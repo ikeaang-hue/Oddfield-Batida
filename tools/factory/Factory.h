@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Analysis/Measure.h"
 #include "Engine/Kit.h"
 #include "Engine/Movement/Vary.h"
 #include "Library/PresetFiles.h"
@@ -30,18 +31,8 @@ void applyGlobals (std::array<float, kNumGlobalParams>& g, const Overrides& o);
 
 // Analysis -------------------------------------------------------------------
 
-struct Features
-{
-    float peakDb = -120.0f, loudnessDb = -120.0f; // loudness: the loudest 50 ms
-    float lengthMs = 0.0f;                        // until -60 dB below the peak
-    float centroidHz = 0.0f;                      // spectral centroid
-    float low = 0.0f, high = 0.0f;                // share of energy below 150 Hz, above 6 kHz
-    float flatness = 0.0f;                        // 0 tonal .. 1 white noise (200 Hz..16 kHz)
-    float inharmonic = 0.0f;                      // 0 harmonic .. 1 clangorous (tonal parts)
-    float pitchHz = 0.0f;                         // after the attack, from zero crossings (tonal sounds)
-    float crestDb = 0.0f;                         // peak over loudness: how spiky the attack is
-    bool finite = true;
-};
+// The measurements live in Source/Analysis, shared with the batida tool.
+using Features = HitMeasures;
 
 // One hit, rendered dry (the voice alone), mono sum. Gate sounds get a note
 // of `gateSeconds`.

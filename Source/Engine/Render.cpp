@@ -32,9 +32,15 @@ juce::AudioBuffer<float> renderKit (const RenderRequest& req)
     g[gp::SeqPattern] = (float) req.pattern;
 
     const auto latency = kit->getLatencySamples();
-    const auto pass = patternMode ? patternPassSamples (req.bank.patterns[(size_t) std::clamp (req.pattern, 0, kNumPatterns - 1)], req.bpm, req.sampleRate) : 0;
+    const auto fromStart = patternMode && req.steps > 0;
+    const auto pass = ! patternMode ? 0
+                      : fromStart ? (int) std::lround (req.steps * Sequencer::kStep * 60.0 / std::max (1.0, req.bpm) * req.sampleRate)
+                                  : patternPassSamples (req.bank.patterns[(size_t) std::clamp (req.pattern, 0, kNumPatterns - 1)], req.bpm, req.sampleRate);
     const auto maxSound = (int) (6.0 * req.sampleRate);
-    const auto total = patternMode ? 2 * pass + latency + block : maxSound + latency + block;
+    const auto ringing = ! patternMode || fromStart; // stops once it has rung out
+    const auto total = ! patternMode ? maxSound + latency + block
+                       : fromStart ? pass + maxSound + latency + block
+                                   : 2 * pass + latency + block;
 
     juce::AudioBuffer<float> all (2, total);
     all.clear();
@@ -51,7 +57,7 @@ juce::AudioBuffer<float> renderKit (const RenderRequest& req)
     const auto gate = (PlayMode) params.voices[(size_t) req.voice].choice (vp::PlayMode) == PlayMode::Gate;
     const auto releaseAt = (int) (0.5 * req.sampleRate);
     if (! patternMode)
-        kit->noteOn (req.voice, Voice::kBaseKey, 1.0f);
+        kit->noteOn (req.voice, req.key, req.velocity);
 
     int done = 0, quietFor = 0;
     const auto quietNeeded = (int) (0.2 * req.sampleRate);
@@ -59,15 +65,18 @@ juce::AudioBuffer<float> renderKit (const RenderRequest& req)
     {
         const auto n = std::min (block, total - done);
         juce::AudioBuffer<float> view (buffer.getArrayOfWritePointers(), 2, n);
+        if (fromStart && done <= latency + pass && done + n > latency + pass)
+            params.global[gp::SeqPlay] = 0.0f; // the steps are done: stop, let the tails ring
         kit->setParameters (params);
         if (! patternMode && gate && done <= releaseAt && done + n > releaseAt)
-            kit->noteOff (req.voice, Voice::kBaseKey);
+            kit->noteOff (req.voice, req.key);
         kit->process (view, none);
         for (int ch = 0; ch < 2; ++ch)
             all.copyFrom (ch, done, view, ch, 0, n);
         done += n;
 
-        if (! patternMode && done > latency + (int) (0.05 * req.sampleRate) && (! gate || done > releaseAt))
+        const auto started = patternMode ? done > latency + pass : done > latency + (int) (0.05 * req.sampleRate) && (! gate || done > releaseAt);
+        if (ringing && started)
         {
             const auto peak = std::max (view.getMagnitude (0, 0, n), view.getMagnitude (1, 0, n));
             quietFor = peak < 1.0e-4f ? quietFor + n : 0; // -80 dB
@@ -76,9 +85,9 @@ juce::AudioBuffer<float> renderKit (const RenderRequest& req)
         }
     }
 
-    // Skip the chain's latency (and, for a pattern, the first pass).
-    const auto from = latency + pass;
-    const auto length = patternMode ? pass : std::max (1, done - latency - quietFor + (int) (0.02 * req.sampleRate));
+    // Skip the chain's latency (and, for a loop, the first pass).
+    const auto from = latency + (patternMode && ! fromStart ? pass : 0);
+    const auto length = patternMode && ! fromStart ? pass : std::max (1, done - latency - quietFor + (int) (0.02 * req.sampleRate));
     juce::AudioBuffer<float> out (2, std::max (1, std::min (length, done - from)));
     for (int ch = 0; ch < 2; ++ch)
         out.copyFrom (ch, 0, all, ch, from, out.getNumSamples());

@@ -1254,6 +1254,7 @@ void BatidaProcessor::applySound (int voice, const SoundPreset& sound, const juc
     writeVoiceParameters (voice, values);
     setNameQuietly (voice, sound.info.name);
     origins.soundFiles[(size_t) voice] = from;
+    stampOrigin (from);
     endLoadStep (key, mode);
 }
 
@@ -1282,6 +1283,7 @@ void BatidaProcessor::applyKit (const KitPreset& k, const juce::File& from, Load
     origins.kitName = k.info.name.isNotEmpty() ? k.info.name : juce::String ("Kit");
     origins.kitFile = from;
     origins.soundFiles = {};
+    stampOrigin (from);
     endLoadStep ("kit", mode);
 }
 
@@ -1292,6 +1294,7 @@ void BatidaProcessor::applyPattern (int pattern, const PatternPreset& preset, co
     kit.patternStore().edit ([&] (PatternBank& bank) { bank.patterns[(size_t) pattern] = preset.pattern; });
     origins.patternNames[(size_t) pattern] = preset.info.name;
     origins.patternFiles[(size_t) pattern] = from;
+    stampOrigin (from);
     endLoadStep (key, mode);
 }
 
@@ -1317,6 +1320,7 @@ void BatidaProcessor::applySet (const SetPreset& set, const juce::File& from, Lo
     origins.setName = set.info.name;
     origins.kitName = set.info.name.isNotEmpty() ? set.info.name : juce::String ("Neutral");
     origins.setFile = from;
+    stampOrigin (from);
     endLoadStep ("set", mode);
 }
 
@@ -1400,8 +1404,44 @@ bool BatidaProcessor::collectInto (SampleRef& ref, const juce::File& presetFile,
     return true;
 }
 
+void BatidaProcessor::stampOrigin (const juce::File& file)
+{
+    if (file.existsAsFile())
+        originTimes[file.getFullPathName()] = file.getLastModificationTime().toMilliseconds();
+}
+
+juce::File BatidaProcessor::originFile (PresetType type, int voice, int pattern) const
+{
+    switch (type)
+    {
+        case PresetType::Sound:   return origins.soundFiles[(size_t) std::clamp (voice, 0, kNumVoices - 1)];
+        case PresetType::Kit:     return origins.kitFile != juce::File() ? origins.kitFile : origins.setFile;
+        case PresetType::Pattern: return origins.patternFiles[(size_t) std::clamp (pattern, 0, kNumPatterns - 1)];
+        case PresetType::Set:     return origins.setFile;
+    }
+    return {};
+}
+
+bool BatidaProcessor::originChanged (PresetType type, int voice, int pattern) const
+{
+    const auto file = originFile (type, voice, pattern);
+    if (file == juce::File() || ! file.existsAsFile())
+        return false;
+    const auto seen = originTimes.find (file.getFullPathName());
+    return seen != originTimes.end() && file.getLastModificationTime().toMilliseconds() > seen->second;
+}
+
+bool BatidaProcessor::reloadOrigin (PresetType type, int voice, int pattern, juce::String* error)
+{
+    const auto file = originFile (type, voice, pattern);
+    if (file == juce::File())
+        return false;
+    return loadPresetFile (file, voice, pattern, LoadMode::Step, error);
+}
+
 void BatidaProcessor::presetSaved (const juce::File& file)
 {
+    stampOrigin (file);
     library().addRelinkFolder (file.getParentDirectory());
     library().refresh();
     ++originsVersion;
@@ -1487,15 +1527,35 @@ std::unique_ptr<juce::XmlElement> BatidaProcessor::originsToXml() const
             pe->setAttribute ("name", origins.patternNames[(size_t) p]);
             pe->setAttribute ("file", origins.patternFiles[(size_t) p].getFullPathName());
         }
+    // When each file was last read or written, so a change made while the
+    // project was closed still shows.
+    for (const auto& [path, time] : originTimes)
+    {
+        const juce::File f (path);
+        auto isOrigin = f == origins.kitFile || f == origins.setFile;
+        for (const auto& o : origins.soundFiles)
+            isOrigin = isOrigin || f == o;
+        for (const auto& o : origins.patternFiles)
+            isOrigin = isOrigin || f == o;
+        if (isOrigin)
+        {
+            auto* se = e->createNewChildElement ("SEEN");
+            se->setAttribute ("file", path);
+            se->setAttribute ("time", juce::String (time));
+        }
+    }
     return e;
 }
 
 void BatidaProcessor::originsFromXml (const juce::XmlElement* e)
 {
     origins = {};
+    originTimes.clear();
     ++originsVersion;
     if (e == nullptr)
         return;
+    for (auto* se : e->getChildWithTagNameIterator ("SEEN"))
+        originTimes[se->getStringAttribute ("file")] = se->getStringAttribute ("time").getLargeIntValue();
     auto file = [] (const juce::String& path) { return juce::File::isAbsolutePath (path) ? juce::File (path) : juce::File(); };
     origins.kitName = e->getStringAttribute ("kit", "Neutral");
     origins.kitFile = file (e->getStringAttribute ("kitFile"));

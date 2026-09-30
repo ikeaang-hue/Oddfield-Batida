@@ -306,6 +306,35 @@ int main (int argc, char* argv[])
         }
     }
 
+    // A loaded sound whose file changed on disk: the lime ↻ on its strip, and a
+    // click on it loads the file again.
+    if (auto* soundPage = dynamic_cast<SoundPage*> (find ("soundPage")))
+    {
+        const auto file = sampleDir.getChildFile ("snap/Kick.batida-sound");
+        file.getParentDirectory().createDirectory();
+        auto sound = proc.captureSound (0);
+        sound.info.name = proc.getVoiceName (0); // other checks expect the slot keeps its name
+        batida::writeSound (file, sound);
+        editor->selectVoice (0);
+        proc.loadPresetFile (file, 0, proc.displayPattern(), BatidaProcessor::LoadMode::Step);
+        file.setLastModificationTime (juce::Time::getCurrentTime() + juce::RelativeTime::seconds (5.0));
+        editor->showPage (BatidaEditor::Sound);
+        settle (250);
+        save ("04-Sound-Changed");
+
+        auto& strip = soundPage->soundStrip;
+        const auto shown = strip.isChanged();
+        const juce::Point<float> at ((float) strip.getWidth() - 26.0f, (float) strip.getHeight() * 0.3f);
+        const auto now = juce::Time::getCurrentTime();
+        strip.mouseDown (juce::MouseEvent (juce::Desktop::getInstance().getMainMouseSource(), at, juce::ModifierKeys::leftButtonModifier,
+                                           1.0f, 0.0f, 0.0f, 0.0f, 0.0f, &strip, &strip, now, at, now, 1, false));
+        settle (250);
+        const auto ok = shown && ! proc.originChanged (batida::PresetType::Sound, 0, proc.displayPattern()) && ! strip.isChanged();
+        std::printf ("%s: sound strip shows the reload arrow for a changed file, and a click reloads it\n", ok ? "ok" : "FAILED");
+        if (! ok)
+            ++gestureFailures;
+    }
+
     editor->showPage (BatidaEditor::Lib);
     proc.library().scanNow();
     settle (100);
@@ -823,7 +852,7 @@ int main (int argc, char* argv[])
         }
 
         std::printf ("%s\n", failures == 0 ? "GESTURES PASS" : "GESTURES FAIL");
-        gestureFailures = failures;
+        gestureFailures += failures;
     }
 
     editorHolder.reset();
