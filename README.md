@@ -6,7 +6,7 @@
 Eight sounds play into one shared effects chain. An **XY pad** pushes the whole chain at once:
 left to right goes warm → aggressive → digital, bottom to top goes clean → destroyed. Around
 that are a step sequencer, two drawn modulators, a "Vary" button that suggests new versions of a
-sound, and a library. It works for any style but is made for techno, breakbeat and glitch.
+sound, and a library.
 
 > **Pre-release.** What to try, known limits and how to report: [TESTING.md](TESTING.md).
 
@@ -110,9 +110,9 @@ master level. Click **BATIDA/** for the version.
   pattern plays. One **UNDO** takes back a whole run of clicks.
 - ♥ marks a favourite. Use **SAVE AS…** to keep your own.
 - The factory library: about 290 sounds, 40 kits, 58 patterns and 19 sets, all made with Batida's
-  own engine (no outside samples). Techno, breakbeat and glitch at the core, plus house, garage,
-  hip hop and trap: search a style's name to find its kits, patterns and sets. Four moods, *neutral*,
-  *synth-aggressive*, *neon* and *tender*, each have tonal sounds, a kit and a set; search the mood.
+  own engine (no outside samples). Sounds are tagged *round*, *bright*, *synthetic*, *inharmonic*
+  or *natural*. Four moods, *clean*, *driven*, *glossy* and *soft*, each have tonal sounds, a kit
+  and a set; search the mood.
 - Files live in `~/Music/Oddfield/Batida/`, with *Factory* and *User* folders you can open
   in Finder.
 

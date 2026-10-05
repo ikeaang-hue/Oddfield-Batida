@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
   <INFO name="Deep Sub Kick" author="Oddfield" category="kick"
-        tags="warm"/>
+        tags="round"/>
   <VOICE src_mode="FM" balance="0.5" level="3.31600642" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="706.68634"
          amp_sustain="0" amp_release="80" pitch_amt="8.73135185" pitch_decay="69.3913498"

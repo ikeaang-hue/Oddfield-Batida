@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
   <INFO name="Tape Sub Kick" author="Oddfield" category="kick"
-        tags="warm"/>
+        tags="round"/>
   <VOICE src_mode="FM" balance="0.5" level="3.38078475" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="644.892761"
          amp_sustain="0" amp_release="80" pitch_amt="11.9942675" pitch_decay="45.813015"

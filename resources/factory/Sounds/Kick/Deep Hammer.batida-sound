@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Deep Hammer" author="Oddfield" category="kick" tags="harsh"/>
+  <INFO name="Deep Hammer" author="Oddfield" category="kick" tags="bright"/>
   <VOICE src_mode="FM" balance="0.5" level="0.0951566696" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="553.975769"
          amp_sustain="0" amp_release="40" pitch_amt="31.9976196" pitch_decay="100.46521"

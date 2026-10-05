@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
   <INFO name="Chrome Open Hat" author="Oddfield" category="hat"
-        tags="metallic"/>
+        tags="inharmonic"/>
   <VOICE src_mode="FM" balance="0.5" level="-1.3007021" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="692.927246"
          amp_sustain="0" amp_release="60" pitch_amt="0" pitch_decay="60"

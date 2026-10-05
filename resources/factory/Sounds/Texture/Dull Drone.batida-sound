@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
   <INFO name="Dull Drone" author="Oddfield" category="texture"
-        tags="warm"/>
+        tags="round"/>
   <VOICE src_mode="FM" balance="0.5" level="2.14861774" pan="0" vel_sens="0.699999988"
          play_mode="Gate" glide="0" amp_attack="593.71106" amp_decay="400"
          amp_sustain="1" amp_release="1525.15918" pitch_amt="0" pitch_decay="60"

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Long 808" author="Oddfield" category="bass" tags="warm"/>
+  <INFO name="Long 808" author="Oddfield" category="bass" tags="round"/>
   <VOICE src_mode="FM" balance="0.5" level="-4.94080305" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="53.7097473" amp_attack="0" amp_decay="2420.26343"
          amp_sustain="0" amp_release="200" pitch_amt="12.1589909" pitch_decay="99.5835876"

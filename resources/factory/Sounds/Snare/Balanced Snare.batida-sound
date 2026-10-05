@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
   <INFO name="Balanced Snare" author="Oddfield" category="snare"
-        tags="neutral,warm"/>
+        tags="clean,round"/>
   <VOICE src_mode="FM" balance="0.5" level="0.636086464" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="217.586563"
          amp_sustain="0" amp_release="40" pitch_amt="4.130723" pitch_decay="35.5627098"

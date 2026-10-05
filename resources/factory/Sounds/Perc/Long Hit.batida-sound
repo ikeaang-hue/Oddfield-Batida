@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Long Hit" author="Oddfield" category="perc" tags="digital"/>
+  <INFO name="Long Hit" author="Oddfield" category="perc" tags="synthetic"/>
   <VOICE src_mode="Layer" balance="0.474890381" level="0.519470215" pan="0"
          vel_sens="0.699999988" play_mode="One-shot" glide="0" amp_attack="0"
          amp_decay="321.886566" amp_sustain="0" amp_release="50" pitch_amt="8.81874275"

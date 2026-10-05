@@ -22,7 +22,7 @@ Only what differs from the defaults needs to be written.
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <BATIDA type="sound">
-  <INFO name="Deep Kick" category="kick" tags="warm"/>
+  <INFO name="Deep Kick" category="kick" tags="round"/>
   <VOICE src_mode="FM" fm_pitch="-24" amp_decay="450" pitch_amt="30" pitch_decay="45"
          punch="0.4" drive="0.2" drive_type="soft"/>
 </BATIDA>
@@ -86,7 +86,7 @@ Only what differs from the defaults needs to be written.
 
 ## INFO
 
-`<INFO name="..." author="..." category="..." tags="..."/>`, all optional. Without a name, the file's name is used. **category** (sounds): one of kick, snare, hat, perc, fx, bass, texture. **tags**: comma-separated words; the browser offers warm, harsh, digital, metallic, organic, and any other word works as a tag too.
+`<INFO name="..." author="..." category="..." tags="..."/>`, all optional. Without a name, the file's name is used. **category** (sounds): one of kick, snare, hat, perc, fx, bass, texture. **tags**: comma-separated words; the browser offers round, bright, synthetic, inharmonic, natural, and any other word works as a tag too.
 
 ## Sound settings
 

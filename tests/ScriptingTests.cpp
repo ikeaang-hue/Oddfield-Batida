@@ -490,7 +490,7 @@ public:
             expect (! proc.originChanged (PresetType::Sound, 2, 0));
 
             // Nor are new tags or a new name given in LIB.
-            info.tags.add ("warm");
+            info.tags.add ("round");
             expect (proc.library().updateInfo (f, info));
             f.setLastModificationTime (juce::Time::getCurrentTime() + juce::RelativeTime::seconds (4.0));
             proc.originRewritten (f);

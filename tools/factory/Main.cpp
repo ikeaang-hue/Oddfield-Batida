@@ -27,6 +27,15 @@ namespace
 {
 const juce::String kAuthor = "Oddfield";
 
+// A kit's style is written as a tag only when it's a mood; genres stay inside
+// the factory (glitch still decides where fold may go).
+juce::StringArray styleTags (const std::string& style)
+{
+    if (moodTags().contains (juce::String (style)))
+        return { juce::String (style) };
+    return {};
+}
+
 juce::File sourceRoot()
 {
     // tools/factory/Main.cpp → the repository.
@@ -406,8 +415,8 @@ int runBuild (const juce::File& library, const juce::File& out)
     // The neutral kit's sounds, as they always were.
     struct NeutralSound { int voice; const char* category; const char* tags; };
     const NeutralSound neutralSounds[] = {
-        { 0, "kick", "warm" },  { 1, "perc", "digital" }, { 2, "snare", "organic" }, { 3, "snare", "organic" },
-        { 4, "perc", "warm" },  { 5, "bass", "warm" },    { 6, "hat", "metallic" },  { 7, "hat", "metallic" },
+        { 0, "kick", "round" },  { 1, "perc", "synthetic" }, { 2, "snare", "natural" }, { 3, "snare", "natural" },
+        { 4, "perc", "round" },  { 5, "bass", "round" },    { 6, "hat", "inharmonic" },  { 7, "hat", "inharmonic" },
     };
     const auto neutral = defaultKitPreset();
     for (const auto& n : neutralSounds)
@@ -438,7 +447,8 @@ int runBuild (const juce::File& library, const juce::File& out)
         else
         {
             b.kit.info = { idea.name, kAuthor, {}, idea.tags, {} };
-            b.kit.info.tags.addIfNotAlreadyThere (idea.style);
+            for (const auto& t : styleTags (idea.style))
+                b.kit.info.tags.addIfNotAlreadyThere (t);
             for (int g = 0; g < kNumGlobalParams; ++g)
                 b.kit.globals[(size_t) g] = globalParamSpecs()[(size_t) g].def;
             applyGlobals (b.kit.globals, idea.chain);
@@ -549,7 +559,7 @@ int runBuild (const juce::File& library, const juce::File& out)
     {
         writeKitTo (out, b, true);
         PatternPreset p;
-        p.info = { b.idea->patternName, kAuthor, {}, { b.idea->style }, {} };
+        p.info = { b.idea->patternName, kAuthor, {}, styleTags (b.idea->style), {} };
         p.pattern = b.pattern;
         patterns[b.idea->patternName] = b.pattern;
         writePattern (out.getChildFile ("Patterns/" + safeFileName (p.info.name) + ".batida-pattern"), p);
@@ -557,7 +567,7 @@ int runBuild (const juce::File& library, const juce::File& out)
     for (const auto& extra : extraPatterns())
     {
         PatternPreset p;
-        p.info = { extra.name, kAuthor, {}, { extra.style }, {} };
+        p.info = { extra.name, kAuthor, {}, styleTags (extra.style), {} };
         p.pattern = extra.pattern();
         patterns[extra.name] = p.pattern;
         writePattern (out.getChildFile ("Patterns/" + safeFileName (p.info.name) + ".batida-pattern"), p);
@@ -658,14 +668,14 @@ int runBuild (const juce::File& library, const juce::File& out)
         {
             writeKitTo (review, b, false);
             PatternPreset p;
-            p.info = { b.idea->patternName, kAuthor, {}, { b.idea->style }, {} };
+            p.info = { b.idea->patternName, kAuthor, {}, styleTags (b.idea->style), {} };
             p.pattern = b.pattern;
             writePattern (review.getChildFile ("Patterns/" + safeFileName (p.info.name) + ".batida-pattern"), p);
         }
         for (const auto& extra : extraPatterns())
         {
             PatternPreset p;
-            p.info = { extra.name, kAuthor, {}, { extra.style }, {} };
+            p.info = { extra.name, kAuthor, {}, styleTags (extra.style), {} };
             p.pattern = extra.pattern();
             writePattern (review.getChildFile ("Patterns/" + safeFileName (p.info.name) + ".batida-pattern"), p);
         }

@@ -64,21 +64,26 @@ public:
         expect (Library::archiveVersion() >= 2, "a version-2 factory or newer");
         expect (FactoryData::Factory_zipSize < 12 * 1024 * 1024, "the archive stays small");
         for (const auto* name : { "Kits/Neutral.batida-kit", "Sounds/Kick/Kick.batida-sound", "Patterns/Breakbeat.batida-pattern",
-                                  "Sets/Neutral Breakbeat.batida-set" })
+                                  "Sets/Neutral.batida-set" })
             expect (root.getChildFile ("Factory").getChildFile (name).existsAsFile(), name);
 
-        beginTest ("Styles are found by search");
-        for (const auto& [style, least] : { std::pair { "techno", 8 }, { "breaks", 7 }, { "glitch", 5 }, { "house", 5 },
-                                            { "garage", 3 }, { "hip hop", 3 }, { "trap", 4 } })
+        beginTest ("Tags are the character and mood words, no genres");
         {
-            LibraryFilter f;
-            f.search = style;
-            expect ((int) lib.filtered (PresetType::Kit, f).size() >= least, style);
-            expect ((int) lib.filtered (PresetType::Pattern, f).size() >= least, style);
+            const juce::StringArray moods { "clean", "driven", "glossy", "soft" };
+            std::map<juce::String, int> counts;
+            for (const auto type : { PresetType::Sound, PresetType::Kit, PresetType::Pattern, PresetType::Set })
+                for (const auto& e : lib.filtered (type, all))
+                    for (const auto& t : e.info.tags)
+                    {
+                        expect (characterTags().contains (t) || moods.contains (t), e.info.name + ": " + t);
+                        ++counts[t];
+                    }
+            for (const auto& t : characterTags())
+                expect (counts[t] >= 20, t + " on " + juce::String (counts[t]));
         }
 
         beginTest ("Each mood has its sounds, a kit and a set");
-        for (const auto* mood : { "neutral", "synth-aggressive", "neon", "tender" })
+        for (const auto* mood : { "clean", "driven", "glossy", "soft" })
         {
             LibraryFilter f;
             f.search = mood;
@@ -144,12 +149,14 @@ public:
         }
 
         beginTest ("Fold stays in the glitch kits; melodic sounds play in key");
+        // The kits whose style is glitch in tools/factory/Kits.cpp (styles aren't tags).
+        const juce::StringArray glitchKits { "Bitrate", "Shards", "Alloy", "Fracture", "Static" };
         for (const auto& e : kits)
         {
             const auto kit = readKit (e.file);
             if (! kit)
                 continue;
-            const auto glitch = kit->info.tags.contains ("glitch");
+            const auto glitch = glitchKits.contains (kit->info.name);
             const auto& g = kit->globals;
             if (! glitch)
                 expect (g[gp::DistType] + (g[gp::XyX] - 0.5f) <= 0.501f, kit->info.name + ": the chain stays short of fold");

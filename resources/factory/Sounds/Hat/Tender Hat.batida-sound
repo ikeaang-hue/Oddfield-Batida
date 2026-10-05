@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Tender Hat" author="Oddfield" category="hat" tags="tender,organic"/>
+  <INFO name="Tender Hat" author="Oddfield" category="hat" tags="soft,natural"/>
   <VOICE src_mode="FM" balance="0.5" level="2.94814873" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0.68809855" amp_decay="32.5438652"
          amp_sustain="0" amp_release="20" pitch_amt="0" pitch_decay="60"

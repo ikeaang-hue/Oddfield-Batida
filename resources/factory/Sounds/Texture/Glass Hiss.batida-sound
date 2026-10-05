@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
   <INFO name="Glass Hiss" author="Oddfield" category="texture"
-        tags="organic"/>
+        tags="natural"/>
   <VOICE src_mode="FM" balance="0.5" level="-0.844223022" pan="0" vel_sens="0.699999988"
          play_mode="Gate" glide="0" amp_attack="92.5217667" amp_decay="400"
          amp_sustain="0.800000012" amp_release="679.523071" pitch_amt="0"
