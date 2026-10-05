@@ -3,8 +3,8 @@
 #include <cstring>
 
 // The factory kits (SPEC §11): the neutral kit, then 35 more across techno,
-// breaks, glitch, house, garage, hip hop and trap, and one per mood (neutral,
-// synth-aggressive, neon, tender). Each
+// breaks, glitch, house, garage, hip hop and trap, and one per mood (clean,
+// driven, glossy, soft). Each
 // takes the reference layout (1 kick · 2 rim/perc · 3 snare · 4 clap ·
 // 5 perc/tom · 6 bass · 7 closed hat · 8 open hat) unless its style needs a
 // different sound in a slot, and then the replacement keeps the slot's job.
@@ -113,7 +113,7 @@ std::vector<KitConcept> build()
         KitConcept c;
         c.name = "Neutral";
         c.style = "breaks";
-        c.tags = { "warm", "organic" };
+        c.tags = { "round", "natural" };
         c.neutral = true;
         c.pattern = [] { return breakbeatPattern(); };
         c.patternName = "Breakbeat";
@@ -122,14 +122,14 @@ std::vector<KitConcept> build()
     }
 
     // Techno -------------------------------------------------------------------------
-    k.push_back ({ "Concrete", "techno", { "warm" },
-        { { { "Kick", { "kick.boom", "kick.drop" }, { "warm" } },
+    k.push_back ({ "Concrete", "techno", { "round" },
+        { { { "Kick", { "kick.boom", "kick.drop" }, { "round" } },
             { "Rim", { "snare.rim" }, {}, -3.0f },
             { "Snare", { "snare.body" }, {}, -4.0f },
             { "Clap", { "snare.clap", "snare.clapstack" }, {}, -1.0f },
             { "Tom", { "perc.tom" }, {}, -3.0f, {}, 0.25f },
             { "Rumble", { "kick.sub" }, {}, -6.0f, { { "amp_decay", 900.0f }, { "flt_cutoff", 180.0f }, { "drive", 0.35f } } },
-            { "Hat", { "hat.closed", "hat.metal" }, { "metallic" }, 0.0f, {}, -0.15f },
+            { "Hat", { "hat.closed", "hat.metal" }, { "inharmonic" }, 0.0f, {}, -0.15f },
             { "Open Hat", { "hat.open" }, {}, -2.0f, {}, 0.15f } } },
         { { "xy_x", 0.35f }, { "xy_y", 0.35f }, { "comp_amount", 0.3f }, { "comp_attack", 8.0f }, { "comp_release", 150.0f },
           { "dist_drive", 0.1f }, { "eq_low", 1.5f }, { "eq_high", -1.0f } },
@@ -146,14 +146,14 @@ std::vector<KitConcept> build()
                  .xy (28, 0.45f, 0.6f).xy (29, 0.5f, 0.7f).xy (30, 0.55f, 0.8f).xy (31, 0.6f, 0.9f); },
         "Concrete", 130.0f, 0.5f });
 
-    k.push_back ({ "Foundry", "techno", { "harsh", "metallic" },
-        { { { "Kick", { "kick.dist" }, { "harsh" } },
-            { "Metal", { "snare.metal", "hat.metal" }, { "metallic" }, -3.0f, {}, -0.2f },
-            { "Snare", { "snare.crack", "snare.body" }, { "harsh" } },
+    k.push_back ({ "Foundry", "techno", { "bright", "inharmonic" },
+        { { { "Kick", { "kick.dist" }, { "bright" } },
+            { "Metal", { "snare.metal", "hat.metal" }, { "inharmonic" }, -3.0f, {}, -0.2f },
+            { "Snare", { "snare.crack", "snare.body" }, { "bright" } },
             { "Clap", { "snare.clapstack", "snare.clap" }, {}, -1.0f },
             { "Tom", { "perc.tom" }, {}, -2.0f, { { "drive", 0.4f }, { "drive_type", 1 } }, 0.2f },
-            { "Bass", { "bass.growl" }, { "harsh" }, -3.0f },
-            { "Hat", { "hat.bit", "hat.metal" }, { "digital", "metallic" }, 0.0f, {}, -0.1f },
+            { "Bass", { "bass.growl" }, { "bright" }, -3.0f },
+            { "Hat", { "hat.bit", "hat.metal" }, { "synthetic", "inharmonic" }, 0.0f, {}, -0.1f },
             { "Open Hat", { "hat.open" }, {}, -2.0f, {}, 0.1f } } },
         { { "xy_x", 0.7f }, { "xy_y", 0.55f }, { "comp_amount", 0.35f }, { "comp_attack", 5.0f }, { "dist_drive", 0.3f },
           { "exc_amount", 0.2f }, { "eq_low", 1.0f } },
@@ -172,13 +172,13 @@ std::vector<KitConcept> build()
                  .xy (12, 0.8f, 0.8f).xy (14, 0.9f, 0.9f); },
         "Foundry", 138.0f, 0.5f });
 
-    k.push_back ({ "Sparse", "techno", { "digital" },
+    k.push_back ({ "Sparse", "techno", { "synthetic" },
         { { { "Kick", { "kick.tight", "kick.click" }, {} },
             { "Rim", { "snare.rim" }, {}, -2.0f, {}, 0.3f },
             { "Snap", { "snare.snap" }, {}, -3.0f },
             { "Clap", { "snare.clap" }, {}, -3.0f },
             { "Block", { "perc.block" }, {}, -3.0f, {}, -0.3f },
-            { "Blip", { "perc.blip" }, { "digital" }, -4.0f, {}, 0.2f },
+            { "Blip", { "perc.blip" }, { "synthetic" }, -4.0f, {}, 0.2f },
             { "Tick", { "hat.tick", "hat.closed" }, {}, 0.0f },
             { "Open Hat", { "hat.open" }, {}, -3.0f, { { "amp_decay", 250.0f } } } } },
         { { "xy_x", 0.5f }, { "xy_y", 0.15f }, { "comp_amount", 0.2f }, { "eq_hp", 30.0f } },
@@ -196,8 +196,8 @@ std::vector<KitConcept> build()
                  .pitch (B, { 0, 0, 7, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 3 }); },
         "Sparse", 126.0f, 0.5f });
 
-    k.push_back ({ "Fathom", "techno", { "warm" },
-        { { { "Kick", { "kick.boom", "kick.drop" }, { "warm" } },
+    k.push_back ({ "Fathom", "techno", { "round" },
+        { { { "Kick", { "kick.boom", "kick.drop" }, { "round" } },
             { "Rim", { "snare.rim" }, {}, -4.0f, { { "flt_cutoff", 400.0f } } },
             { "Snare", { "snare.body" }, {}, -4.0f, { { "flt_cutoff", 4000.0f } } },
             { "Clap", { "snare.clap", "snare.clapstack" }, {}, -2.0f, { { "flt_cutoff", 1000.0f } } },
@@ -226,7 +226,7 @@ std::vector<KitConcept> build()
                  .pitch (B, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, 0, 0, 0 }); },
         "Fathom", 120.0f, 0.5f });
 
-    k.push_back ({ "Solvent", "techno", { "harsh" },
+    k.push_back ({ "Solvent", "techno", { "bright" },
         { { { "Kick", { "kick.drop", "kick.tight" }, {} },
             { "Rim", { "snare.rim" }, {}, -3.0f },
             { "Snare", { "snare.body" }, {}, -4.0f },
@@ -256,13 +256,13 @@ std::vector<KitConcept> build()
         "Solvent", 132.0f, 0.5f });
 
     // Breaks --------------------------------------------------------------------------
-    k.push_back ({ "Reel", "breaks", { "warm", "organic" },
-        { { { "Kick", { "kick.dusty", "kick.drop" }, { "warm" } },
+    k.push_back ({ "Reel", "breaks", { "round", "natural" },
+        { { { "Kick", { "kick.dusty", "kick.drop" }, { "round" } },
             { "Rim", { "snare.rim" }, {}, -3.0f },
-            { "Snare", { "snare.fat", "snare.dusty" }, { "warm" } },
+            { "Snare", { "snare.fat", "snare.dusty" }, { "round" } },
             { "Clap", { "snare.clap" }, {}, -3.0f },
             { "Tom", { "perc.tom" }, {}, -2.0f },
-            { "Bass", { "bass.sub", "bass.pluck" }, { "warm" }, -2.0f },
+            { "Bass", { "bass.sub", "bass.pluck" }, { "round" }, -2.0f },
             { "Hat", { "hat.closed" }, {}, 0.0f, {}, -0.2f },
             { "Open Hat", { "hat.open" }, {}, -2.0f, {}, 0.2f } } },
         { { "xy_x", 0.2f }, { "xy_y", 0.35f }, { "comp_amount", 0.4f }, { "comp_mix", 0.7f }, { "dist_type", 0.35f } },
@@ -277,10 +277,10 @@ std::vector<KitConcept> build()
                  .pitch (B, { 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 5, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, 0, 0, -5 }); },
         "Reel", 130.0f, 0.5f });
 
-    k.push_back ({ "Tension", "breaks", { "harsh" },
+    k.push_back ({ "Tension", "breaks", { "bright" },
         { { { "Kick", { "kick.tight", "kick.click" }, {} },
             { "Rim", { "snare.rim" }, {}, -3.0f },
-            { "Snare", { "snare.crack" }, { "harsh" } },
+            { "Snare", { "snare.crack" }, { "bright" } },
             { "Clap", { "snare.clapstack" }, {}, -2.0f },
             { "Perc", { "perc.conga", "perc.tom" }, {}, -3.0f, {}, 0.3f },
             { "Bass", { "bass.growl", "bass.808dist" }, {}, -2.0f },
@@ -301,9 +301,9 @@ std::vector<KitConcept> build()
                  .pitch (B, { 0, 0, 0, 0, 0, 0, 3, 0, -2, 0, 0, 0, 0, 0, 5 }); },
         "Tension", 132.0f, 0.5f });
 
-    k.push_back ({ "Vector", "breaks", { "digital" },
+    k.push_back ({ "Vector", "breaks", { "synthetic" },
         { { { "Kick", { "kick.boom", "kick.drop" }, {}, 0.0f, { { "amp_decay", 700.0f } } },
-            { "Zap", { "perc.zap" }, { "digital" }, -4.0f, {}, -0.25f },
+            { "Zap", { "perc.zap" }, { "synthetic" }, -4.0f, {}, -0.25f },
             { "Snare", { "snare.body", "snare.snap" }, {} },
             { "Clap", { "snare.clap" }, {}, -2.0f },
             { "Tom", { "perc.tom" }, {}, -2.0f, {}, 0.2f },
@@ -325,7 +325,7 @@ std::vector<KitConcept> build()
                  .pitch (B, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, -2 }); },
         "Vector", 125.0f, 0.5f });
 
-    k.push_back ({ "Rapid", "breaks", { "organic" },
+    k.push_back ({ "Rapid", "breaks", { "natural" },
         { { { "Kick", { "kick.tight", "kick.drop" }, {} },
             { "Rim", { "snare.rim" }, {}, -3.0f },
             { "Snare", { "snare.crack", "snare.body" }, {} },
@@ -348,14 +348,14 @@ std::vector<KitConcept> build()
         "Rapid", 170.0f, 0.5f });
 
     // Glitch --------------------------------------------------------------------------
-    k.push_back ({ "Bitrate", "glitch", { "digital" },
-        { { { "Kick", { "kick.click" }, { "digital" } },
+    k.push_back ({ "Bitrate", "glitch", { "synthetic" },
+        { { { "Kick", { "kick.click" }, { "synthetic" } },
             { "Blip", { "perc.blip" }, {}, -4.0f, {}, -0.3f },
             { "Snare", { "snare.snap", "snare.metal" }, {} },
             { "Clap", { "snare.clapstack" }, {}, -2.0f, { { "drive", 0.5f }, { "drive_type", 3 } } },
             { "Zap", { "perc.zap" }, {}, -3.0f, {}, 0.3f },
             { "Bass", { "bass.growl", "bass.pluck" }, {}, -3.0f },
-            { "Hat", { "hat.bit" }, { "digital" }, 0.0f },
+            { "Hat", { "hat.bit" }, { "synthetic" }, 0.0f },
             { "Crackle", { "texture.crackle" }, {}, -4.0f } } },
         { { "xy_x", 0.9f }, { "xy_y", 0.5f }, { "comp_amount", 0.4f }, { "exc_amount", 0.15f } },
         [] (MovementData& m, auto& g)
@@ -378,7 +378,7 @@ std::vector<KitConcept> build()
                  .xy (7, 1.0f, 0.8f).xy (14, 0.95f, 1.0f); },
         "Bitrate", 120.0f, 0.5f });
 
-    k.push_back ({ "Shards", "glitch", { "digital" },
+    k.push_back ({ "Shards", "glitch", { "synthetic" },
         { { { "Kick", { "kick.tight" }, {} },
             { "Rim", { "snare.rim" }, {}, -3.0f },
             { "Snap", { "snare.snap" }, {}, -2.0f },
@@ -402,14 +402,14 @@ std::vector<KitConcept> build()
                  .pitch (B, { 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, 0, 5 }); },
         "Shards", 110.0f, 0.5f });
 
-    k.push_back ({ "Alloy", "glitch", { "metallic" },
+    k.push_back ({ "Alloy", "glitch", { "inharmonic" },
         { { { "Kick", { "kick.tight", "kick.click" }, {} },
-            { "Metal", { "snare.metal" }, { "metallic" }, -4.0f, {}, -0.3f },
-            { "Snare", { "snare.metal", "snare.body" }, { "metallic" } },
+            { "Metal", { "snare.metal" }, { "inharmonic" }, -4.0f, {}, -0.3f },
+            { "Snare", { "snare.metal", "snare.body" }, { "inharmonic" } },
             { "Clap", { "snare.clap" }, {}, -3.0f },
             { "Bell", { "perc.cowbell" }, {}, -4.0f, {}, 0.3f },
             { "Bass", { "bass.pluck" }, {}, -3.0f, { { "fm_harm", 0.5f } } },
-            { "Hat", { "hat.metal" }, { "metallic" }, 0.0f, {}, -0.15f },
+            { "Hat", { "hat.metal" }, { "inharmonic" }, 0.0f, {}, -0.15f },
             { "Ride", { "hat.ride" }, {}, -3.0f, {}, 0.2f } } },
         { { "xy_x", 0.65f }, { "xy_y", 0.35f }, { "comp_amount", 0.35f }, { "exc_amount", 0.25f } },
         [] (MovementData& m, auto& g) { modulate (m, g, 0, ShapePreset::Sine, k4Bars, true, gp::XyX, 0.25f); },
@@ -427,7 +427,7 @@ std::vector<KitConcept> build()
         "Alloy", 125.0f, 0.5f });
 
     // House ----------------------------------------------------------------------------
-    k.push_back ({ "Floor", "house", { "warm" },
+    k.push_back ({ "Floor", "house", { "round" },
         { { { "Kick", { "kick.house" }, {} },
             { "Shaker", { "hat.shaker" }, {}, -3.0f, {}, 0.3f },
             { "Snare", { "snare.body" }, {}, -4.0f },
@@ -451,13 +451,13 @@ std::vector<KitConcept> build()
                  .pitch (B, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 12 }); },
         "Floor", 124.0f, 0.52f });
 
-    k.push_back ({ "Velvet", "house", { "warm" },
-        { { { "Kick", { "kick.house", "kick.drop" }, { "warm" } },
+    k.push_back ({ "Velvet", "house", { "round" },
+        { { { "Kick", { "kick.house", "kick.drop" }, { "round" } },
             { "Rim", { "snare.rim" }, {}, -4.0f, {}, 0.2f },
             { "Snare", { "snare.body" }, {}, -5.0f, { { "flt_cutoff", 5000.0f } } },
             { "Clap", { "snare.clap", "snare.clapstack" }, {}, -1.0f },
             { "Chord", { "texture.chord" }, {}, -2.0f, { { "fm_pitch", -12.0f } } },
-            { "Bass", { "bass.sub", "bass.pluck" }, { "warm" }, -2.0f },
+            { "Bass", { "bass.sub", "bass.pluck" }, { "round" }, -2.0f },
             { "Shaker", { "hat.shaker", "hat.closed" }, {}, -2.0f, {}, -0.2f },
             { "Open Hat", { "hat.open" }, {}, -3.0f, {}, 0.2f } } },
         { { "xy_x", 0.2f }, { "xy_y", 0.2f }, { "comp_amount", 0.3f }, { "eq_lp", 12000.0f }, { "eq_high", -2.0f } },
@@ -475,7 +475,7 @@ std::vector<KitConcept> build()
                  .pitch (B, { 0, 0, 0, 12, 0, 0, 3, 0, 0, 0, 5, 0, 0, 7 }); },
         "Velvet", 120.0f, 0.56f });
 
-    k.push_back ({ "Rolling", "house", { "organic" },
+    k.push_back ({ "Rolling", "house", { "natural" },
         { { { "Kick", { "kick.house", "kick.tight" }, {} },
             { "Rim", { "snare.rim" }, {}, -3.0f, {}, 0.25f },
             { "Snap", { "snare.snap" }, {}, -4.0f },
@@ -501,7 +501,7 @@ std::vector<KitConcept> build()
         "Rolling", 126.0f, 0.54f });
 
     // Garage ---------------------------------------------------------------------------
-    k.push_back ({ "Shuffle", "garage", { "organic" },
+    k.push_back ({ "Shuffle", "garage", { "natural" },
         { { { "Kick", { "kick.house", "kick.tight" }, {} },
             { "Rim", { "snare.rim" }, {}, -2.0f, {}, 0.2f },
             { "Snare", { "snare.body", "snare.crack" }, {} },
@@ -525,13 +525,13 @@ std::vector<KitConcept> build()
                  .pitch (B, { 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, -2, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0 }); },
         "Shuffle", 132.0f, 0.62f });
 
-    k.push_back ({ "Weight", "garage", { "harsh" },
+    k.push_back ({ "Weight", "garage", { "bright" },
         { { { "Kick", { "kick.tight", "kick.house" }, {} },
             { "Rim", { "snare.rim" }, {}, -3.0f },
             { "Snare", { "snare.crack", "snare.body" }, {} },
             { "Clap", { "snare.clapstack" }, {}, -2.0f },
             { "Tom", { "perc.tom" }, {}, -3.0f },
-            { "Bass", { "bass.growl", "bass.808dist" }, { "harsh" }, 0.0f, { { "glide", 60.0f } } },
+            { "Bass", { "bass.growl", "bass.808dist" }, { "bright" }, 0.0f, { { "glide", 60.0f } } },
             { "Hat", { "hat.tick", "hat.closed" }, {}, -1.0f },
             { "Open Hat", { "hat.open" }, {}, -2.0f } } },
         { { "xy_x", 0.55f }, { "xy_y", 0.45f }, { "comp_amount", 0.45f }, { "dist_low_keep", 140.0f } },
@@ -551,14 +551,14 @@ std::vector<KitConcept> build()
         "Weight", 134.0f, 0.58f });
 
     // Hip hop --------------------------------------------------------------------------
-    k.push_back ({ "Sepia", "hip hop", { "warm", "organic" },
-        { { { "Kick", { "kick.dusty" }, { "warm" } },
+    k.push_back ({ "Sepia", "hip hop", { "round", "natural" },
+        { { { "Kick", { "kick.dusty" }, { "round" } },
             { "Rim", { "snare.rim" }, {}, -3.0f },
-            { "Snare", { "snare.dusty", "snare.fat" }, { "warm" } },
+            { "Snare", { "snare.dusty", "snare.fat" }, { "round" } },
             { "Rim Snare", { "snare.rim" }, {}, -1.0f, { { "flt_cutoff", 200.0f } } },
             { "Perc", { "perc.conga", "perc.tamb" }, {}, -4.0f, {}, 0.3f },
-            { "Bass", { "bass.pluck", "bass.sub" }, { "warm" }, -2.0f },
-            { "Hat", { "hat.closed" }, { "organic" }, -1.0f, { { "flt_cutoff", 7000.0f } }, -0.15f },
+            { "Bass", { "bass.pluck", "bass.sub" }, { "round" }, -2.0f },
+            { "Hat", { "hat.closed" }, { "natural" }, -1.0f, { { "flt_cutoff", 7000.0f } }, -0.15f },
             { "Open Hat", { "hat.open" }, {}, -3.0f, {}, 0.15f } } },
         { { "xy_x", 0.15f }, { "xy_y", 0.4f }, { "comp_amount", 0.45f }, { "comp_mix", 0.8f }, { "eq_lp", 9000.0f },
           { "eq_low", 1.5f } },
@@ -574,13 +574,13 @@ std::vector<KitConcept> build()
                  .pitch (B, { 0, 0, 0, 0, 0, 0, 0, -2, 0, 0, 3 }); },
         "Sepia", 90.0f, 0.6f });
 
-    k.push_back ({ "Faded", "hip hop", { "warm" },
-        { { { "Kick", { "kick.dusty", "kick.drop" }, { "warm" } },
+    k.push_back ({ "Faded", "hip hop", { "round" },
+        { { { "Kick", { "kick.dusty", "kick.drop" }, { "round" } },
             { "Rim", { "snare.rim" }, {}, -4.0f },
             { "Snare", { "snare.dusty" }, {} },
             { "Clap", { "snare.clap" }, {}, -3.0f, { { "flt_cutoff", 900.0f } } },
             { "Block", { "perc.block", "perc.conga" }, {}, -5.0f, {}, 0.3f },
-            { "Bass", { "bass.sub", "bass.pluck" }, { "warm" }, -2.0f },
+            { "Bass", { "bass.sub", "bass.pluck" }, { "round" }, -2.0f },
             { "Shaker", { "hat.shaker", "hat.closed" }, {}, -2.0f, {}, -0.2f },
             { "Crackle", { "texture.crackle" }, {}, -6.0f } } },
         { { "xy_x", 0.1f }, { "xy_y", 0.3f }, { "comp_amount", 0.35f }, { "eq_lp", 6000.0f }, { "eq_high", -3.0f },
@@ -622,13 +622,13 @@ std::vector<KitConcept> build()
                  .note (B, 1.0f); },
         "Slide", 140.0f, 0.5f });
 
-    k.push_back ({ "Blackout", "trap", { "harsh" },
+    k.push_back ({ "Blackout", "trap", { "bright" },
         { { { "Kick", { "kick.tight" }, {} },
             { "Rim", { "snare.rim" }, {}, -3.0f },
-            { "Snare", { "snare.crack" }, { "harsh" } },
+            { "Snare", { "snare.crack" }, { "bright" } },
             { "Snap", { "snare.snap" }, {}, -1.0f },
             { "Perc", { "perc.zap", "perc.block" }, {}, -5.0f, {}, 0.3f },
-            { "808", { "bass.808dist", "bass.808" }, { "harsh" }, 0.0f, { { "glide", 90.0f } } },
+            { "808", { "bass.808dist", "bass.808" }, { "bright" }, 0.0f, { { "glide", 90.0f } } },
             { "Hat", { "hat.tick", "hat.metal" }, {}, -1.0f },
             { "Open Hat", { "hat.open" }, {}, -3.0f } } },
         { { "xy_x", 0.65f }, { "xy_y", 0.4f }, { "comp_amount", 0.4f }, { "eq_lp", 11000.0f } },
@@ -650,8 +650,8 @@ std::vector<KitConcept> build()
     // (extraPatterns): a build, a break or a fill.
 
     // Techno ----------------------------------------------------------------------------
-    k.push_back ({ "Pressure", "techno", { "harsh" },
-        { { { "Kick", { "kick.hard" }, { "harsh" } },
+    k.push_back ({ "Pressure", "techno", { "bright" },
+        { { { "Kick", { "kick.hard" }, { "bright" } },
             { "Rim", { "snare.rimhard" }, {}, -4.0f, {}, 0.25f },
             { "Snare", { "snare.slam" }, {}, -4.0f },
             { "Clap", { "snare.clapdist" }, {}, -1.0f },
@@ -675,8 +675,8 @@ std::vector<KitConcept> build()
                  .pitch (T, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -3 }); },
         "Pressure", 140.0f, 0.5f });
 
-    k.push_back ({ "Furnace", "techno", { "harsh", "digital" },
-        { { { "Kick", { "kick.gabber" }, { "harsh" } },
+    k.push_back ({ "Furnace", "techno", { "bright", "synthetic" },
+        { { { "Kick", { "kick.gabber" }, { "bright" } },
             { "Rim", { "snare.rimhard" }, {}, -4.0f },
             { "Snare", { "snare.slam" }, {}, -2.0f },
             { "Clap", { "snare.clapdist" }, {}, -2.0f },
@@ -698,7 +698,7 @@ std::vector<KitConcept> build()
                  .pitch (T, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -3, 0, -5 }); },
         "Furnace", 175.0f, 0.5f });
 
-    k.push_back ({ "Tunnel", "techno", { "metallic" },
+    k.push_back ({ "Tunnel", "techno", { "inharmonic" },
         { { { "Kick", { "kick.drop", "kick.boom" }, {} },
             { "Rim", { "snare.rim" }, {}, -3.0f, {}, 0.3f },
             { "Snare", { "snare.body" }, {}, -5.0f },
@@ -727,7 +727,7 @@ std::vector<KitConcept> build()
         "Tunnel", 128.0f, 0.5f });
 
     // Breaks -----------------------------------------------------------------------------
-    k.push_back ({ "Splinter", "breaks", { "harsh" },
+    k.push_back ({ "Splinter", "breaks", { "bright" },
         { { { "Kick", { "kick.punch" }, {} },
             { "Rim", { "snare.rimhard" }, {}, -4.0f, {}, 0.2f },
             { "Snare", { "snare.slam" }, {} },
@@ -751,7 +751,7 @@ std::vector<KitConcept> build()
                  .note (B, 0.9f); },
         "Splinter", 172.0f, 0.5f });
 
-    k.push_back ({ "Voltage", "breaks", { "digital" },
+    k.push_back ({ "Voltage", "breaks", { "synthetic" },
         { { { "Kick", { "kick.punch", "kick.boom" }, {} },
             { "Zap", { "perc.zaphard", "perc.zap" }, {}, -5.0f, {}, -0.25f },
             { "Snare", { "snare.slam", "snare.snap" }, {} },
@@ -776,8 +776,8 @@ std::vector<KitConcept> build()
                  .pitch (B, { 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, -2 }); },
         "Voltage", 128.0f, 0.5f });
 
-    k.push_back ({ "Rubble", "breaks", { "harsh" },
-        { { { "Kick", { "kick.hard", "kick.dist" }, { "harsh" } },
+    k.push_back ({ "Rubble", "breaks", { "bright" },
+        { { { "Kick", { "kick.hard", "kick.dist" }, { "bright" } },
             { "Rim", { "snare.rim" }, {}, -3.0f },
             { "Snare", { "snare.crack", "snare.slam" }, {} },
             { "Clap", { "snare.clapstack" }, {}, -2.0f },
@@ -801,7 +801,7 @@ std::vector<KitConcept> build()
         "Rubble", 136.0f, 0.5f });
 
     // Glitch ------------------------------------------------------------------------------
-    k.push_back ({ "Fracture", "glitch", { "harsh", "digital" },
+    k.push_back ({ "Fracture", "glitch", { "bright", "synthetic" },
         { { { "Kick", { "kick.fold" }, {} },
             { "Blip", { "perc.blip" }, {}, -4.0f, {}, -0.3f },
             { "Snare", { "snare.fold" }, {} },
@@ -832,7 +832,7 @@ std::vector<KitConcept> build()
                  .xy (5, 1.0f, 0.9f).xy (13, 0.9f, 1.0f); },
         "Fracture", 124.0f, 0.5f });
 
-    k.push_back ({ "Static", "glitch", { "digital", "organic" },
+    k.push_back ({ "Static", "glitch", { "synthetic", "natural" },
         { { { "Kick", { "kick.click" }, {} },
             { "Rim", { "snare.rim" }, {}, -3.0f },
             { "Snap", { "snare.snap" }, {}, -2.0f },
@@ -857,7 +857,7 @@ std::vector<KitConcept> build()
         "Static", 105.0f, 0.5f });
 
     // House --------------------------------------------------------------------------------
-    k.push_back ({ "Strobe", "house", { "harsh" },
+    k.push_back ({ "Strobe", "house", { "bright" },
         { { { "Kick", { "kick.hard", "kick.house" }, {} },
             { "Shaker", { "hat.shaker" }, {}, -3.0f, {}, 0.3f },
             { "Snare", { "snare.slam" }, {}, -5.0f },
@@ -882,8 +882,8 @@ std::vector<KitConcept> build()
                  .note (B, 0.7f); },
         "Strobe", 128.0f, 0.52f });
 
-    k.push_back ({ "Haze", "house", { "warm" },
-        { { { "Kick", { "kick.house", "kick.drop" }, { "warm" } },
+    k.push_back ({ "Haze", "house", { "round" },
+        { { { "Kick", { "kick.house", "kick.drop" }, { "round" } },
             { "Rim", { "snare.rim" }, {}, -4.0f, {}, 0.25f },
             { "Snare", { "snare.body" }, {}, -6.0f, { { "flt_cutoff", 4500.0f } } },
             { "Clap", { "snare.clap", "snare.clapstack" }, {}, -2.0f, { { "flt_cutoff", 1100.0f } } },
@@ -911,7 +911,7 @@ std::vector<KitConcept> build()
         "Haze", 122.0f, 0.56f });
 
     // Garage ---------------------------------------------------------------------------------
-    k.push_back ({ "Rush", "garage", { "harsh" },
+    k.push_back ({ "Rush", "garage", { "bright" },
         { { { "Kick", { "kick.hard", "kick.tight" }, {} },
             { "Rim", { "snare.rimhard" }, {}, -3.0f, {}, 0.2f },
             { "Snare", { "snare.slam" }, {} },
@@ -938,7 +938,7 @@ std::vector<KitConcept> build()
         "Rush", 134.0f, 0.6f });
 
     // Hip hop --------------------------------------------------------------------------------
-    k.push_back ({ "Brick", "hip hop", { "harsh" },
+    k.push_back ({ "Brick", "hip hop", { "bright" },
         { { { "Kick", { "kick.punch", "kick.hard" }, {} },
             { "Rim", { "snare.rim" }, {}, -3.0f },
             { "Snare", { "snare.slam" }, {} },
@@ -962,7 +962,7 @@ std::vector<KitConcept> build()
         "Brick", 92.0f, 0.58f });
 
     // Trap --------------------------------------------------------------------------------------
-    k.push_back ({ "Riot", "trap", { "harsh" },
+    k.push_back ({ "Riot", "trap", { "bright" },
         { { { "Kick", { "kick.hard", "kick.punch" }, {} },
             { "Rim", { "snare.rimhard" }, {}, -4.0f },
             { "Snare", { "snare.slam" }, {} },
@@ -985,7 +985,7 @@ std::vector<KitConcept> build()
                  .note (B, 1.0f); },
         "Riot", 145.0f, 0.5f });
 
-    k.push_back ({ "Smoke", "trap", { "warm" },
+    k.push_back ({ "Smoke", "trap", { "round" },
         { { { "Kick", { "kick.punch", "kick.tight" }, {} },
             { "Rim", { "snare.rim" }, {}, -4.0f },
             { "Snare", { "snare.clapstack", "snare.body" }, {} },
@@ -1010,7 +1010,7 @@ std::vector<KitConcept> build()
         "Smoke", 135.0f, 0.5f });
 
     // Moods: one kit per mood tag, built from the tonal recipes.
-    k.push_back ({ "Balance", "neutral", { "neutral", "organic" },
+    k.push_back ({ "Balance", "clean", { "clean", "natural" },
         { { { "Kick", { "neutral.kick" }, {} },
             { "Rim", { "neutral.rim" }, {}, -3.0f, {}, 0.25f },
             { "Snare", { "neutral.snare" }, {} },
@@ -1034,7 +1034,7 @@ std::vector<KitConcept> build()
                  .pitch (B, { 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, -2, 0, 0, 5 }); },
         "Balance", 112.0f, 0.52f });
 
-    k.push_back ({ "Surge", "synth-aggressive", { "synth-aggressive", "harsh" },
+    k.push_back ({ "Surge", "driven", { "driven", "bright" },
         { { { "Kick", { "synth.kick" }, {} },
             { "Zap", { "synth.zap" }, {}, -5.0f, {}, -0.3f },
             { "Snare", { "synth.snare" }, {} },
@@ -1062,7 +1062,7 @@ std::vector<KitConcept> build()
                  .note (B, 0.6f); },
         "Surge", 128.0f, 0.5f });
 
-    k.push_back ({ "Glow", "neon", { "neon", "digital" },
+    k.push_back ({ "Glow", "glossy", { "glossy", "synthetic" },
         { { { "Kick", { "neon.kick" }, {} },
             { "Bell", { "neon.bell" }, {}, -5.0f, {}, -0.3f },
             { "Snare", { "neon.snare" }, {} },
@@ -1090,7 +1090,7 @@ std::vector<KitConcept> build()
                  .pitch (O, { 0, 7, 12, 15, 12, 7, 0, 7, 12, 19, 12, 7, 3, 7, 12, 15 }); },
         "Glow", 118.0f, 0.5f });
 
-    k.push_back ({ "Hush", "tender", { "tender", "warm" },
+    k.push_back ({ "Hush", "soft", { "soft", "round" },
         { { { "Kick", { "tender.kick" }, {} },
             { "Knock", { "tender.rim" }, {}, -3.0f, {}, 0.25f },
             { "Snare", { "tender.snare" }, {} },
@@ -1258,7 +1258,7 @@ const std::vector<ExtraPattern>& extraPatterns()
               .pitch (T, { 0, 0, 0, 3, 0, 0, 7, 0, 0, 0, 5, 0, 3, 0, 0, 0, 0, 0, 0, 3, 0, 0, 10, 0, 0, 0, 7, 0, 5, 0, 3, 0 })
               .pitch (B, { 0, 0, 0, 0, 0, 0, -2, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 3 })
               .note (B, 1.0f); } },
-        { "Balance B", "neutral", [] { return (Pattern) P (32)
+        { "Balance B", "clean", [] { return (Pattern) P (32)
               .row (K, "X.....x...X.....X.....x.x.X.....")
               .row (R, "..o.....o.....o...o.....o...o.o.")
               .row (S, "....X.......X.......X.......X...")
@@ -1269,7 +1269,7 @@ const std::vector<ExtraPattern>& extraPatterns()
               .row (O, "..............o...........o.....")
               .pitch (C, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 5, 3 })
               .pitch (B, { 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, -2, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, -2 }); } },
-        { "Surge B", "synth-aggressive", [] { return (Pattern) P (32)
+        { "Surge B", "driven", [] { return (Pattern) P (32)
               .row (K, "X...X..xX...X.x.X...X..xX.x.XXXX")
               .row (R, "..o...?...o...3...o...?...3.3.4.")
               .row (S, "....X.......X.......X.......X.2.")
@@ -1281,7 +1281,7 @@ const std::vector<ExtraPattern>& extraPatterns()
               .pitch (B, { 0, 0, 12, 0, 0, 3, 0, 0, 12, 0, -2, 0, 0, 0, 5, 7, 0, 0, 12, 0, 0, 3, 0, 0, 12, 0, 5, 0, 7, 0, 10, 12 })
               .note (B, 0.6f)
               .xy (24, 0.8f, 0.6f).xy (28, 0.9f, 0.8f).xy (30, 1.0f, 0.95f); } },
-        { "Glow B", "neon", [] { return (Pattern) P (32)
+        { "Glow B", "glossy", [] { return (Pattern) P (32)
               .row (K, "................X...X...X...X...")
               .row (R, "x..x..x.....x...x..x..x.....x..x")
               .row (S, "............................X.2.")
@@ -1294,7 +1294,7 @@ const std::vector<ExtraPattern>& extraPatterns()
               .pitch (B, { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -7, 0, 5, 0, -7, 0, 5, 0, -2, 0, 10, 0, -2, 0, 10, 0 })
               .pitch (O, { 0, 7, 12, 15, 12, 7, 0, 7, 12, 19, 12, 7, 3, 7, 12, 15, -5, 2, 7, 10, 7, 2, -5, 2, -2, 5, 10, 14, 10, 5, -2, 5 })
               .xy (0, 0.45f, 0.1f).xy (16, 0.5f, 0.35f); } },
-        { "Hush B", "tender", [] { return (Pattern) P (32)
+        { "Hush B", "soft", [] { return (Pattern) P (32)
               .row (K, "X.......x.x.....X.........x.....")
               .row (R, "..o.......o....o..o.......o...o.")
               .row (S, "....x.......x.......x.......x...")
@@ -1314,25 +1314,25 @@ const std::vector<ExtraPattern>& extraPatterns()
 const std::vector<SetSpec>& setSpecs()
 {
     static const std::vector<SetSpec> sets {
-        { "Neutral Breakbeat", "Neutral", { "Breakbeat" }, 120.0f, 0.5f, { "warm", "organic" } },
-        { "Concrete", "Concrete", { "Concrete", "Foundry", "Sparse", "Solvent" }, 130.0f, 0.5f, { "techno" } },
-        { "Reel", "Reel", { "Reel", "Tension", "Vector", "Breakbeat" }, 130.0f, 0.5f, { "breaks" } },
-        { "Bitrate", "Bitrate", { "Bitrate", "Shards", "Alloy" }, 120.0f, 0.5f, { "glitch" } },
-        { "Floor", "Floor", { "Floor", "Velvet", "Rolling" }, 124.0f, 0.54f, { "house" } },
-        { "Shuffle", "Shuffle", { "Shuffle", "Weight" }, 132.0f, 0.62f, { "garage" } },
-        { "Sepia", "Sepia", { "Sepia", "Faded" }, 90.0f, 0.6f, { "hip hop" } },
-        { "Slide", "Slide", { "Slide", "Blackout" }, 140.0f, 0.5f, { "trap" } },
-        { "Pressure", "Pressure", { "Pressure", "Pressure B", "Furnace", "Tunnel" }, 140.0f, 0.5f, { "techno", "harsh" } },
-        { "Splinter", "Splinter", { "Splinter", "Splinter B", "Rubble", "Voltage" }, 172.0f, 0.5f, { "breaks", "harsh" } },
-        { "Fracture", "Fracture", { "Fracture", "Fracture B", "Static", "Static B" }, 124.0f, 0.5f, { "glitch", "harsh" } },
-        { "Strobe", "Strobe", { "Strobe", "Strobe B", "Haze", "Haze B" }, 128.0f, 0.52f, { "house", "harsh" } },
-        { "Rush", "Rush", { "Rush", "Rush B", "Shuffle", "Weight" }, 134.0f, 0.6f, { "garage", "harsh" } },
-        { "Brick", "Brick", { "Brick", "Brick B", "Sepia", "Faded" }, 92.0f, 0.58f, { "hip hop", "harsh" } },
-        { "Riot", "Riot", { "Riot", "Riot B", "Smoke", "Smoke B" }, 145.0f, 0.5f, { "trap", "harsh" } },
-        { "Balance", "Balance", { "Balance", "Balance B" }, 112.0f, 0.52f, { "neutral" } },
-        { "Surge", "Surge", { "Surge", "Surge B" }, 128.0f, 0.5f, { "synth-aggressive" } },
-        { "Glow", "Glow", { "Glow", "Glow B" }, 118.0f, 0.5f, { "neon" } },
-        { "Hush", "Hush", { "Hush", "Hush B" }, 86.0f, 0.58f, { "tender" } },
+        { "Neutral", "Neutral", { "Breakbeat" }, 120.0f, 0.5f, { "round", "natural" } },
+        { "Concrete", "Concrete", { "Concrete", "Foundry", "Sparse", "Solvent" }, 130.0f, 0.5f, {} },
+        { "Reel", "Reel", { "Reel", "Tension", "Vector", "Breakbeat" }, 130.0f, 0.5f, {} },
+        { "Bitrate", "Bitrate", { "Bitrate", "Shards", "Alloy" }, 120.0f, 0.5f, {} },
+        { "Floor", "Floor", { "Floor", "Velvet", "Rolling" }, 124.0f, 0.54f, {} },
+        { "Shuffle", "Shuffle", { "Shuffle", "Weight" }, 132.0f, 0.62f, {} },
+        { "Sepia", "Sepia", { "Sepia", "Faded" }, 90.0f, 0.6f, {} },
+        { "Slide", "Slide", { "Slide", "Blackout" }, 140.0f, 0.5f, {} },
+        { "Pressure", "Pressure", { "Pressure", "Pressure B", "Furnace", "Tunnel" }, 140.0f, 0.5f, { "bright" } },
+        { "Splinter", "Splinter", { "Splinter", "Splinter B", "Rubble", "Voltage" }, 172.0f, 0.5f, { "bright" } },
+        { "Fracture", "Fracture", { "Fracture", "Fracture B", "Static", "Static B" }, 124.0f, 0.5f, { "bright" } },
+        { "Strobe", "Strobe", { "Strobe", "Strobe B", "Haze", "Haze B" }, 128.0f, 0.52f, { "bright" } },
+        { "Rush", "Rush", { "Rush", "Rush B", "Shuffle", "Weight" }, 134.0f, 0.6f, { "bright" } },
+        { "Brick", "Brick", { "Brick", "Brick B", "Sepia", "Faded" }, 92.0f, 0.58f, { "bright" } },
+        { "Riot", "Riot", { "Riot", "Riot B", "Smoke", "Smoke B" }, 145.0f, 0.5f, { "bright" } },
+        { "Balance", "Balance", { "Balance", "Balance B" }, 112.0f, 0.52f, { "clean" } },
+        { "Surge", "Surge", { "Surge", "Surge B" }, 128.0f, 0.5f, { "driven" } },
+        { "Glow", "Glow", { "Glow", "Glow B" }, 118.0f, 0.5f, { "glossy" } },
+        { "Hush", "Hush", { "Hush", "Hush B" }, 86.0f, 0.58f, { "soft" } },
     };
     return sets;
 }

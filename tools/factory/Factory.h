@@ -81,7 +81,7 @@ const Archetype* findArchetype (const std::string& id);
 float loudnessTarget (const std::string& archetypeId);
 
 // Moods: tags beyond the character tags, one per mood recipe and its kit and set.
-const juce::StringArray& moodTags(); // neutral, synth-aggressive, neon, tender
+const juce::StringArray& moodTags(); // clean, driven, glossy, soft
 bool fitsCategory (const Archetype& a, const Features& f, juce::String* why = nullptr);
 juce::StringArray guessTags (const Archetype& a, const VoiceParams& p, const Features& f);
 
@@ -125,7 +125,8 @@ struct SlotSpec
 struct KitConcept
 {
     std::string name;
-    std::string style;                    // a tag: techno, breaks, glitch, house, garage, hip hop, trap
+    std::string style;                    // techno, breaks, glitch, house, garage, hip hop, trap, or a mood tag;
+                                          // only a mood is written as a tag
     juce::StringArray tags;               // character tags
     std::array<SlotSpec, kNumVoices> slots;
     Overrides chain;                      // kit globals

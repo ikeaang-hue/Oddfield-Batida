@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Tender Bass" author="Oddfield" category="bass" tags="tender,warm"/>
+  <INFO name="Tender Bass" author="Oddfield" category="bass" tags="soft,round"/>
   <VOICE src_mode="FM" balance="0.5" level="0.453390121" pan="0" vel_sens="0.699999988"
          play_mode="Gate" glide="4.12707138" amp_attack="13.7437477" amp_decay="400"
          amp_sustain="0.645090401" amp_release="237.450165" pitch_amt="0"

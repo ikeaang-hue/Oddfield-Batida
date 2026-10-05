@@ -212,7 +212,7 @@ juce::String exampleFile (PresetType type)
     {
         case PresetType::Sound:
             return header + R"(<BATIDA type="sound">
-  <INFO name="Deep Kick" category="kick" tags="warm"/>
+  <INFO name="Deep Kick" category="kick" tags="round"/>
   <VOICE src_mode="FM" fm_pitch="-24" amp_decay="450" pitch_amt="30" pitch_decay="45"
          punch="0.4" drive="0.2" drive_type="soft"/>
 </BATIDA>

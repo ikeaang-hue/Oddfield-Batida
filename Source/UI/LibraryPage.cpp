@@ -9,7 +9,7 @@ namespace
 const char* kModeNames[] = { "SOUNDS", "KITS", "PATTERNS", "SETS", "SAMPLES" };
 const char* kSourceNames[] = { "ALL", "FACTORY", "USER", "\xe2\x99\xa5", "REVIEW" };
 constexpr int kRowHeight = 25, kHeart = 26;
-constexpr int kNameW = 190, kCategoryW = 80, kTagsW = 110, kAuthorW = 130;
+constexpr int kNameW = 190, kCategoryW = 80, kTagsW = 140, kAuthorW = 100;
 
 void styleLabel (juce::Label& l, float size = 10.5f, bool bold = false, juce::Colour c = theme::ink)
 {

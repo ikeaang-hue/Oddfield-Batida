@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Smoky Kick" author="Oddfield" category="kick" tags="tender,warm"/>
+  <INFO name="Smoky Kick" author="Oddfield" category="kick" tags="soft,round"/>
   <VOICE src_mode="FM" balance="0.5" level="4.6934433" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="1.19003797" amp_decay="370.27948"
          amp_sustain="0" amp_release="60" pitch_amt="6.98773098" pitch_decay="109.257805"

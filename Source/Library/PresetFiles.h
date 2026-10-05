@@ -35,7 +35,7 @@ const char* typeName (PresetType type);      // "sound", "kit", "pattern", "set"
 std::optional<PresetType> presetTypeOf (const juce::File& file);
 
 const juce::StringArray& soundCategories();  // kick, snare, hat, perc, fx, bass, texture
-const juce::StringArray& characterTags();    // warm, harsh, digital, metallic, organic
+const juce::StringArray& characterTags();    // round, bright, synthetic, inharmonic, natural
 juce::String guessCategory (const juce::String& soundName);
 
 struct PresetInfo

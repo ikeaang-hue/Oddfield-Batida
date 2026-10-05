@@ -52,7 +52,7 @@ juce::MemoryBlock smallArchive (const juce::File& temp, int version, bool withBr
     for (int v = 0; v < kNumVoices; ++v)
     {
         SoundPreset s;
-        s.info = { kit.names[(size_t) v], "Oddfield", categories[v], { v == 1 ? "digital" : "warm" }, {} };
+        s.info = { kit.names[(size_t) v], "Oddfield", categories[v], { v == 1 ? "synthetic" : "round" }, {} };
         s.params = kit.voices[(size_t) v];
         const auto f = dir.getChildFile ("Sounds/" + Library::categoryFolder (categories[v]) + "/" + s.info.name + ".batida-sound");
         f.getParentDirectory().createDirectory();
@@ -63,17 +63,17 @@ juce::MemoryBlock smallArchive (const juce::File& temp, int version, bool withBr
     if (withBreakbeat)
     {
         PatternPreset beat;
-        beat.info = { "Breakbeat", "Oddfield", {}, { "organic" }, {} };
+        beat.info = { "Breakbeat", "Oddfield", {}, { "natural" }, {} };
         beat.pattern = breakbeatPattern();
         dir.getChildFile ("Patterns").createDirectory();
         writePattern (dir.getChildFile ("Patterns/Breakbeat.batida-pattern"), beat);
     }
     SetPreset set;
-    set.info = { "Neutral Breakbeat", "Oddfield", {}, { "warm" }, {} };
+    set.info = { "Neutral", "Oddfield", {}, { "round" }, {} };
     set.kit = kit;
     set.patterns.patterns[0] = breakbeatPattern();
     dir.getChildFile ("Sets").createDirectory();
-    writeSet (dir.getChildFile ("Sets/Neutral Breakbeat.batida-set"), set);
+    writeSet (dir.getChildFile ("Sets/Neutral.batida-set"), set);
     dir.getChildFile ("factory-version.txt").replaceWithText (juce::String (version) + (id.isNotEmpty() ? " " + id : juce::String()));
 
     juce::ZipFile::Builder zip;
@@ -151,7 +151,7 @@ public:
         beginTest ("A sound survives save and load exactly");
         {
             SoundPreset s;
-            s.info = { "Big Kick", "Tester", "kick", { "warm", "harsh" }, {} };
+            s.info = { "Big Kick", "Tester", "kick", { "round", "bright" }, {} };
             s.params = oddParams (1);
             s.sample.path = makeWav (temp.getChildFile ("sounds/kick.wav"), 60.0f, 4800).getFullPathName();
             const auto file = temp.getChildFile ("sounds/Big Kick.batida-sound");
@@ -161,10 +161,20 @@ public:
             expect (sameParams (back->params, s.params), "every parameter, exactly");
             expectEquals (back->info.name, juce::String ("Big Kick"));
             expectEquals (back->info.category, juce::String ("kick"));
-            expect (back->info.tags == juce::StringArray ({ "warm", "harsh" }));
+            expect (back->info.tags == juce::StringArray ({ "round", "bright" }));
             expectEquals (back->sample.path, s.sample.path);
             expectEquals (back->info.madeWith, juce::String (BATIDA_VERSION));
             expect (file.loadFileAsString().contains ("amp_decay=\""), "readable: values by key");
+        }
+
+        beginTest ("Tags saved under their old names read as the new ones");
+        {
+            SoundPreset s;
+            s.info = { "Old Kick", "Tester", "kick", { "warm", "neon", "mine", "round" }, {} };
+            s.params = oddParams (2);
+            const auto file = temp.getChildFile ("sounds/Old Kick.batida-sound");
+            expect (writeSound (file, s));
+            expect (readSound (file)->info.tags == juce::StringArray ({ "round", "glossy", "mine" }));
         }
 
         beginTest ("A kit, a pattern and a set survive save and load");
@@ -282,13 +292,13 @@ public:
             expect (root.getChildFile ("Factory/Sounds/Kick/Kick.batida-sound").existsAsFile());
             expect (root.getChildFile ("Factory/Sounds/Hat/Closed Hat.batida-sound").existsAsFile());
             expect (root.getChildFile ("Factory/Patterns/Breakbeat.batida-pattern").existsAsFile());
-            expect (root.getChildFile ("Factory/Sets/Neutral Breakbeat.batida-set").existsAsFile());
+            expect (root.getChildFile ("Factory/Sets/Neutral.batida-set").existsAsFile());
             expect (! lib.installFactory(), "second install does nothing");
 
             const auto mine = lib.userFileFor (PresetType::Sound, { "My Kick", "", "kick", {}, {} });
             expectEquals (mine.getFullPathName(), root.getChildFile ("User/Sounds/Kick/My Kick.batida-sound").getFullPathName());
             SoundPreset s;
-            s.info = { "My Kick", "Me", "kick", { "harsh" }, {} };
+            s.info = { "My Kick", "Me", "kick", { "bright" }, {} };
             s.params = oddParams (3);
             expect (writeSound (mine, s));
             const auto before = mine.loadFileAsString();
@@ -322,7 +332,7 @@ public:
             f.category = "hat";
             expect (names (lib.filtered (PresetType::Sound, f)) == juce::StringArray ({ "Closed Hat", "Open Hat" }));
             f = {};
-            f.tags = { "harsh" };
+            f.tags = { "bright" };
             expect (names (lib.filtered (PresetType::Sound, f)) == juce::StringArray ({ "My Kick" }));
             f = {};
             f.source = LibraryFilter::Source::User;
@@ -346,9 +356,9 @@ public:
 
             // Tags can be edited on User files, not factory ones.
             const auto mine = root.getChildFile ("User/Sounds/Kick/My Kick.batida-sound");
-            expect (lib.updateInfo (mine, { "My Kick", "Me", "kick", { "harsh", "digital" }, {} }));
-            expect (readSound (mine)->info.tags.contains ("digital"));
-            expect (! lib.updateInfo (snare, { "Snare", "", "snare", { "harsh" }, {} }));
+            expect (lib.updateInfo (mine, { "My Kick", "Me", "kick", { "bright", "synthetic" }, {} }));
+            expect (readSound (mine)->info.tags.contains ("synthetic"));
+            expect (! lib.updateInfo (snare, { "Snare", "", "snare", { "bright" }, {} }));
         }
 
         beginTest ("A newer factory replaces the old one whole, and leaves User and favourites alone");
@@ -391,7 +401,7 @@ public:
         {
             const auto root = temp.getChildFile ("Lib");
             SoundPreset s;
-            s.info = { "Candidate", "Oddfield", "kick", { "warm" }, {} };
+            s.info = { "Candidate", "Oddfield", "kick", { "round" }, {} };
             s.params = oddParams (5);
             const auto file = root.getChildFile ("Review/Sounds/Kick/Candidate.batida-sound");
             file.getParentDirectory().createDirectory();

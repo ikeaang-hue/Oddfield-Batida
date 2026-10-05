@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Thin Zap" author="Oddfield" category="perc" tags="harsh,digital"/>
+  <INFO name="Thin Zap" author="Oddfield" category="perc" tags="bright,synthetic"/>
   <VOICE src_mode="FM" balance="0.5" level="4.24898148" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="186.359329"
          amp_sustain="0" amp_release="30" pitch_amt="35.7641754" pitch_decay="27.8811665"

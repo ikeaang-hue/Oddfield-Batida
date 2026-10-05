@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Bright Bass" author="Oddfield" category="bass" tags="harsh"/>
+  <INFO name="Bright Bass" author="Oddfield" category="bass" tags="bright"/>
   <VOICE src_mode="FM" balance="0.5" level="-7.09719133" pan="0" vel_sens="0.699999988"
          play_mode="Gate" glide="24.5748768" amp_attack="0" amp_decay="300"
          amp_sustain="0.800000012" amp_release="90" pitch_amt="0" pitch_decay="60"

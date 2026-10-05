@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
   <INFO name="Dark Warm Snare" author="Oddfield" category="snare"
-        tags="warm"/>
+        tags="round"/>
   <VOICE src_mode="FM" balance="0.5" level="-3.84139633" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="398.307861"
          amp_sustain="0" amp_release="60" pitch_amt="5.61113834" pitch_decay="41.0569305"

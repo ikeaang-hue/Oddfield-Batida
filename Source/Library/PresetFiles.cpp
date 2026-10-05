@@ -194,6 +194,16 @@ std::unique_ptr<juce::XmlElement> load (const juce::File& file, PresetType type,
         info.tags.addTokens (i->getStringAttribute ("tags"), ",", "");
         info.tags.trim();
         info.tags.removeEmptyStrings();
+        // Files saved before the tags were renamed (0.9.1 and earlier).
+        static const std::pair<const char*, const char*> renamed[] {
+            { "warm", "round" }, { "harsh", "bright" }, { "digital", "synthetic" }, { "metallic", "inharmonic" },
+            { "organic", "natural" }, { "neutral", "clean" }, { "synth-aggressive", "driven" }, { "neon", "glossy" },
+            { "tender", "soft" } };
+        for (auto& t : info.tags)
+            for (const auto& [from, to] : renamed)
+                if (t == from)
+                    t = to;
+        info.tags.removeDuplicates (false);
     }
     if (info.name.isEmpty())
         info.name = file.getFileNameWithoutExtension();
@@ -296,7 +306,7 @@ const juce::StringArray& soundCategories()
 
 const juce::StringArray& characterTags()
 {
-    static const juce::StringArray t { "warm", "harsh", "digital", "metallic", "organic" };
+    static const juce::StringArray t { "round", "bright", "synthetic", "inharmonic", "natural" };
     return t;
 }
 

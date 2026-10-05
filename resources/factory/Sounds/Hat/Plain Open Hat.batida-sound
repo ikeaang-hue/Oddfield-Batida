@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
   <INFO name="Plain Open Hat" author="Oddfield" category="hat"
-        tags="synth-aggressive,organic"/>
+        tags="driven,natural"/>
   <VOICE src_mode="FM" balance="0.5" level="-13.4114027" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="295.874329"
          amp_sustain="0" amp_release="30" pitch_amt="0" pitch_decay="60"

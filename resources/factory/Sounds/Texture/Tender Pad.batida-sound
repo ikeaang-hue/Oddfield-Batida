@@ -2,7 +2,7 @@
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
   <INFO name="Tender Pad" author="Oddfield" category="texture"
-        tags="tender,warm"/>
+        tags="soft,round"/>
   <VOICE src_mode="FM" balance="0.5" level="-5.13220978" pan="0" vel_sens="0.699999988"
          play_mode="Gate" glide="0" amp_attack="224.79277" amp_decay="400"
          amp_sustain="0.899999976" amp_release="1347.64551" pitch_amt="0"

@@ -1,6 +1,6 @@
 # Oddfield Batida: Design Spec
 
-*Version 1.16, agreed 2026-09-30 (1.16: files and scripting: the reference, the `batida` command-line tool, `validate`, the library picks up new and changed files (phase 9; the sound-design chain moves to phase 10, VST3 to 11); 1.15: a fuller chain for sound design: filter envelope and comb/formant modes per sound, a Movement stage, Delay and Reverb sends, the SPACE page; 1.14: the publisher is renamed Oddfield; 1.13: Stack, 1–4 copies of a sound's source; 1.12: Vary searches only audible settings, measures longer and by spectrum, and relaxes step by step; 1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
+*Version 1.17, agreed 2026-10-06 (1.17: tags renamed (character: round, bright, synthetic, inharmonic, natural; moods: clean, driven, glossy, soft), styles no longer tags, the Neutral Breakbeat set renamed Neutral; 1.16: files and scripting: the reference, the `batida` command-line tool, `validate`, the library picks up new and changed files (phase 9; the sound-design chain moves to phase 10, VST3 to 11); 1.15: a fuller chain for sound design: filter envelope and comb/formant modes per sound, a Movement stage, Delay and Reverb sends, the SPACE page; 1.14: the publisher is renamed Oddfield; 1.13: Stack, 1–4 copies of a sound's source; 1.12: Vary searches only audible settings, measures longer and by spectrum, and relaxes step by step; 1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
 
 ## 1. Identity
 
@@ -384,7 +384,8 @@ the other channels stay fully chromatic for the Keys Sound.
 
 **Browser**
 - Categories: kick, snare, hat, perc, FX, bass, texture.
-- Character tags: warm, harsh, digital, metallic, organic.
+- Character tags: round, bright, synthetic, inharmonic, natural. (Until 1.17: warm, harsh, digital,
+  metallic, organic; files with the old names read as the new ones, the mood tags too.)
 - Search and favourites.
 - Click to try it live (a run of tries is one undo step), and next/previous while a pattern
   plays, from the LIB view or the ◀ name ▶ strips on other pages.
@@ -395,12 +396,11 @@ the other channels stay fully chromatic for the Keys Sound.
 
 ## 11. Factory content (preset factory)
 
-- **Size:** the first target was about 160 sounds, 22 kits, 22 patterns and 8 sets. Factory 14
+- **Size:** the first target was about 160 sounds, 22 kits, 22 patterns and 8 sets. Factory 15
   (under review) has about 290 sounds, 40 kits, 58 patterns and 19 sets.
 - **Styles:** techno, breakbeat and glitch at the core, with the most kits; house, garage,
-  hip hop and trap as well. Kits, patterns and sets carry their style as a tag, so search finds
-  them. There is no separate style filter.
-- **Moods:** four more tags, *neutral*, *synth-aggressive*, *neon* and *tender*, each with its own
+  hip hop and trap as well. Styles shape the kits and patterns but aren't tags (since 1.17).
+- **Moods:** four more tags, *clean*, *driven*, *glossy* and *soft*, each with its own
   tonal sounds (built from tones, not noise), a kit and a set.
 - **Method:** an offline tool (`BatidaFactory`) built on the same engine.
   1. Archetype recipes per category.

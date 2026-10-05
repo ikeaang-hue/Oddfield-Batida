@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Dark Tom" author="Oddfield" category="perc" tags="organic"/>
+  <INFO name="Dark Tom" author="Oddfield" category="perc" tags="natural"/>
   <VOICE src_mode="FM" balance="0.5" level="-3.01338005" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="684.000488"
          amp_sustain="0" amp_release="60" pitch_amt="11.0897141" pitch_decay="166.853363"

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Deep Impact" author="Oddfield" category="fx" tags="warm"/>
+  <INFO name="Deep Impact" author="Oddfield" category="fx" tags="round"/>
   <VOICE src_mode="FM" balance="0.5" level="-7.39583111" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="1866.4176"
          amp_sustain="0" amp_release="300" pitch_amt="18.2622833" pitch_decay="282.269989"

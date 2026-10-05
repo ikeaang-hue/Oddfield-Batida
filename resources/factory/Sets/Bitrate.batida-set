@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="set" format="1" madeWith="0.7.2">
-  <INFO name="Bitrate" author="Oddfield" category="" tags="glitch"/>
+  <INFO name="Bitrate" author="Oddfield" category="" tags=""/>
   <KIT midi_mode="Drum map" master="-8" keys_voice="1" xy_x="0.899999976"
        xy_y="0.5" comp_amount="0.400000006" comp_attack="10" comp_release="120"
        comp_mix="1" comp_detector="Internal" comp_follow="1" dist_drive="0"

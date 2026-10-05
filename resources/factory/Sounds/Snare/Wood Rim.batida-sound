@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Wood Rim" author="Oddfield" category="snare" tags="organic"/>
+  <INFO name="Wood Rim" author="Oddfield" category="snare" tags="natural"/>
   <VOICE src_mode="FM" balance="0.5" level="2.78926682" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="72.5657043"
          amp_sustain="0" amp_release="30" pitch_amt="0" pitch_decay="60"

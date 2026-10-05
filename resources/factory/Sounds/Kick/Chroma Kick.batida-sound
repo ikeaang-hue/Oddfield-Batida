@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <BATIDA type="sound" format="1" madeWith="0.7.2">
-  <INFO name="Chroma Kick" author="Oddfield" category="kick" tags="neon,warm"/>
+  <INFO name="Chroma Kick" author="Oddfield" category="kick" tags="glossy,round"/>
   <VOICE src_mode="FM" balance="0.5" level="2.20107603" pan="0" vel_sens="0.699999988"
          play_mode="One-shot" glide="0" amp_attack="0" amp_decay="257.314911"
          amp_sustain="0" amp_release="40" pitch_amt="26.5397511" pitch_decay="39.0380173"
