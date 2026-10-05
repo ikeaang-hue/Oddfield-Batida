@@ -272,7 +272,37 @@ public:
         {
             const auto index = s->getIntAttribute ("index", -1);
             if (index < 0 || index >= kNumScenes)
+            {
                 problem ("MOVEMENT > SCENE", "ignored: index must be 0..3 (A..D)");
+                continue;
+            }
+            // A scene's values are plain numbers (menus by index, switches 0 or 1).
+            const auto where = "MOVEMENT > SCENE " + juce::String (index);
+            for (int a = 0; a < s->getNumAttributes(); ++a)
+            {
+                const auto name = s->getAttributeName (a);
+                if (name == "index")
+                    continue;
+                const auto g = globalKeys.indexOf (name);
+                if (g < 0)
+                {
+                    unknownKey (where + " > " + name, name, globalKeys);
+                    continue;
+                }
+                const auto& params = sceneParams();
+                if (std::find (params.begin(), params.end(), g) == params.end())
+                {
+                    problem (where + " > " + name, "not part of a scene (the pad and the chain are); ignored");
+                    continue;
+                }
+                const auto& spec = globalParamSpecs()[(size_t) g];
+                const auto text = s->getAttributeValue (a).trim();
+                if (! isNumber (text))
+                    problem (where + " > " + name, "\"" + text + "\" isn't a number; read as " + number (spec.def));
+                else if (text.getFloatValue() < spec.min || text.getFloatValue() > spec.max)
+                    problem (where + " > " + name, text + " is outside " + rangeText (spec) + "; clamped to "
+                                                       + number (juce::jlimit (spec.min, spec.max, text.getFloatValue())));
+            }
         }
     }
 

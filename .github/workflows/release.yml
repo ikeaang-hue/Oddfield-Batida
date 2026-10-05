@@ -90,7 +90,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" Batida-macOS.zip \
+          # Before 1.0, every release is a pre-release.
+          prerelease=""
+          if [[ "$GITHUB_REF_NAME" == v0.* ]]; then prerelease="--prerelease"; fi
+          gh release create "$GITHUB_REF_NAME" Batida-macOS.zip $prerelease \
             --title "Batida ${GITHUB_REF_NAME#v}" \
             --generate-notes \
             --notes "For Apple Silicon and Intel Macs, macOS 12 or later. To install or update, run this in Terminal, then quit and reopen your host:

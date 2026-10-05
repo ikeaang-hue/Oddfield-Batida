@@ -6,6 +6,12 @@ if(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "Minimum macOS version" FORCE)
 endif()
 
+# Universal by default, so a build runs on any Mac it's copied to (Intel, and
+# hosts under Rosetta). -DCMAKE_OSX_ARCHITECTURES=arm64 builds for one only.
+if(NOT CMAKE_OSX_ARCHITECTURES)
+    set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Architectures to build for" FORCE)
+endif()
+
 project(Batida VERSION 0.9.1)
 
 set(CMAKE_CXX_STANDARD 20)

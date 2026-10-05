@@ -10,7 +10,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
-class BatidaProcessor final : public juce::AudioProcessor, private juce::Timer
+class BatidaProcessor final : public juce::AudioProcessor, private juce::Timer, private juce::AsyncUpdater
 {
 public:
     BatidaProcessor();
@@ -31,7 +31,7 @@ public:
     bool acceptsMidi() const override { return true; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
-    double getTailLengthSeconds() const override { return 2.0; } // ringing voices after the last note
+    double getTailLengthSeconds() const override; // the longest ring-out of the sounds as they are set
 
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
@@ -126,6 +126,8 @@ public:
     juce::File originFile (batida::PresetType type, int voice, int pattern) const; // Kit: the kit, else the set
     bool originChanged (batida::PresetType type, int voice, int pattern) const;
     bool reloadOrigin (batida::PresetType type, int voice, int pattern, juce::String* error = nullptr);
+    // Batida itself rewrote a file (its name or tags, in LIB): not a change made elsewhere.
+    void originRewritten (const juce::File& file);
 
     // Missing samples.
     int numMissingSamples() const;
@@ -237,6 +239,15 @@ public:
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
     void timerCallback() override;
+
+    // A project's state is applied on the message thread, where everything it
+    // replaces lives. A host that restores from another thread leaves it here;
+    // until it's applied, saving returns it as it came.
+    void applyState (const void* data, int sizeInBytes);
+    void handleAsyncUpdate() override;
+    juce::CriticalSection pendingStateLock;
+    juce::MemoryBlock pendingState;
+    bool statePending = false;
 
     juce::AudioFormatManager formats;
     juce::AudioProcessorValueTreeState state;

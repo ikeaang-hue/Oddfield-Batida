@@ -132,6 +132,38 @@ public:
             expectWithinAbsoluteError (pan->convertFrom0to1 (pan->getValueForText ("L50")), -0.5f, 1.0e-3f);
         }
 
+        beginTest ("Dist Type and Wave read back the text they show");
+        {
+            BatidaProcessor proc;
+            auto* dist = proc.getState().getParameter (globalParamID (gp::DistType));
+            auto* wave = proc.getState().getParameter (voiceParamID (0, opParam (1, Wave)));
+            for (auto* p : { dist, wave })
+                for (const auto v : { 0.0f, 0.1f, 0.25f, 0.4f, 0.5f, 0.875f, 1.0f })
+                {
+                    const auto text = p->getText (v, 64);
+                    expectWithinAbsoluteError (p->getValueForText (text), v, 0.003f, text);
+                }
+            expectWithinAbsoluteError (dist->getValueForText ("tube"), 0.25f, 1.0e-4f);
+            expectWithinAbsoluteError (dist->getValueForText ("Crush"), 1.0f, 1.0e-4f);
+            expectWithinAbsoluteError (wave->getValueForText ("sq"), 0.75f, 1.0e-4f);
+            expectWithinAbsoluteError (wave->getValueForText ("0.3"), 0.3f, 1.0e-4f, "a plain number still works");
+            auto* pan = proc.getState().getParameter (voiceParamID (0, vp::Pan));
+            expectWithinAbsoluteError (pan->convertFrom0to1 (pan->getValueForText ("-50")), -0.5f, 1.0e-3f, "a bare number: negative is left");
+            expectWithinAbsoluteError (pan->convertFrom0to1 (pan->getValueForText ("R25")), 0.25f, 1.0e-3f);
+        }
+
+        beginTest ("The tail the host is told covers the longest ring-out");
+        {
+            BatidaProcessor proc;
+            expectGreaterOrEqual (proc.getTailLengthSeconds(), 2.0);
+            setParam (proc, voiceParamID (5, vp::AmpD), 8000.0f);
+            setParam (proc, voiceParamID (5, vp::AmpR), 8000.0f);
+            expectGreaterThan (proc.getTailLengthSeconds(), 21.0, "8 s of decay and 8 s of release, each to -80 dB");
+            setParam (proc, voiceParamID (5, vp::AmpD), 200.0f);
+            setParam (proc, voiceParamID (5, vp::AmpR), 100.0f);
+            expectLessThan (proc.getTailLengthSeconds(), 21.0, "short again with the sound");
+        }
+
         beginTest ("Swapping slots moves Save targets and sample sizes with the sounds");
         {
             BatidaProcessor proc;
@@ -567,6 +599,20 @@ public:
             expectWithinAbsoluteError (getParam (b, globalParamID (gp::XyY)), 0.6f, 0.001f);
             expectEquals (b.sampleSlot (4).getPath(), wav.getFullPathName());
             expect (b.patterns().get().patterns[2].tracks[4].steps[9].gate);
+
+            // A host that restores from another thread: applied on the message
+            // thread, and until then saving returns the state as it came.
+            BatidaProcessor c;
+            std::thread ([&] { c.setStateInformation (saved.getData(), (int) saved.getSize()); }).join();
+            expect (c.getVoiceName (4) != juce::String ("Crack"), "nothing changes from the other thread");
+            juce::MemoryBlock meanwhile;
+            c.getStateInformation (meanwhile);
+            expect (meanwhile == saved, "saved meanwhile: the state as it came");
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (100);
+            expectEquals (c.getVoiceName (4), juce::String ("Crack"));
+            expectWithinAbsoluteError (getParam (c, voiceParamID (4, vp::Level)), -7.5f, 0.01f);
+            expectEquals (c.sampleSlot (4).getPath(), wav.getFullPathName());
+            expect (c.patterns().get().patterns[2].tracks[4].steps[9].gate);
         }
     }
 };

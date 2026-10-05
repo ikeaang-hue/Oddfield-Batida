@@ -24,6 +24,49 @@ const juce::Identifier kMovementTag ("MOVEMENT");
 const juce::Identifier kLibraryTag ("LIBRARY");
 const juce::Identifier kBytesAttr ("bytes");
 
+// The stops of the two morphing settings, evenly spread over 0..1.
+const juce::StringArray kDistNames { "Tape", "Tube", "Clip", "Fold", "Crush" };
+const juce::StringArray kWaveNames { "Sine", "Tri", "Saw", "Square", "Noise" };
+
+// "Tube", or "Tape>Tube 40%" between two stops.
+juce::String formatMorph (const juce::StringArray& names, float v)
+{
+    const auto last = names.size() - 1;
+    const auto m = juce::jlimit (0.0f, 1.0f, v) * (float) last;
+    const auto i = std::min ((int) m, last - 1);
+    const auto t = m - (float) i;
+    if (t < 0.02f) return names[i];
+    if (t > 0.98f) return names[i + 1];
+    return names[i] + ">" + names[i + 1] + " " + juce::String (juce::roundToInt (t * 100.0f)) + "%";
+}
+
+// The other way: a name ("tube", "sq"), a blend as formatMorph writes it, or
+// nothing when the text names no stop.
+std::optional<float> parseMorph (const juce::StringArray& names, const juce::String& text)
+{
+    auto stop = [&] (const juce::String& word)
+    {
+        for (int i = 0; i < names.size(); ++i)
+            if (word.trim().startsWith (names[i].substring (0, 2).toLowerCase())) // two letters tell them apart
+                return i;
+        return -1;
+    };
+    const auto last = (float) (names.size() - 1);
+    const auto from = stop (text.upToFirstOccurrenceOf (">", false, false));
+    if (from < 0)
+        return std::nullopt;
+    if (! text.containsChar ('>'))
+        return (float) from / last;
+    const auto rest = text.fromFirstOccurrenceOf (">", false, false);
+    const auto to = stop (rest);
+    if (to < 0)
+        return (float) from / last;
+    const auto share = rest.containsAnyOf ("0123456789")
+                           ? juce::jlimit (0.0f, 1.0f, rest.retainCharacters ("0123456789.").getFloatValue() / 100.0f)
+                           : 1.0f;
+    return ((float) from + (float) (to - from) * share) / last;
+}
+
 juce::String formatValue (const ParamSpec& spec, float v)
 {
     const auto& u = spec.unit;
@@ -60,25 +103,9 @@ juce::String formatValue (const ParamSpec& spec, float v)
     if (u == "bpm")
         return juce::String (v, 2) + " bpm";
     if (u == "dist")
-    {
-        static const char* names[] = { "Tape", "Tube", "Clip", "Fold", "Crush" };
-        const auto m = v * 4.0f;
-        const auto i = std::min ((int) m, 3);
-        const auto t = m - (float) i;
-        if (t < 0.02f) return names[i];
-        if (t > 0.98f) return names[i + 1];
-        return juce::String (names[i]) + ">" + names[i + 1] + " " + juce::String (juce::roundToInt (t * 100.0f)) + "%";
-    }
+        return formatMorph (kDistNames, v);
     if (u == "wave")
-    {
-        static const char* names[] = { "Sine", "Tri", "Saw", "Square", "Noise" };
-        const auto m = v * 4.0f;
-        const auto i = std::min ((int) m, 3);
-        const auto t = m - (float) i;
-        if (t < 0.02f) return names[i];
-        if (t > 0.98f) return names[i + 1];
-        return juce::String (names[i]) + ">" + names[i + 1] + " " + juce::String (juce::roundToInt (t * 100.0f)) + "%";
-    }
+        return formatMorph (kWaveNames, v);
     return juce::String (v, 2);
 }
 
@@ -90,9 +117,14 @@ float parseValue (const ParamSpec& spec, const juce::String& text)
     // "-inf dB" is the bottom of the range; text with no number keeps the default.
     if (t.contains ("inf"))
         return t.startsWith ("-") ? spec.min : spec.max;
+
+    // The morphing settings by name, as they are shown ("Tube", "Tape>Tube 40%").
+    if (u == "dist" || u == "wave")
+        if (const auto named = parseMorph (u == "dist" ? kDistNames : kWaveNames, t))
+            return juce::jlimit (spec.min, spec.max, *named);
+
     const auto digits = t.retainCharacters ("0123456789");
-    const auto named = u == "wave" || (u == "pan" && t.startsWith ("c"));
-    if (digits.isEmpty() && ! named)
+    if (digits.isEmpty() && ! (u == "pan" && t.startsWith ("c")))
         return spec.def;
 
     auto v = t.retainCharacters ("0123456789.-+").getFloatValue();
@@ -104,10 +136,8 @@ float parseValue (const ParamSpec& spec, const juce::String& text)
     else if (u == "%" || u == "bi")
         v /= 100.0f;
     else if (u == "pan")
-        v = t.startsWith ("l") ? -v / 100.0f : (t.startsWith ("r") ? v / 100.0f : 0.0f);
-    else if (u == "wave")
-        v = t.startsWith ("sine") ? 0.0f : t.startsWith ("tri") ? 0.25f : t.startsWith ("saw") ? 0.5f
-          : t.startsWith ("sq") ? 0.75f : t.startsWith ("noise") ? 1.0f : v;
+        v = t.startsWith ("c") ? 0.0f : t.startsWith ("l") ? -std::abs (v) / 100.0f
+          : t.startsWith ("r") ? std::abs (v) / 100.0f : v / 100.0f; // a bare number: negative is left
     return juce::jlimit (spec.min, spec.max, v);
 }
 
@@ -196,6 +226,7 @@ BatidaProcessor::BatidaProcessor()
 
 BatidaProcessor::~BatidaProcessor()
 {
+    cancelPendingUpdate();
     stopTimer();
     varyPool.removeAllJobs (true, 5000);
 }
@@ -205,6 +236,20 @@ void BatidaProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     kit.prepare (sampleRate, samplesPerBlock);
     sidechainCopy.setSize (2, std::max (1, samplesPerBlock));
     setLatencySamples (kit.getLatencySamples());
+}
+
+double BatidaProcessor::getTailLengthSeconds() const
+{
+    // A sound ends with its amp envelope: attack, then decay and release, each
+    // running to -80 dB (a third longer than its time, which is to -60 dB).
+    // Never under 2 s, which covers modulated envelope times.
+    double longest = 2.0;
+    for (int v = 0; v < kNumVoices; ++v)
+    {
+        auto ms = [&] (int param) { return (double) voiceRaw[(size_t) v][(size_t) param]->load (std::memory_order_relaxed); };
+        longest = std::max (longest, (ms (vp::AmpA) + (ms (vp::AmpD) + ms (vp::AmpR)) * 4.0 / 3.0) * 0.001 + 0.1);
+    }
+    return longest;
 }
 
 bool BatidaProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -1439,6 +1484,12 @@ bool BatidaProcessor::reloadOrigin (PresetType type, int voice, int pattern, juc
     return loadPresetFile (file, voice, pattern, LoadMode::Step, error);
 }
 
+void BatidaProcessor::originRewritten (const juce::File& file)
+{
+    if (originTimes.count (file.getFullPathName()) > 0)
+        stampOrigin (file);
+}
+
 void BatidaProcessor::presetSaved (const juce::File& file)
 {
     stampOrigin (file);
@@ -1747,6 +1798,14 @@ void BatidaProcessor::timerCallback()
 
 void BatidaProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
+    {
+        const juce::ScopedLock sl (pendingStateLock);
+        if (statePending) // restored a moment ago, not applied yet: that is the state
+        {
+            destData = pendingState;
+            return;
+        }
+    }
     auto tree = state.copyState();
     tree.removeChild (tree.getChildWithName (kSamplesTag), nullptr);
     tree.removeChild (tree.getChildWithName (kPatternsTag), nullptr);
@@ -1784,6 +1843,41 @@ void BatidaProcessor::getStateInformation (juce::MemoryBlock& destData)
 }
 
 void BatidaProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+    // Off the message thread (some hosts restore from a loader thread): handed
+    // over, so it never runs beside the editor or the timer.
+    if (auto* mm = juce::MessageManager::getInstanceWithoutCreating(); mm != nullptr && ! mm->isThisTheMessageThread())
+    {
+        {
+            const juce::ScopedLock sl (pendingStateLock);
+            pendingState.replaceAll (data, (size_t) std::max (0, sizeInBytes));
+            statePending = true;
+        }
+        triggerAsyncUpdate();
+        return;
+    }
+    {
+        const juce::ScopedLock sl (pendingStateLock); // this one is newer than any still waiting
+        statePending = false;
+        pendingState.reset();
+    }
+    applyState (data, sizeInBytes);
+}
+
+void BatidaProcessor::handleAsyncUpdate()
+{
+    juce::MemoryBlock block;
+    {
+        const juce::ScopedLock sl (pendingStateLock);
+        if (! statePending)
+            return;
+        block.swapWith (pendingState);
+        statePending = false;
+    }
+    applyState (block.getData(), (int) block.getSize());
+}
+
+void BatidaProcessor::applyState (const void* data, int sizeInBytes)
 {
     const auto xml = getXmlFromBinary (data, sizeInBytes);
     if (xml == nullptr || ! xml->hasTagName (state.state.getType()))

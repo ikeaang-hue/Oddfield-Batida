@@ -169,8 +169,10 @@ void Voice::noteOn (int key, float velocity, int slice)
     }
     else
     {
+        // A fade already under way carries on from where it is.
+        if (! stealing)
+            stealGain = 1.0f;
         stealing = true;
-        stealGain = 1.0f;
         pendingKey = key;
         pendingVelocity = velocity;
         pendingSlice = slice;
@@ -211,8 +213,11 @@ void Voice::choke()
 {
     if (! active)
         return;
+    // From full level, unless a fade is already under way (stealGain is left
+    // at 0 by the last fade that finished).
+    if (! stealing)
+        stealGain = 1.0f;
     stealing = true;
-    stealGain = std::min (stealGain, 1.0f);
     pendingKey = -1; // nothing to start afterwards
     numHeld = 0;
 }

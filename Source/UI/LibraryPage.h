@@ -55,6 +55,7 @@ private:
     void rebuild();
     void updateFilterButtons();
     void updateDetails();
+    void updateInfo (juce::File file, const batida::PresetInfo& info); // a User file's name, category or tags
     void tryRow (int row);
     void step (int delta);
     bool isCurrent (int row) const;

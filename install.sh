@@ -25,14 +25,22 @@ library="$HOME/Music/Oddfield/Batida"
 
 fail() { printf 'batida: %s\n' "$1" >&2; exit 1; }
 
+# The latest release or, before there is one, the newest pre-release (GitHub's
+# "latest" link skips pre-releases).
 download() {
     if [ -n "${BATIDA_ZIP:-}" ]; then
         curl -fsSL -o "$1" "$BATIDA_ZIP"
-    else
-        curl -fsSL -o "$1" "https://github.com/$repo/releases/latest/download/$zip_name" 2>/dev/null ||
-            { command -v gh > /dev/null &&
-              gh release download --repo "$repo" --pattern "$zip_name" --output "$1" --clobber 2> /dev/null; }
+        return
     fi
+    curl -fsSL -o "$1" "https://github.com/$repo/releases/latest/download/$zip_name" 2> /dev/null && return
+    local url tag
+    url=$(curl -fsSL "https://api.github.com/repos/$repo/releases" 2> /dev/null |
+          grep -o "\"browser_download_url\": *\"[^\"]*/$zip_name\"" | head -1 | sed 's/.*"\(http[^"]*\)"$/\1/') || true
+    [ -n "$url" ] && curl -fsSL -o "$1" "$url" && return
+    # While the repository is private: through the GitHub CLI.
+    command -v gh > /dev/null || return 1
+    tag=$(gh release list --repo "$repo" --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName' 2> /dev/null) || return 1
+    [ -n "$tag" ] && gh release download "$tag" --repo "$repo" --pattern "$zip_name" --output "$1" --clobber 2> /dev/null
 }
 
 # Hosts cache the list of Audio Units; this makes them look again.
