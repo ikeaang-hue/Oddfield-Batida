@@ -1,0 +1,102 @@
+# Builds Batida for Apple Silicon and Intel, checks both halves, and publishes
+# Batida-macOS.zip as a GitHub release, which install.sh downloads.
+#
+# Runs when a version tag is pushed (the tag must match the version in
+# CMakeLists.txt):
+#   git tag v0.9.1 && git push origin v0.9.1
+# or by hand (Actions → Release → Run workflow), which builds and checks the
+# zip and keeps it as a workflow artifact without releasing anything.
+#
+# The plugin is signed ad hoc, not with an Apple Developer ID: install.sh
+# fetches it with curl, so macOS doesn't block it.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Check the version
+        if: github.ref_type == 'tag'
+        run: |
+          version=$(sed -n 's/^project(Batida VERSION \([0-9.]*\)).*/\1/p' CMakeLists.txt)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::The tag $GITHUB_REF_NAME doesn't match the version in CMakeLists.txt ($version)"
+            exit 1
+          fi
+
+      - name: Rosetta, to check the Intel half
+        run: softwareupdate --install-rosetta --agree-to-license
+
+      - name: Configure
+        run: cmake -S . -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+
+      - name: Build
+        run: cmake --build build --config Release --target BatidaTests Batida_AU -- -quiet
+
+      - name: Apple Silicon and Intel
+        run: |
+          component=build/Batida_artefacts/Release/AU/Batida.component
+          for binary in "$component/Contents/MacOS/Batida" "$component/Contents/Helpers/batida"; do
+            archs=$(lipo -archs "$binary")
+            echo "$binary: $archs"
+            if [[ " $archs " != *" arm64 "* || " $archs " != *" x86_64 "* ]]; then
+              echo "::error::$binary isn't built for both Apple Silicon and Intel"
+              exit 1
+            fi
+          done
+          codesign --verify --deep --strict --verbose=2 "$component"
+
+      - name: Unit tests (Apple Silicon)
+        run: build/BatidaTests_artefacts/Release/BatidaTests
+
+      - name: Unit tests (Intel, under Rosetta)
+        run: arch -x86_64 build/BatidaTests_artefacts/Release/BatidaTests
+
+      - name: Zip
+        run: |
+          ditto -c -k --keepParent build/Batida_artefacts/Release/AU/Batida.component Batida-macOS.zip
+          shasum -a 256 Batida-macOS.zip
+
+      # The zip through install.sh, then Apple's AU validation of what it
+      # installed, as each architecture.
+      - name: Install and AU validation
+        run: |
+          BATIDA_ZIP="file://$PWD/Batida-macOS.zip" bash install.sh
+          auval -v aumu Btda Odfd
+          arch -x86_64 auval -v aumu Btda Odfd
+          arch -x86_64 "$HOME/Library/Audio/Plug-Ins/Components/Batida.component/Contents/Helpers/batida" params > /dev/null
+
+      - name: Keep the zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: Batida-macOS
+          path: Batida-macOS.zip
+
+      - name: Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" Batida-macOS.zip \
+            --title "Batida ${GITHUB_REF_NAME#v}" \
+            --generate-notes \
+            --notes "For Apple Silicon and Intel Macs, macOS 12 or later. To install or update, run this in Terminal, then quit and reopen your host:
+
+          \`\`\`bash
+          curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/install.sh | bash
+          \`\`\`
+
+          The zip isn't signed with an Apple Developer ID yet, so macOS blocks it when it's downloaded with a browser; the line above doesn't have that problem."

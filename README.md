@@ -1,6 +1,6 @@
 # Batida
 
-**A drum instrument for sound design**, from Oddfield. macOS · Audio Unit · version 0.9.0
+**A drum instrument for sound design**, from Oddfield. macOS · Audio Unit · version 0.9.1
 (pre-release).
 
 Eight sounds play into one shared effects chain. An **XY pad** pushes the whole chain at once:
@@ -8,21 +8,16 @@ left to right goes warm → aggressive → digital, bottom to top goes clean →
 that are a step sequencer, two drawn modulators, a "Vary" button that suggests new versions of a
 sound, and a library. It works for any style but is made for techno, breakbeat and glitch.
 
-> **Testing Batida?** Start with [TESTING.md](TESTING.md): what to try, known limits, and how to
-> report.
+> **Pre-release.** What to try, known limits and how to report: [TESTING.md](TESTING.md).
 
 ---
 
 ## Quick start
 
-You need macOS 12 or later, Xcode and CMake (`brew install cmake`).
+For Apple Silicon and Intel Macs, macOS 12 or later. In Terminal:
 
 ```bash
-git clone --recurse-submodules https://github.com/ikeaang-hue/Oddfield-Batida.git
-cd Oddfield-Batida
-cmake -B build -G Xcode
-cmake --build build --config Release
-killall -9 AudioComponentRegistrar
+curl -fsSL https://raw.githubusercontent.com/ikeaang-hue/Oddfield-Batida/main/install.sh | bash
 ```
 
 Then quit and reopen your host and add Batida as an instrument: in Logic or GarageBand,
@@ -30,8 +25,7 @@ Then quit and reopen your host and add Batida as an instrument: in Logic or Gara
 Audio Units in Settings → Plug-Ins and rescan; in Reaper, it's under AUi in the FX browser.
 Note names in this README follow Logic (note 60 = C3); the note numbers are the same everywhere.
 
-To update later: `git pull && git submodule update --init`, then build again and run the
-`killall` line.
+The same line updates Batida; `… | bash -s -- --uninstall` removes it (your library stays).
 
 ---
 
@@ -178,7 +172,20 @@ to any command for output another program can read.
 ## For developers
 
 <details>
-<summary>Tests, tools and code layout</summary>
+<summary>Building, tests, tools and code layout</summary>
+
+To build from source you need Xcode and CMake (`brew install cmake`). The build installs the
+plugin in `~/Library/Audio/Plug-Ins/Components`:
+
+```bash
+git clone --recurse-submodules https://github.com/ikeaang-hue/Oddfield-Batida.git
+cd Oddfield-Batida
+cmake -B build -G Xcode
+cmake --build build --config Release
+killall -9 AudioComponentRegistrar
+```
+
+To update: `git pull && git submodule update --init`, then build again and run the `killall` line.
 
 ```bash
 build/BatidaTests_artefacts/Release/BatidaTests                        # unit tests
@@ -188,6 +195,9 @@ auval -v aumu Btda Odfd                                                # Apple's
 swiftc -O -o build/au_check tests/au_check.swift && build/au_check     # the installed AU, host-style
 ```
 
+- **Releases:** set the version in `CMakeLists.txt`, then `git tag v0.9.1 && git push origin
+  v0.9.1`. `.github/workflows/release.yml` builds for Apple Silicon and Intel, runs the unit
+  tests and auval as both, and publishes `Batida-macOS.zip`, which `install.sh` downloads.
 - **CI:** `.github/workflows/tests.yml` runs the unit tests, the snapshot gesture checks and
   auval on macOS for every push to `main` and every pull request. Every check exits non-zero
   when it fails.

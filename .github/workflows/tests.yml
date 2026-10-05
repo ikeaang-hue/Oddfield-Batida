@@ -29,7 +29,7 @@ jobs:
         run: cmake -S . -B build -G Xcode
 
       - name: Build
-        run: cmake --build build --config Release --target BatidaTests BatidaSnapshot Batida -- -quiet
+        run: cmake --build build --config Release --target BatidaTests BatidaSnapshot Batida_AU -- -quiet
 
       - name: Unit tests
         run: build/BatidaTests_artefacts/Release/BatidaTests
