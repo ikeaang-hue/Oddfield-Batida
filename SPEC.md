@@ -1,12 +1,10 @@
 # Oddfield Batida: Design Spec
 
-*Version 1.17, agreed 2026-10-06 (1.17: tags renamed (character: round, bright, synthetic, inharmonic, natural; moods: clean, driven, glossy, soft), styles no longer tags, the Neutral Breakbeat set renamed Neutral; 1.16: files and scripting: the reference, the `batida` command-line tool, `validate`, the library picks up new and changed files (phase 9; the sound-design chain moves to phase 10, VST3 to 11); 1.15: a fuller chain for sound design: filter envelope and comb/formant modes per sound, a Movement stage, Delay and Reverb sends, the SPACE page; 1.14: the publisher is renamed Oddfield; 1.13: Stack, 1–4 copies of a sound's source; 1.12: Vary searches only audible settings, measures longer and by spectrum, and relaxes step by step; 1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode replaces Split; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal"), "sound" replaces "voice"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
+*Version 1.17, agreed 2026-10-06 (1.17: sound tags (round, bright, synthetic, inharmonic, natural) and mood tags (clean, driven, glossy, soft); the Neutral set; 1.16: files and scripting: the reference, the `batida` command-line tool, `validate`, the library picks up new and changed files (phase 9; the sound-design chain moves to phase 10, VST3 to 11); 1.15: a fuller chain for sound design: filter envelope and comb/formant modes per sound, a Movement stage, Delay and Reverb sends, the SPACE page; 1.14: the publisher is renamed Oddfield; 1.13: Stack, 1–4 copies of a sound's source; 1.12: Vary searches only audible settings, measures longer and by spectrum, and relaxes step by step; 1.11: choke groups, Kit and Pattern Vary, resampling, breaks into kits, MIDI out and the XY CCs (phase 8), any-DAW rule; 1.1: MIDI mode, macro behaviour, test host; 1.2: Chromatic mode; 1.3: noise waveform, 2× FM; 1.4: the chain as the core, XY operation, per-sound Chain amount, sidechain input, chain before sequencer; 1.5: details settled while building phase 2; 1.6: pattern keys; 1.7: library details and the Set level; 1.8: visual design (direction C, "Signal") and the word "sound"; 1.9: the factory library; 1.10: heat crushes, not squashes)*
 
 ## 1. Identity
 
-- **Publisher:** Oddfield (manufacturer code `Odfd`, bundle ID `com.oddfield.batida`). It was
-  called Negative Space until 0.8.4; the library and settings move from the old folders by
-  themselves.
+- **Publisher:** Oddfield (manufacturer code `Odfd`, bundle ID `com.oddfield.batida`).
 - **Plugin:** Batida (plugin code `Btda`). Portuguese for "beat" and "hit".
 - **What it is:** a sound-design instrument, drums first, with basses, stabs and textures in
   scope. It works for general use, but is strongest on synthetic and heavy genres such as
@@ -118,7 +116,7 @@ projects keep loading (§12).
 - **Filter envelope:** Amount (± 4 octaves, 0 by default), attack, decay, sustain and release,
   triggered with the amp envelope. **Key** (0–100%) makes the cutoff follow the note. On Comb and
   Formant the envelope sweeps the pitch or the vowel.
-- **Chain amount** (replaces the Clean toggle): a per-sound dry/wet crossfade into the kit
+- **Chain amount:** a per-sound dry/wet crossfade into the kit
   chain. 100% (default) = fully through the chain; 0% = dry, bypassing it; in between, both are
   heard. Taken after the sound's level and pan. Automatable, so a sound can move in and out.
 - **Delay send** and **Reverb send** (0–100%, 0 by default): how much of the sound goes to the
@@ -222,7 +220,7 @@ Stereo imaging beyond this (wideners, imagers, panners) is left to the DAW.
 
 The main way the chain is operated: one gesture moves the whole chain.
 
-- **Y = heat** (clean → destroyed): destroys by **crushing, not squashing**. The weight is on the
+- **Y = heat** (clean → destroyed): destroys by **crushing**. The weight is on the
   distortion (full drive at the top) and the exciter; compression rises only a little, with a
   slightly *longer* attack so kick transients punch through. The clean-low-end crossover rises
   a little, so the sub stays solid while a kick's body is crushed.
@@ -384,8 +382,7 @@ the other channels stay fully chromatic for the Keys Sound.
 
 **Browser**
 - Categories: kick, snare, hat, perc, FX, bass, texture.
-- Character tags: round, bright, synthetic, inharmonic, natural. (Until 1.17: warm, harsh, digital,
-  metallic, organic; files with the old names read as the new ones, the mood tags too.)
+- Character tags: round, bright, synthetic, inharmonic, natural.
 - Search and favourites.
 - Click to try it live (a run of tries is one undo step), and next/previous while a pattern
   plays, from the LIB view or the ◀ name ▶ strips on other pages.
@@ -399,9 +396,9 @@ the other channels stay fully chromatic for the Keys Sound.
 - **Size:** the first target was about 160 sounds, 22 kits, 22 patterns and 8 sets. Factory 15
   (under review) has about 290 sounds, 40 kits, 58 patterns and 19 sets.
 - **Styles:** techno, breakbeat and glitch at the core, with the most kits; house, garage,
-  hip hop and trap as well. Styles shape the kits and patterns but aren't tags (since 1.17).
+  hip hop and trap as well. Styles shape the kits and patterns.
 - **Moods:** four more tags, *clean*, *driven*, *glossy* and *soft*, each with its own
-  tonal sounds (built from tones, not noise), a kit and a set.
+  tonal sounds (built from tones), a kit and a set.
 - **Method:** an offline tool (`BatidaFactory`) built on the same engine.
   1. Archetype recipes per category.
   2. Guided variations around each archetype.
@@ -426,11 +423,10 @@ the reference for layout and look.
 - Pure black ground; white for text and for values the user set; one accent, acid lime
   (`#D4FF3A`).
 - **The lime rule:** lime means *something is moving this value*: the XY pad, an FM macro or a
-  modulator. White is always the value the user set. This replaces the orange effective-value
-  markers and the green modulator colour.
+  modulator. White is always the value the user set.
 - Type: JetBrains Mono throughout, Martian Mono for headings and names. Section headers are
   numbered, inverted tags in signal-flow order (01 DYNAMICS, 02 DISTORTION…).
-- Controls are **horizontal value bars** (label · bar · number) rather than knobs. The number is
+- Controls are **horizontal value bars** (label · bar · number). The number is
   always visible, and drags are relative to the current value (they never jump). A moved value
   shows a lime tick at its effective value, with a lime segment back to the set value.
 - Selection is shown inverted (white block, black text). Hard edges and 1 px lines; no
