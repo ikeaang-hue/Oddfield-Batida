@@ -252,13 +252,17 @@ void PatternGrid::trackMenu (int track, juce::Component& target)
             self.repaint();
             return;
         }
+        if (choice == 1) // a copy changes nothing: no undo step
+        {
+            trackClipboard = bp.patterns().get().patterns[(size_t) pi].tracks[(size_t) track];
+            return;
+        }
         bp.beginUndoStep();
         bp.patterns().edit ([&] (PatternBank& b)
         {
             auto& tr = b.patterns[(size_t) pi].tracks[(size_t) track];
             switch (choice)
             {
-                case 1: trackClipboard = tr; break;
                 case 2: if (trackClipboard) tr = *trackClipboard; break;
                 case 3: tr = Track {}; tr.length = b.patterns[(size_t) pi].length; break;
                 case 4: case 5: case 6:

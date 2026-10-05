@@ -171,7 +171,7 @@ LibraryPage::LibraryPage (BatidaProcessor& p, LibraryController& c) : proc (p), 
         auto info = rows[(size_t) r].info;
         info.name = detailName.getText().trim();
         if (info.name.isNotEmpty() && info.name != rows[(size_t) r].info.name)
-            proc.library().updateInfo (rows[(size_t) r].file, info);
+            updateInfo (rows[(size_t) r].file, info);
         else
             detailName.setText (rows[(size_t) r].info.name, juce::dontSendNotification);
     };
@@ -188,7 +188,7 @@ LibraryPage::LibraryPage (BatidaProcessor& p, LibraryController& c) : proc (p), 
         auto info = rows[(size_t) r].info;
         info.category = detailCategory.getSelectedId() > 1 ? soundCategories()[detailCategory.getSelectedId() - 2] : juce::String();
         if (info.category != rows[(size_t) r].info.category)
-            proc.library().updateInfo (rows[(size_t) r].file, info);
+            updateInfo (rows[(size_t) r].file, info);
     };
     addChildComponent (detailCategory);
     for (int i = 0; i < 5; ++i)
@@ -206,7 +206,7 @@ LibraryPage::LibraryPage (BatidaProcessor& p, LibraryController& c) : proc (p), 
                 info.tags.removeString (t);
             else
                 info.tags.add (t);
-            proc.library().updateInfo (rows[(size_t) r].file, info);
+            updateInfo (rows[(size_t) r].file, info);
         };
         addChildComponent (b);
     }
@@ -339,6 +339,13 @@ void LibraryPage::rebuild()
     selecting = false;
     list.repaint();
     updateDetails();
+}
+
+void LibraryPage::updateInfo (juce::File file, const PresetInfo& info)
+{
+    // Batida's own write: a loaded file doesn't show as changed on disk for it.
+    if (proc.library().updateInfo (file, info))
+        proc.originRewritten (file);
 }
 
 void LibraryPage::updateFilterButtons()

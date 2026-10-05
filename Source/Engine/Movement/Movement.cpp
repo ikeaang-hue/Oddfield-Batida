@@ -233,9 +233,13 @@ void MovementData::fromXml (const juce::XmlElement& xml)
             continue;
         auto& sc = scenes[(size_t) s];
         sc.stored = true;
+        // Kept inside each setting's range: a morph hands these straight to the chain.
         for (const auto g : sceneParams())
-            sc.values[(size_t) g] = (float) se->getDoubleAttribute (juce::String (globalParamID (g)),
-                                                                    globalParamSpecs()[(size_t) g].def);
+        {
+            const auto& spec = globalParamSpecs()[(size_t) g];
+            const auto v = (float) se->getDoubleAttribute (juce::String (globalParamID (g)), spec.def);
+            sc.values[(size_t) g] = std::isfinite (v) ? juce::jlimit (spec.min, spec.max, v) : spec.def;
+        }
     }
 }
 

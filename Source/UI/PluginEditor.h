@@ -84,6 +84,15 @@ private:
     std::unique_ptr<MouseLog> mouseLog; // review builds only
 
     int selected = 0, page = Kit, dropTarget = -1, zoom = 100, ticks = 0;
+
+    // What the strips show about the files on disk. Looked up once a second,
+    // and at once when the selection or what's loaded changes, not every tick.
+    struct DiskState
+    {
+        int voice = -1, pattern = -1, origins = -1, age = 0;
+        bool kitFileExists = false, kitChanged = false, soundChanged = false, patternChanged = false;
+    };
+    DiskState disk;
     std::array<uint32_t, batida::kNumVoices> hitCounts {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BatidaEditor)

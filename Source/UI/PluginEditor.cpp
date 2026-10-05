@@ -219,13 +219,19 @@ void BatidaEditor::refreshCells()
 void BatidaEditor::updateStrips()
 {
     const auto& o = proc.getOrigins();
-    top.kitStrip.setText (o.kitName, "Kit: " + o.kitName + (o.kitFile.existsAsFile() ? " (" + o.kitFile.getFileName() + ")" : juce::String()));
     const auto pattern = proc.displayPattern();
+    if (disk.voice != selected || disk.pattern != pattern || disk.origins != proc.getOriginsVersion() || ++disk.age >= 10)
+        disk = { selected, pattern, proc.getOriginsVersion(), 0, o.kitFile.existsAsFile(),
+                 proc.originChanged (PresetType::Kit, selected, pattern),
+                 proc.originChanged (PresetType::Sound, selected, pattern),
+                 proc.originChanged (PresetType::Pattern, selected, pattern) };
+
+    top.kitStrip.setText (o.kitName, "Kit: " + o.kitName + (disk.kitFileExists ? " (" + o.kitFile.getFileName() + ")" : juce::String()));
     seqPage.patternStrip.setText ("P" + juce::String (pattern + 1).paddedLeft ('0', 2), "Pattern " + juce::String (pattern + 1));
     top.setMissing (proc.numMissingSamples());
-    top.kitStrip.setChanged (proc.originChanged (PresetType::Kit, selected, pattern));
-    soundPage.soundStrip.setChanged (proc.originChanged (PresetType::Sound, selected, pattern));
-    seqPage.patternStrip.setChanged (proc.originChanged (PresetType::Pattern, selected, pattern));
+    top.kitStrip.setChanged (disk.kitChanged);
+    soundPage.soundStrip.setChanged (disk.soundChanged);
+    seqPage.patternStrip.setChanged (disk.patternChanged);
 }
 
 void BatidaEditor::libraryChanged()

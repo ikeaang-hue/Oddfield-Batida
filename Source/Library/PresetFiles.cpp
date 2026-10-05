@@ -1,5 +1,6 @@
 #include "PresetFiles.h"
 
+#include <cmath>
 #include <cstdio>
 
 #ifndef BATIDA_VERSION
@@ -54,7 +55,8 @@ float valueFrom (const ParamSpec& spec, const juce::String& raw)
                 return 1.0f;
         return text.getIntValue() != 0 ? 1.0f : 0.0f;
     }
-    return juce::jlimit (spec.min, spec.max, text.getFloatValue());
+    const auto v = text.getFloatValue();
+    return std::isnan (v) ? spec.def : juce::jlimit (spec.min, spec.max, v); // "nan" would pass any limit
 }
 
 namespace

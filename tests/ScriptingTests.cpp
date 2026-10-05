@@ -168,6 +168,21 @@ public:
             for (auto* off : { "0", "false", "off", "no" })
                 expectEquals (valueFrom (mute, off), 0.0f, off);
             expectEquals (valueFrom (voiceParamSpecs()[vp::AmpD], "99999"), 8000.0f, "clamped");
+            expectEquals (valueFrom (voiceParamSpecs()[vp::AmpD], "nan"), voiceParamSpecs()[vp::AmpD].def, "not a number: the default");
+
+            // A scene's values go straight to the chain when morphing: kept in range.
+            const auto kit = readKit (writeText ("values/Scene.batida-kit",
+                                                 "<BATIDA type=\"kit\"><KIT><MOVEMENT><SCENE index=\"0\" chain_out=\"60\" dist_drive=\"nan\""
+                                                 " xy_y=\"0.6\"/></MOVEMENT></KIT></BATIDA>"));
+            expect (kit.has_value());
+            if (kit)
+            {
+                const auto& scene = kit->movement.scenes[0];
+                expect (scene.stored);
+                expectEquals (scene.values[gp::ChainOut], globalParamSpecs()[gp::ChainOut].max, "clamped");
+                expectEquals (scene.values[gp::DistDrive], globalParamSpecs()[gp::DistDrive].def, "not a number: the default");
+                expectWithinAbsoluteError (scene.values[gp::XyY], 0.6f, 1.0e-6f);
+            }
         }
 
         beginTest ("Saved files point to the reference");
@@ -202,6 +217,12 @@ public:
             check ("index.batida-kit", "<BATIDA type=\"kit\"><KIT><VOICE index=\"8\"/></KIT></BATIDA>", "index must be 0..7");
             check ("target.batida-kit", "<BATIDA type=\"kit\"><KIT><MOVEMENT><MOD index=\"0\"><TARGET global=\"xy_z\"/></MOD></MOVEMENT></KIT></BATIDA>",
                    "did you mean xy_x");
+            check ("scene.batida-kit", "<BATIDA type=\"kit\"><KIT><MOVEMENT><SCENE index=\"0\" chain_out=\"60\"/></MOVEMENT></KIT></BATIDA>",
+                   "clamped to 12");
+            check ("scenekey.batida-kit", "<BATIDA type=\"kit\"><KIT><MOVEMENT><SCENE index=\"0\" dist_drvie=\"0.5\"/></MOVEMENT></KIT></BATIDA>",
+                   "did you mean dist_drive");
+            check ("scenepart.batida-kit", "<BATIDA type=\"kit\"><KIT><MOVEMENT><SCENE index=\"0\" master=\"-6\"/></MOVEMENT></KIT></BATIDA>",
+                   "not part of a scene");
             check ("gate.batida-pattern", "<BATIDA type=\"pattern\"><PATTERN><TRACK voice=\"0\" gate=\"x..y\"/></PATTERN></BATIDA>", "for a hit");
             check ("velocity.batida-pattern", "<BATIDA type=\"pattern\"><PATTERN><TRACK voice=\"0\" velocity=\"100,200\"/></PATTERN></BATIDA>",
                    "step 2");
@@ -467,6 +488,13 @@ public:
             info.name = "Kick";
             expect (proc.saveSound (2, f, info, false));
             expect (! proc.originChanged (PresetType::Sound, 2, 0));
+
+            // Nor are new tags or a new name given in LIB.
+            info.tags.add ("warm");
+            expect (proc.library().updateInfo (f, info));
+            f.setLastModificationTime (juce::Time::getCurrentTime() + juce::RelativeTime::seconds (4.0));
+            proc.originRewritten (f);
+            expect (! proc.originChanged (PresetType::Sound, 2, 0), "Batida's own rewrite");
 
             // A kit loaded from a set: the kit strip follows the set.
             SetPreset set;

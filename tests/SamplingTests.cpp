@@ -113,6 +113,40 @@ public:
             expectGreaterThan (free, 0.01f, "without a group it rings on");
         }
 
+        beginTest ("A choke fades the sound out every time, not only the first");
+        {
+            Voice voice;
+            voice.prepare (kRate);
+            voice.setParameters (defaultKitParams().voices[7]); // the open hat: it rings
+            std::vector<float> l ((size_t) kBlock), r ((size_t) kBlock);
+            auto run = [&]
+            {
+                std::fill (l.begin(), l.end(), 0.0f);
+                std::fill (r.begin(), r.end(), 0.0f);
+                voice.render (l.data(), r.data(), l.data(), r.data(), kBlock);
+            };
+            auto peak = [&] (int from, int to)
+            {
+                float p = 0.0f;
+                for (int i = from; i < to; ++i)
+                    p = std::max (p, std::abs (l[(size_t) i]));
+                return p;
+            };
+            for (int round = 0; round < 3; ++round)
+            {
+                voice.noteOn (Voice::kBaseKey, 1.0f);
+                run();
+                voice.noteOn (Voice::kBaseKey, 1.0f); // a hit while it sounds: the old note fades, the new one starts
+                run();
+                voice.choke();
+                run();
+                const auto tag = " (round " + juce::String (round + 1) + ")";
+                expectGreaterThan (peak (0, 24), 1.0e-3f, "still sounding half a millisecond into the fade" + tag);
+                expectEquals (peak (144, kBlock), 0.0f, "silent after 3 ms" + tag);
+                expect (! voice.isActive(), "stopped" + tag);
+            }
+        }
+
         beginTest ("Pattern Vary: four different suggestions, locks and empty tracks kept");
         {
             PatternVaryRequest req;
