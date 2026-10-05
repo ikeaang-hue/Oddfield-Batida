@@ -1,28 +1,23 @@
-# Testing Batida (trusted testers)
+# Testing Batida
 
-Thanks for trying Batida before anyone else. This is a **pre-release build (0.9.0)** for a small
-group of developers: you build it yourself from this repository. Please don't share the plugin
-or the repository yet.
+Batida 0.9.1 is a pre-release. This page lists what to try, what's known not to work yet, and how
+to report what you find.
 
 ## What you need
 
-- A Mac with macOS 12 or later (Apple Silicon or Intel: you build for your own Mac).
-- Xcode with its command line tools, and CMake (`brew install cmake`).
+- A Mac with macOS 12 or later, Apple Silicon or Intel.
 - A host that loads Audio Units: Logic Pro, GarageBand, Ableton Live, Reaper, and others.
   Hosts that load only VST3 or CLAP get Batida with the VST3 build (phase 11).
 
-## Build and install
+## Install
+
+In Terminal:
 
 ```bash
-git clone --recurse-submodules https://github.com/ikeaang-hue/Oddfield-Batida.git
-cd Oddfield-Batida
-cmake -B build -G Xcode
-cmake --build build --config Release
-killall -9 AudioComponentRegistrar
+curl -fsSL https://raw.githubusercontent.com/ikeaang-hue/Oddfield-Batida/main/install.sh | bash
 ```
 
-The build installs `~/Library/Audio/Plug-Ins/Components/Batida.component`. The first build takes
-a few minutes. Then quit and reopen your host, and add Batida as an instrument:
+Then quit and reopen your host, and add Batida as an instrument:
 
 | Host | Where |
 |---|---|
@@ -30,16 +25,9 @@ a few minutes. Then quit and reopen your host, and add Batida as an instrument:
 | Ableton Live | Settings → Plug-Ins: Audio Units on, then Rescan; Batida is under Plug-Ins → Audio Units |
 | Reaper | Preferences → Plug-ins → AU (re-scan if needed); Batida is in the FX browser under AUi |
 
-**Updating:** `git pull && git submodule update --init`, build again, run the `killall` line,
-then quit and reopen the host. (Hosts keep the old plugin loaded until they restart.)
+**Updating:** run the same line again, then quit and reopen the host. (Hosts keep the old
+plugin loaded until they restart.)
 
-Optional checks after building (each ends in PASS, and exits non-zero if not):
-
-```bash
-build/BatidaTests_artefacts/Release/BatidaTests
-build/BatidaSnapshot_artefacts/Release/BatidaSnapshot build/snapshots
-auval -v aumu Btda Odfd
-```
 
 ## What to try
 
@@ -124,8 +112,7 @@ Please include:
 ## Uninstall
 
 ```bash
-rm -rf ~/Library/Audio/Plug-Ins/Components/Batida.component
-killall -9 AudioComponentRegistrar
+curl -fsSL https://raw.githubusercontent.com/ikeaang-hue/Oddfield-Batida/main/install.sh | bash -s -- --uninstall
 ```
 
 The library (`~/Music/Oddfield/Batida/`) holds your saved sounds, kits, resampled samples
